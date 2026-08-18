@@ -1,17 +1,65 @@
 import React, {useEffect, useState} from 'react';
-import type {Book} from '../types';
-import {App, getCoverDataUrl} from '../api';
+import type {Book, Tag} from '../types';
+import {getCoverDataUrl} from '../api';
 
 interface Props {
   books: Book[];
   loading: boolean;
   count: number;
+  keyword: string;
+  formats: string[];
+  tagFilter: number[];
+  sort: string;
+  desc: boolean;
+  tags: Tag[];
+  onKeyword: (v: string) => void;
+  onFormats: (v: string[]) => void;
+  onTagFilter: (v: number[]) => void;
+  onSort: (v: string, desc: boolean) => void;
   onOpen: (b: Book) => void;
   onDetail: (b: Book) => void;
   onRefresh: () => void;
+  onScan: () => void;
+  onTags: () => void;
 }
 
-export default function Bookshelf({books, loading, count, onOpen, onDetail, onRefresh}: Props) {
+const FORMATS = [
+  {key: 'epub', label: 'EPUB'},
+  {key: 'pdf', label: 'PDF'},
+  {key: 'mobi', label: 'MOBI'},
+  {key: 'azw3', label: 'AZW3'},
+  {key: 'kepub', label: 'KEPUB'},
+];
+
+const SORTS: [string, string][] = [
+  ['created', '入库时间'],
+  ['title', '书名'],
+  ['author', '作者'],
+  ['rating', '豆瓣评分'],
+  ['last_read', '最近阅读'],
+  ['size', '文件大小'],
+];
+
+export default function Bookshelf({
+  books,
+  loading,
+  count,
+  keyword,
+  formats,
+  tagFilter,
+  sort,
+  desc,
+  tags,
+  onKeyword,
+  onFormats,
+  onTagFilter,
+  onSort,
+  onOpen,
+  onDetail,
+  onRefresh,
+  onScan,
+  onTags,
+}: Props) {
   const [covers, setCovers] = useState<Record<number, string | null>>({});
 
   useEffect(() => {
@@ -31,39 +79,22 @@ export default function Bookshelf({books, loading, count, onOpen, onDetail, onRe
     };
   }, [books]);
 
-  if (loading && books.length === 0) {
-    return (
-      <div className="main">
-        <div className="empty">
-          <div className="big-icon">⏳</div>
-          <h2>正在加载...</h2>
-        </div>
-      </div>
-    );
-  }
+  const toggleFormat = (f: string) => {
+    if (formats.includes(f)) {
+      onFormats(formats.filter((x) => x !== f));
+    } else {
+      onFormats([...formats, f]);
+    }
+  };
+  const toggleTag = (id: number) => {
+    if (tagFilter.includes(id)) {
+      onTagFilter(tagFilter.filter((x) => x !== id));
+    } else {
+      onTagFilter([...tagFilter, id]);
+    }
+  };
 
-  if (books.length === 0) {
-    return (
-      <div className="main">
-        <div className="toolbar">
-          <span className="title">书架</span>
-          <span className="spacer" />
-          <span className="info">{count} 本藏书</span>
-        </div>
-        <div className="empty">
-          <div className="big-icon">📚</div>
-          <h2>书架空空如也</h2>
-          <p>
-            扫描你电脑中的电子书目录（支持 EPUB、PDF、MOBI、AZW3、KEPUB 等格式），
-            书籍信息会自动保存到本地数据库，并可从豆瓣获取封面与评分。
-          </p>
-          <button className="btn btn-primary" onClick={() => window.dispatchEvent(new CustomEvent('open-scan'))}>
-            🔍 开始扫描
-          </button>
-        </div>
-      </div>
-    );
-  }
+  const activeFilterCount = formats.length + tagFilter.length;
 
   return (
     <div className="main">
@@ -73,17 +104,116 @@ export default function Bookshelf({books, loading, count, onOpen, onDetail, onRe
           共 {books.length} 本{count > books.length ? ` / ${count} 本藏书` : ''}
         </span>
         <span className="spacer" />
+        <div className="search-box toolbar-search">
+          <input
+            placeholder="搜索书名 / 作者 / 出版社..."
+            value={keyword}
+            onChange={(e) => onKeyword(e.target.value)}
+          />
+        </div>
+        <select className="toolbar-select" value={sort} onChange={(e) => onSort(e.target.value, desc)}>
+          {SORTS.map(([v, l]) => (
+            <option key={v} value={v}>
+              {l}
+            </option>
+          ))}
+        </select>
+        <button
+          className={`btn btn-soft btn-sm ${desc ? 'active' : ''}`}
+          title={desc ? '降序' : '升序'}
+          onClick={() => onSort(sort, !desc)}
+        >
+          {desc ? '↓ 降序' : '↑ 升序'}
+        </button>
+        <button className="btn btn-soft btn-sm" onClick={onTags}>
+          🏷️ 标签管理
+        </button>
         <button className="btn btn-soft btn-sm" onClick={onRefresh}>
           ↻ 刷新
         </button>
+        <button className="btn btn-primary btn-sm" onClick={onScan}>
+          🔍 扫描
+        </button>
       </div>
-      <div className="shelf">
-        <div className="book-grid">
-          {books.map((b) => (
-            <BookCard key={b.id} book={b} cover={covers[b.id] ?? null} onOpen={() => onOpen(b)} onDetail={() => onDetail(b)} />
-          ))}
+
+      {(formats.length > 0 || tagFilter.length > 0 || tags.length > 0) && (
+        <div className="filter-bar">
+          <span className="filter-label">格式</span>
+          <div className="chip-row">
+            {FORMATS.map((f) => (
+              <button
+                key={f.key}
+                className={`chip ${formats.includes(f.key) ? 'active' : ''}`}
+                onClick={() => toggleFormat(f.key)}
+              >
+                {f.label}
+              </button>
+            ))}
+          </div>
+          <span className="filter-label" style={{marginLeft: 16}}>
+            标签
+          </span>
+          {tags.length === 0 ? (
+            <span className="filter-empty">暂无标签，在书本详情中添加</span>
+          ) : (
+            <div className="chip-row tag-chips">
+              {tags.map((t) => (
+                <button
+                  key={t.id}
+                  className={`chip ${tagFilter.includes(t.id) ? 'active' : ''}`}
+                  onClick={() => toggleTag(t.id)}
+                >
+                  <span className="tag-dot" style={{background: t.color}} />
+                  {t.name}
+                  <span className="chip-cnt">{t.book_count}</span>
+                </button>
+              ))}
+            </div>
+          )}
+          {activeFilterCount > 0 && (
+            <button
+              className="btn btn-ghost btn-sm"
+              onClick={() => {
+                onFormats([]);
+                onTagFilter([]);
+              }}
+            >
+              ✕ 清除筛选
+            </button>
+          )}
         </div>
-      </div>
+      )}
+
+      {loading && books.length === 0 ? (
+        <div className="empty">
+          <div className="big-icon">⏳</div>
+          <h2>正在加载...</h2>
+        </div>
+      ) : books.length === 0 ? (
+        <div className="empty">
+          <div className="big-icon">📚</div>
+          <h2>{activeFilterCount > 0 || keyword ? '没有符合条件的书籍' : '书架空空如也'}</h2>
+          {activeFilterCount === 0 && !keyword && (
+            <>
+              <p>
+                扫描你电脑中的电子书目录（支持 EPUB、PDF、MOBI、AZW3、KEPUB 等格式），
+                书籍信息会自动保存到本地数据库，并可从豆瓣获取封面与评分。
+              </p>
+              <button className="btn btn-primary" onClick={onScan}>
+                🔍 开始扫描
+              </button>
+            </>
+          )}
+        </div>
+      ) : (
+        <div className="shelf">
+          <div className="book-grid">
+            {books.map((b) => (
+              <BookCard key={b.id} book={b} cover={covers[b.id] ?? null} onOpen={() => onOpen(b)} onDetail={() => onDetail(b)} />
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

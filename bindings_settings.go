@@ -5,6 +5,10 @@ import (
 	"os"
 	"strconv"
 
+	"github.com/wailsapp/wails/v2/pkg/runtime"
+
+	"golang.org/x/sys/windows/registry"
+
 	"bookmanager/internal/db"
 	"bookmanager/internal/models"
 )
@@ -158,6 +162,38 @@ func idleSecondsFromSettings(s models.Settings) int {
 		return 60
 	}
 	return v
+}
+
+// SetUiTheme syncs the OS window chrome with the chosen UI theme:
+// "light", "dark" or "system" (follow the OS).
+func (a *App) SetUiTheme(theme string) {
+	if a.ctx == nil {
+		return
+	}
+	switch theme {
+	case "dark":
+		runtime.WindowSetDarkTheme(a.ctx)
+	case "light":
+		runtime.WindowSetLightTheme(a.ctx)
+	default:
+		runtime.WindowSetSystemDefaultTheme(a.ctx)
+	}
+}
+
+// GetSystemDarkMode reports whether the OS is currently in dark mode.
+// WebView2's prefers-color-scheme does not track the OS reliably when the
+// GPU is disabled, so the frontend asks the backend for the real value.
+func (a *App) GetSystemDarkMode() bool {
+	k, err := registry.OpenKey(registry.CURRENT_USER, `Software\Microsoft\Windows\CurrentVersion\Themes\Personalize`, registry.QUERY_VALUE)
+	if err != nil {
+		return false
+	}
+	defer k.Close()
+	v, _, err := k.GetIntegerValue("AppsUseLightTheme")
+	if err != nil {
+		return false
+	}
+	return v == 0
 }
 
 

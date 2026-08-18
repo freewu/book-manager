@@ -86,6 +86,10 @@ export function GetStats() {
   return window['go']['main']['App']['GetStats']();
 }
 
+export function GetSystemDarkMode() {
+  return window['go']['main']['App']['GetSystemDarkMode']();
+}
+
 export function GetVersion() {
   return window['go']['main']['App']['GetVersion']();
 }
@@ -148,6 +152,10 @@ export function SetBookTags(arg1, arg2) {
 
 export function SetSettings(arg1) {
   return window['go']['main']['App']['SetSettings'](arg1);
+}
+
+export function SetUiTheme(arg1) {
+  return window['go']['main']['App']['SetUiTheme'](arg1);
 }
 
 export function UnmarkMisrecord(arg1) {

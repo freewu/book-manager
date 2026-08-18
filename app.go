@@ -46,6 +46,8 @@ func (a *App) startup(ctx context.Context) {
 	a.store = store
 	// ensure default settings exist
 	ensureDefaults(a.store)
+	// system tray (close-to-tray; the tray 退出 quits the app)
+	startTray(ctx, a.showMainWindow)
 }
 
 func (a *App) shutdown(ctx context.Context) {
@@ -57,6 +59,19 @@ func (a *App) shutdown(ctx context.Context) {
 // domReady is called by Wails after the frontend DOM becomes ready.
 func (a *App) domReady(ctx context.Context) {
 	// no-op; kept for potential future use
+}
+
+// showMainWindow shows, unminimises and focuses the main window.
+// Used by the tray menu and by single-instance second-launch handling.
+func (a *App) showMainWindow() {
+	if a.ctx == nil {
+		return
+	}
+	runtime.WindowShow(a.ctx)
+	runtime.WindowUnminimise(a.ctx)
+	// Toggle always-on-top so the window is raised above other windows.
+	runtime.WindowSetAlwaysOnTop(a.ctx, true)
+	runtime.WindowSetAlwaysOnTop(a.ctx, false)
 }
 
 // emitEvent fires a Wails runtime event to the frontend.
@@ -122,6 +137,7 @@ func ensureDefaults(s *db.Store) {
 		"formats":      "epub,pdf,mobi,azw3,kepub",
 		"douban_auto":  "0",
 		"theme":        "light",
+		"ui_theme":     "system",
 	}
 	for k, v := range defaults {
 		if s.GetSetting(k, "") == "" {

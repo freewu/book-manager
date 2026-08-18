@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"embed"
 	"path/filepath"
 
@@ -8,6 +9,7 @@ import (
 	"github.com/wailsapp/wails/v2/pkg/options"
 	"github.com/wailsapp/wails/v2/pkg/options/assetserver"
 	"github.com/wailsapp/wails/v2/pkg/options/windows"
+	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
 //go:embed all:frontend/dist
@@ -18,7 +20,7 @@ func main() {
 	dataDir := resolveDataDir()
 
 	err := wails.Run(&options.App{
-		Title:     "书架 - 本地电子书管理",
+		Title:     "book-manager",
 		Width:     1280,
 		Height:    820,
 		MinWidth:  960,
@@ -30,6 +32,18 @@ func main() {
 		OnStartup:        app.startup,
 		OnDomReady:       app.domReady,
 		OnShutdown:       app.shutdown,
+		// Close button hides to the system tray instead of quitting.
+		OnBeforeClose: func(ctx context.Context) (preventClose bool) {
+			runtime.WindowHide(ctx)
+			return true
+		},
+		// Only one instance may run; a second launch brings the first to front.
+		SingleInstanceLock: &options.SingleInstanceLock{
+			UniqueId: "com.bookmanager.book-manager",
+			OnSecondInstanceLaunch: func(data options.SecondInstanceData) {
+				app.showMainWindow()
+			},
+		},
 		Bind: []interface{}{
 			app,
 		},

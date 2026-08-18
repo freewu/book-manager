@@ -4,15 +4,20 @@ import type {Book, Settings, Stats, Tag} from './types';
 import {App as Backend} from './api';
 import Sidebar from './components/Sidebar';
 import Bookshelf from './components/Bookshelf';
+import ReadingPage from './components/ReadingPage';
+import StatsPage from './components/StatsPage';
+import SettingsPage from './components/SettingsPage';
 import ScanDialog from './components/ScanDialog';
 import BookDetail from './components/BookDetail';
 import TagManager from './components/TagManager';
 import MisrecordManager from './components/MisrecordManager';
-import SettingsDialog from './components/SettingsDialog';
 import Reader from './components/Reader';
 import {useToast} from './components/Toast';
 
+export type Page = 'bookshelf' | 'reading' | 'stats' | 'settings';
+
 interface AppState {
+  page: Page;
   books: Book[];
   loading: boolean;
   keyword: string;
@@ -26,7 +31,6 @@ interface AppState {
   showScan: boolean;
   showTags: boolean;
   showMisrecords: boolean;
-  showSettings: boolean;
   detailBook: Book | null;
   reading: Book | null;
 }
@@ -34,6 +38,7 @@ interface AppState {
 export default function App() {
   const toast = useToast();
   const [st, setSt] = useState<AppState>({
+    page: 'bookshelf',
     books: [],
     loading: true,
     keyword: '',
@@ -47,7 +52,6 @@ export default function App() {
     showScan: false,
     showTags: false,
     showMisrecords: false,
-    showSettings: false,
     detailBook: null,
     reading: null,
   });
@@ -116,6 +120,33 @@ export default function App() {
     return () => window.removeEventListener('open-scan', onOpenScan);
   }, [loadBooks, loadTags, loadStats, loadSettings]);
 
+  // Apply the app-wide UI theme (light / dark / follow-system).
+  useEffect(() => {
+    const mode = st.settings.ui_theme || 'system';
+    const apply = async () => {
+      let dark = mode === 'dark';
+      if (mode === 'system') {
+        // WebView2's prefers-color-scheme does not track the OS reliably when
+        // the GPU is disabled; ask the backend for the real system value.
+        try {
+          dark = await Backend.GetSystemDarkMode();
+        } catch {
+          dark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        }
+      }
+      document.documentElement.dataset.theme = dark ? 'dark' : 'light';
+      Backend.SetUiTheme(mode);
+    };
+    apply();
+    if (mode === 'system') {
+      const mq = window.matchMedia('(prefers-color-scheme: dark)');
+      const onMq = () => apply();
+      mq.addEventListener('change', onMq);
+      const iv = window.setInterval(apply, 5000); // poll OS theme changes
+      return () => { mq.removeEventListener('change', onMq); window.clearInterval(iv); };
+    }
+  }, [st.settings.ui_theme]);
+
   const applyQuery = useCallback((patch: Partial<{keyword: string; formats: string[]; tagFilter: number[]; sort: string; desc: boolean}>) => {
     queryRef.current = {...queryRef.current, ...patch};
     setSt((s) => ({
@@ -151,30 +182,51 @@ export default function App() {
       {!st.reading && (
         <>
           <Sidebar
+            page={st.page}
+            onNav={(page) => setSt((s) => ({...s, page}))}
             stats={st.stats}
-            keyword={st.keyword}
-            formats={st.formats}
-            tagFilter={st.tagFilter}
-            sort={st.sort}
-            desc={st.desc}
-            tags={st.tags}
-            onKeyword={(v) => applyQuery({keyword: v})}
-            onFormats={(v) => applyQuery({formats: v})}
-            onTagFilter={(v) => applyQuery({tagFilter: v})}
-            onSort={(v, desc) => applyQuery({sort: v, desc})}
-            onScan={() => setSt((s) => ({...s, showScan: true}))}
-            onTags={() => setSt((s) => ({...s, showTags: true}))}
-            onMisrecords={() => setSt((s) => ({...s, showMisrecords: true}))}
-            onSettings={() => setSt((s) => ({...s, showSettings: true}))}
           />
-          <Bookshelf
-            books={st.books}
-            loading={st.loading}
-            count={st.stats?.total_books ?? 0}
-            onOpen={openBook}
-            onDetail={(b) => setSt((s) => ({...s, detailBook: b}))}
-            onRefresh={refreshAll}
-          />
+          <div className="main">
+            {st.page === 'bookshelf' && (
+              <Bookshelf
+                books={st.books}
+                loading={st.loading}
+                count={st.stats?.total_books ?? 0}
+                keyword={st.keyword}
+                formats={st.formats}
+                tagFilter={st.tagFilter}
+                sort={st.sort}
+                desc={st.desc}
+                tags={st.tags}
+                onKeyword={(v) => applyQuery({keyword: v})}
+                onFormats={(v) => applyQuery({formats: v})}
+                onTagFilter={(v) => applyQuery({tagFilter: v})}
+                onSort={(v, desc) => applyQuery({sort: v, desc})}
+                onOpen={openBook}
+                onDetail={(b) => setSt((s) => ({...s, detailBook: b}))}
+                onRefresh={refreshAll}
+                onScan={() => setSt((s) => ({...s, showScan: true}))}
+                onTags={() => setSt((s) => ({...s, showTags: true}))}
+              />
+            )}
+            {st.page === 'reading' && <ReadingPage onOpen={openBook} />}
+            {st.page === 'stats' && (
+              <StatsPage
+                stats={st.stats}
+                onOpen={openBook}
+                onMisrecords={() => setSt((s) => ({...s, showMisrecords: true}))}
+              />
+            )}
+            {st.page === 'settings' && (
+              <SettingsPage
+                settings={st.settings}
+                onSaved={(s) => {
+                  setSt((prev) => ({...prev, settings: s}));
+                  toast.ok('设置已保存');
+                }}
+              />
+            )}
+          </div>
         </>
       )}
 
@@ -211,17 +263,6 @@ export default function App() {
           onChanged={() => {
             loadStats();
             refreshAll();
-          }}
-        />
-      )}
-
-      {st.showSettings && (
-        <SettingsDialog
-          settings={st.settings}
-          onClose={() => setSt((s) => ({...s, showSettings: false}))}
-          onSaved={(s) => {
-            setSt((prev) => ({...prev, settings: s}));
-            toast.ok('设置已保存');
           }}
         />
       )}
