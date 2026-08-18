@@ -1,4 +1,4 @@
-import React, {useCallback, useState} from 'react';
+import React, {useCallback, useState, useEffect} from 'react';
 import type {Settings, Stats, Tag} from '../types';
 import {App} from '../api';
 import {humanSize, humanDuration} from '../api';
@@ -40,6 +40,12 @@ const SORTS: [string, string][] = [
 ];
 
 export default function Sidebar(p: Props) {
+  const [version, setVersion] = useState('');
+  useEffect(() => {
+    App.GetVersion()
+      .then(setVersion)
+      .catch(() => setVersion(''));
+  }, []);
   const toggleFormat = (f: string) => {
     if (p.formats.includes(f)) {
       p.onFormats(p.formats.filter((x) => x !== f));
@@ -183,6 +189,11 @@ export default function Sidebar(p: Props) {
         <button className="action-btn" onClick={p.onSettings}>
           <span className="icon">⚙️</span> 设置
         </button>
+      </div>
+      <div className="side-footer">
+        <img className="icon" src={logo} alt="" />
+        <span>书架 · 本地电子书管理</span>
+        {version && <b>{version}</b>}
       </div>
     </aside>
   );

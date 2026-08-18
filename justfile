@@ -25,6 +25,13 @@ dev:
 build:
     {{wails}} build
 
+# 发布构建：产出 ./release/book-manager.exe
+release:
+    {{wails}} build
+    mkdir -p release
+    cp build/bin/book-manager.exe release/book-manager.exe
+    @echo "✔ 发布产物: release/book-manager.exe"
+
 # 运行全部测试（Go 后端 + JS 解析器 + UI 冒烟）
 test: test-go test-js
 

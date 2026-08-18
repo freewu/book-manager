@@ -45,6 +45,8 @@ export function GetSettings():Promise<models.Settings>;
 
 export function GetStats():Promise<models.Stats>;
 
+export function GetVersion():Promise<string>;
+
 export function ListNotes(arg1:number):Promise<Array<models.Note>>;
 
 export function ListReadingSessions(arg1:number):Promise<Array<models.ReadingSession>>;

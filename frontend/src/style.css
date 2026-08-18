@@ -223,6 +223,25 @@ textarea:focus {
   padding-top: 10px;
   border-top: 1px solid var(--border);
 }
+.side-footer {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 4px 2px;
+  font-size: 11px;
+  color: var(--text-3);
+}
+.side-footer .icon {
+  width: 16px;
+  height: 16px;
+  border-radius: 4px;
+  object-fit: cover;
+}
+.side-footer b {
+  margin-left: auto;
+  color: var(--text-2);
+  font-weight: 600;
+}
 .action-btn {
   display: flex;
   align-items: center;

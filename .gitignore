@@ -1,6 +1,7 @@
 # build output
 build/bin
 build/windows/installer/*.exe
+release/
 
 # frontend
 frontend/node_modules

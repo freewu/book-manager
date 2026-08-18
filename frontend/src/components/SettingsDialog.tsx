@@ -14,9 +14,11 @@ export default function SettingsDialog({settings, onClose, onSaved}: Props) {
   const [doubanAuto, setDoubanAuto] = useState(settings.douban_auto === '1');
   const [theme, setTheme] = useState(settings.theme || 'light');
   const [dataDir, setDataDir] = useState('');
+  const [version, setVersion] = useState('');
 
   React.useEffect(() => {
     App.DataDir().then(setDataDir).catch(() => setDataDir(''));
+    App.GetVersion().then(setVersion).catch(() => setVersion(''));
   }, []);
 
   const save = async () => {
@@ -97,6 +99,9 @@ export default function SettingsDialog({settings, onClose, onSaved}: Props) {
           )}
         </div>
         <div className="modal-foot">
+          <span style={{fontSize: 12, color: 'var(--text-3)', marginRight: 'auto'}}>
+            书架 · 本地电子书管理{version ? ` ${version}` : ''}
+          </span>
           <button className="btn btn-soft" onClick={onClose}>
             取消
           </button>
