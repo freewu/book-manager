@@ -49,6 +49,9 @@ async function main() {
 
   console.log('cards:', await page.locator('.book-card').count());
   console.log('sidebar tags:', await page.locator('.tag-item').count());
+  const logoOk = await page.evaluate(() => { const img = document.querySelector('.logo img.icon'); return img ? (img.src.length > 0 && img.naturalWidth > 0) : false; });
+  console.log('sidebar logo img loaded:', logoOk);
+
   console.log('stats boxes:', await page.locator('.stat-box').count());
 
   // open scan dialog

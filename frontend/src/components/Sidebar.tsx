@@ -2,6 +2,7 @@ import React, {useCallback, useState} from 'react';
 import type {Settings, Stats, Tag} from '../types';
 import {App} from '../api';
 import {humanSize, humanDuration} from '../api';
+import logo from '../assets/logo.png';
 
 interface Props {
   stats: Stats | null;
@@ -58,7 +59,7 @@ export default function Sidebar(p: Props) {
   return (
     <aside className="sidebar">
       <div className="logo">
-        <div className="icon">📚</div>
+        <img className="icon" src={logo} alt="书架" />
         <div>
           书架
           <small>本地电子书管理</small>

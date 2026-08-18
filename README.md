@@ -29,15 +29,14 @@
 ### 运行
 
 ```bash
-# 安装前端依赖
-cd frontend && npm install && cd ..
-
-# 开发模式（热重载）
-wails dev
-
-# 构建生产版本
-wails build
+just setup   # 安装前端依赖
+just dev     # 开发模式（热重载）
+just build   # 构建生产版本
+just test    # 全部测试（Go + JS 解析器 + UI 冒烟）
+just icon    # 从 logo.png 重新生成应用图标
 ```
+
+> 详细开发约定见 `agents.md`。
 
 ### 测试
 
