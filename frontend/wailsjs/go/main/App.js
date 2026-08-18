@@ -26,10 +26,6 @@ export function DataDir() {
   return window['go']['main']['App']['DataDir']();
 }
 
-export function DebugProbe(arg1) {
-  return window['go']['main']['App']['DebugProbe'](arg1);
-}
-
 export function DeleteBook(arg1) {
   return window['go']['main']['App']['DeleteBook'](arg1);
 }

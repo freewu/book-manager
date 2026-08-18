@@ -1,4 +1,4 @@
-import React, {useCallback, useRef, useState} from 'react';
+import React, {useCallback, useMemo, useRef, useState} from 'react';
 
 export interface ToastItem {
   id: number;
@@ -18,10 +18,12 @@ export function useToast() {
     }, ms);
   }, []);
 
-  return {
-    items,
-    info: (t: string) => push(t, 'info'),
-    ok: (t: string) => push(t, 'ok'),
-    err: (t: string) => push(t, 'err'),
-  };
+  const info = useCallback((t: string) => push(t, 'info'), [push]);
+  const ok = useCallback((t: string) => push(t, 'ok'), [push]);
+  const err = useCallback((t: string) => push(t, 'err'), [push]);
+
+  // Return a memoized object so that consumers' useCallback/useEffect deps
+  // stay stable across renders (previously a fresh object per render caused
+  // an infinite reload loop in App.tsx's startup effect).
+  return useMemo(() => ({items, info, ok, err}), [items, info, ok, err]);
 }

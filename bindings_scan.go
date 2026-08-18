@@ -180,7 +180,7 @@ func parseFormatsSetting(s string) map[string]bool {
 
 // splitCSV is a tiny CSV splitter for the formats setting.
 func splitCSV(s string) []string {
-	var out []string
+	out := []string{}
 	cur := ""
 	for _, r := range s {
 		if r == ',' {

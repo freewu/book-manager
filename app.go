@@ -6,7 +6,6 @@ import (
 	"os"
 	"path/filepath"
 	"sync"
-	"time"
 
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 
@@ -32,8 +31,6 @@ func NewApp() *App {
 func (a *App) startup(ctx context.Context) {
 	a.ctx = ctx
 	a.dataDir = resolveDataDir()
-	// TEMP probe: OnStartup reached
-	a.probe("onstartup")
 	store, err := db.Open(filepath.Join(a.dataDir, "book.db"))
 	if err != nil {
 		fmt.Println("db open error:", err)
@@ -57,39 +54,9 @@ func (a *App) shutdown(ctx context.Context) {
 	}
 }
 
-// probe is a TEMPORARY diagnostic helper. Remove after white-screen investigation.
-func (a *App) probe(stage string) {
-	dir := a.dataDir
-	if dir == "" {
-		dir = "."
-	}
-	f, err := os.OpenFile(filepath.Join(dir, "probe.log"), os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o644)
-	if err != nil {
-		return
-	}
-	defer f.Close()
-	fmt.Fprintf(f, "%s %s\n", time.Now().Format("15:04:05.000"), stage)
-}
-
 // domReady is called by Wails after the frontend DOM becomes ready.
 func (a *App) domReady(ctx context.Context) {
-	a.probe("domready")
-	// Give the renderer a moment, then force a repaint and verify the page is still alive.
-	go func() {
-		time.Sleep(1200 * time.Millisecond)
-		// Re-show the window to nudge WebView2 into repainting (workaround for blank-window cases).
-		runtime.WindowShow(ctx)
-		runtime.WindowSetSize(ctx, 1280, 820)
-		// Ask the page to report its DOM state so we can confirm render vs. paint.
-		js := `(() => { try {
-			var r = document.getElementById('root');
-			var info = 'jsexec dom=' + (r ? r.childElementCount : -1) + ' body=' + document.body.children.length;
-			if (window.go && window.go.main && window.go.main.App) window.go.main.App.DebugProbe(info).catch(function(){});
-		} catch(e) {
-			if (window.go && window.go.main && window.go.main.App) window.go.main.App.DebugProbe('jsexec-err ' + e.message).catch(function(){});
-		})()`
-		runtime.WindowExecJS(ctx, js)
-	}()
+	// no-op; kept for potential future use
 }
 
 // emitEvent fires a Wails runtime event to the frontend.

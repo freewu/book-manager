@@ -184,7 +184,7 @@ func (s *Store) AllSettings() map[string]string {
 // ---------- scan dirs ----------
 
 func (s *Store) ListScanDirs() []string {
-	var out []string
+	out := []string{}
 	rows, err := s.db.Query("SELECT path FROM scan_dirs ORDER BY id")
 	if err != nil {
 		return out
@@ -268,7 +268,7 @@ func (s *Store) ListMisrecords() ([]models.Misrecord, error) {
 		return nil, err
 	}
 	defer rows.Close()
-	var out []models.Misrecord
+	out := []models.Misrecord{}
 	for rows.Next() {
 		var m models.Misrecord
 		if err := rows.Scan(&m.ID, &m.Path, &m.Hash, &m.FileName, &m.Reason, &m.CreatedAt); err == nil {
@@ -368,7 +368,7 @@ func (s *Store) ListTags() ([]models.Tag, error) {
 		return nil, err
 	}
 	defer rows.Close()
-	var out []models.Tag
+	out := []models.Tag{}
 	for rows.Next() {
 		var t models.Tag
 		if err := rows.Scan(&t.ID, &t.Name, &t.Color, &t.CreatedAt, &t.BookCount); err == nil {
@@ -403,7 +403,7 @@ func (s *Store) BookTagIDs(bookID int64) ([]int64, error) {
 		return nil, err
 	}
 	defer rows.Close()
-	var out []int64
+	out := []int64{}
 	for rows.Next() {
 		var id int64
 		if rows.Scan(&id) == nil {

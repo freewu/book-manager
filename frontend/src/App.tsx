@@ -72,7 +72,7 @@ export default function App() {
         limit: 0,
         offset: 0,
       });
-      setSt((s) => ({...s, books, loading: false}));
+      setSt((s) => ({...s, books: books ?? [], loading: false}));
     } catch (e) {
       setSt((s) => ({...s, loading: false}));
       toast.err(String(e));
@@ -82,7 +82,7 @@ export default function App() {
   const loadTags = useCallback(async () => {
     try {
       const tags = await Backend.ListTags();
-      setSt((s) => ({...s, tags}));
+      setSt((s) => ({...s, tags: tags ?? []}));
     } catch {
       /* ignore */
     }

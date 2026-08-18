@@ -106,7 +106,7 @@ func (s *Store) ListBooks(q BookQuery) ([]models.Book, error) {
 		return nil, err
 	}
 	defer rows.Close()
-	var out []models.Book
+	out := []models.Book{}
 	for rows.Next() {
 		b, err := scanBook(rows)
 		if err != nil {
@@ -150,7 +150,7 @@ func (s *Store) tagsForBook(bookID int64) ([]models.Tag, error) {
 		return nil, err
 	}
 	defer rows.Close()
-	var out []models.Tag
+	out := []models.Tag{}
 	for rows.Next() {
 		var t models.Tag
 		if err := rows.Scan(&t.ID, &t.Name, &t.Color, &t.CreatedAt, &t.BookCount); err == nil {
@@ -273,7 +273,7 @@ func (s *Store) ListNotes(bookID int64) ([]models.Note, error) {
 		return nil, err
 	}
 	defer rows.Close()
-	var out []models.Note
+	out := []models.Note{}
 	for rows.Next() {
 		var n models.Note
 		if err := rows.Scan(&n.ID, &n.BookID, &n.Content, &n.Location, &n.Chapter, &n.Quote, &n.CreatedAt, &n.UpdatedAt); err == nil {
@@ -345,7 +345,7 @@ func (s *Store) ListReadingSessions(limit int) ([]models.ReadingSession, error) 
 		return nil, err
 	}
 	defer rows.Close()
-	var out []models.ReadingSession
+	out := []models.ReadingSession{}
 	for rows.Next() {
 		var r models.ReadingSession
 		if err := rows.Scan(&r.ID, &r.BookID, &r.StartTime, &r.EndTime, &r.Seconds, &r.PagesRead, &r.BookTitle, &r.BookFormat); err == nil {
