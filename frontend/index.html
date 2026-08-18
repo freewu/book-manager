@@ -4,6 +4,24 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>书架 · 本地电子书管理</title>
+    <script>
+    // TEMP probe: inline script executed (first JS in page)
+    (function () {
+      try { localStorage.setItem('__probe_inline', Date.now()); } catch (e) {}
+      var tries = 0;
+      function call() {
+        tries++;
+        try {
+          if (window.go && window.go.main && window.go.main.App) {
+            window.go.main.App.DebugProbe('inline-script').catch(function () {});
+            return;
+          }
+        } catch (e) {}
+        if (tries < 30) setTimeout(call, 200);
+      }
+      call();
+    })();
+    </script>
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📚</text></svg>" />
   </head>
   <body>

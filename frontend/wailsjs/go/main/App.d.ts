@@ -15,6 +15,8 @@ export function CreateTag(arg1:string,arg2:string):Promise<number>;
 
 export function DataDir():Promise<string>;
 
+export function DebugProbe(arg1:string):Promise<void>;
+
 export function DeleteBook(arg1:number):Promise<void>;
 
 export function DeleteNote(arg1:number):Promise<void>;

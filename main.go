@@ -2,6 +2,7 @@ package main
 
 import (
 	"embed"
+	"path/filepath"
 
 	"github.com/wailsapp/wails/v2"
 	"github.com/wailsapp/wails/v2/pkg/options"
@@ -14,6 +15,7 @@ var assets embed.FS
 
 func main() {
 	app := NewApp()
+	dataDir := resolveDataDir()
 
 	err := wails.Run(&options.App{
 		Title:     "书架 - 本地电子书管理",
@@ -26,12 +28,16 @@ func main() {
 		},
 		BackgroundColour: &options.RGBA{R: 244, G: 245, B: 250, A: 1},
 		OnStartup:        app.startup,
+		OnDomReady:       app.domReady,
 		OnShutdown:       app.shutdown,
 		Bind: []interface{}{
 			app,
 		},
 		Windows: &windows.Options{
-			WebviewGpuIsDisabled: true, // workaround: newer WebView2 + GPU combo fails to repaint after Hide/Show
+			WebviewGpuIsDisabled: true, // workaround for WebView2 repaint issue (Hide/Show hack)
+			// Dedicated WebView2 profile avoids stale/corrupt caches from the shared Edge profile,
+			// a common cause of blank windows in packaged apps.
+			WebviewUserDataPath: filepath.Join(dataDir, "webview2"),
 		},
 	})
 
