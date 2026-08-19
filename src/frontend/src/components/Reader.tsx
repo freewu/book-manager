@@ -138,13 +138,15 @@ export default function Reader({book, settings, onClose}: Props) {
       } else if (e.key === 'ArrowLeft') {
         e.preventDefault();
         goPrev();
+      } else if (e.key === 'Escape') {
+        onClose();
       } else {
         markActivity();
       }
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [data, goNext, goPrev, markActivity]);
+  }, [data, goNext, goPrev, markActivity, onClose]);
 
   if (error) {
     return (

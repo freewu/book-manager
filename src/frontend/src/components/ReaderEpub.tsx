@@ -25,6 +25,9 @@ const ReaderEpub = forwardRef<ReaderHandle, Props>(function ReaderEpub(
   const onProgressRef = useRef(onProgress);
   const onActivityRef = useRef(onActivity);
   const noteAnchorRef = useRef<HTMLDivElement>(null);
+  // Real total page count, computed asynchronously via epubjs locations
+  // (currentLocation().total is the section count, not pages).
+  const totalPagesRef = useRef(0);
 
   useEffect(() => {
     onProgressRef.current = onProgress;
@@ -48,9 +51,14 @@ const ReaderEpub = forwardRef<ReaderHandle, Props>(function ReaderEpub(
     rendition.on('relocated', (location: any) => {
       if (!location || !location.start) return;
       const cfi = location.start.cfi;
-      const total = location.total;
-      const current = location.start.displayed.page;
+      let total = location.total;
+      let current = location.start.displayed.page;
       const pct = (location.start.percentage ?? 0) * 100;
+      if (totalPagesRef.current > 0) {
+        total = totalPagesRef.current;
+        const idx = bookRef.current?.locations.locationFromCfi(cfi);
+        if (typeof idx === 'number' && idx >= 0) current = idx + 1;
+      }
       onProgressRef.current(cfi, current, total, Math.max(0, Math.min(100, pct)));
     });
 
@@ -84,6 +92,31 @@ const ReaderEpub = forwardRef<ReaderHandle, Props>(function ReaderEpub(
       // focus so arrow keys work
       const iframe = containerRef.current?.querySelector('iframe');
       if (iframe) iframe.setAttribute('tabindex', '0');
+      // compute real total page count in the background (locations snapshot at
+      // current window size); until ready we fall back to the section page.
+      epub
+        .locations.generate(1200)
+        .then(() => {
+          if (!alive) return;
+          const n = epub.locations.length();
+          if (!n) return;
+          totalPagesRef.current = n;
+          const loc = rendition.currentLocation();
+          if (loc?.start) {
+            const idx = epub.locations.locationFromCfi(loc.start.cfi);
+            if (typeof idx === 'number' && idx >= 0) {
+              onProgressRef.current(
+                loc.start.cfi,
+                idx + 1,
+                n,
+                (loc.start.percentage ?? 0) * 100,
+              );
+            }
+          }
+        })
+        .catch(() => {
+          /* keep section-based totals */
+        });
     };
     start();
 
@@ -172,11 +205,14 @@ const ReaderEpub = forwardRef<ReaderHandle, Props>(function ReaderEpub(
     getPageInfo: () => {
       const loc = renditionRef.current?.currentLocation();
       if (!loc?.start) return {page: 0, total: 0, location: ''};
-      return {
-        page: loc.start.displayed.page || 0,
-        total: loc.total || 0,
-        location: loc.start.cfi || '',
-      };
+      let page = loc.start.displayed.page || 0;
+      let total = loc.total || 0;
+      if (totalPagesRef.current > 0) {
+        total = totalPagesRef.current;
+        const idx = bookRef.current?.locations.locationFromCfi(loc.start.cfi);
+        if (typeof idx === 'number' && idx >= 0) page = idx + 1;
+      }
+      return {page, total, location: loc.start.cfi || ''};
     },
     destroy: () => {
       /* handled by effect cleanup */

@@ -86,8 +86,54 @@ async function main() {
   console.log('F1 head:', JSON.stringify((t1 || t0).slice(0, 60)));
   await page.screenshot({path: 'screens/features-epub-wheel.png'});
   const wheelOk = readerUp && t0 !== t1 && t2 === t0; // wheel down flips, wheel up flips back
-  await page.evaluate(() => { const b = document.querySelector('.reader-toolbar button:last-child'); b?.click(); });
+
+  // ---- feature 4: real total page count (from epubjs locations) ----
+  await page.waitForTimeout(2500); // let locations.generate finish
+  const pager = await page.evaluate(() => {
+    const m = document.querySelector('.t-progress')?.textContent || '';
+    return m;
+  });
+  console.log('F4 toolbar progress:', JSON.stringify(pager));
+  const pageOk = /\/\s*\d+/.test(pager) && parseInt(pager.split('/')[1] || '0', 10) >= 3;
+  // with locations the page counter advances 1/3 -> 2/3 -> 3/3 across chapters;
+  // the section fallback would stay at 1/3 on every chapter.
+  await page.mouse.wheel(0, 240);
+  await page.waitForTimeout(700);
+  await page.mouse.wheel(0, 240);
+  await page.waitForTimeout(700);
+  const pager3 = await page.evaluate(() => document.querySelector('.t-progress')?.textContent || '');
+  console.log('F4 last page progress:', JSON.stringify(pager3));
+  const pageOk2 = pager3.startsWith('3/3');
+  // back to first page for the selection test
+  await page.mouse.wheel(0, -240);
+  await page.waitForTimeout(700);
+  await page.mouse.wheel(0, -240);
+  await page.waitForTimeout(700);
+
+  // ---- feature 5: text selection inside the epub iframe ----
+  const selQuote = await page.evaluate(() => {
+    const iframe = document.querySelector('#epub-view iframe');
+    const doc = iframe?.contentDocument;
+    if (!doc) return '';
+    const p = doc.body?.querySelector('p');
+    if (!p || !p.firstChild) return '';
+    const range = doc.createRange();
+    range.selectNodeContents(p.firstChild);
+    const sel = doc.getSelection();
+    sel.removeAllRanges();
+    sel.addRange(range);
+    doc.dispatchEvent(new Event('selectionchange'));
+    return sel.toString().trim().slice(0, 40);
+  });
+  await page.waitForTimeout(700);
+  const noteOpen = await page.evaluate(() => !!document.querySelector('.bm-note-save, textarea[placeholder]'));
+  console.log('F5 selection:', JSON.stringify(selQuote), '| note popup:', noteOpen);
+  const selectOk = selQuote.length > 0 && noteOpen;
+  // ---- feature 6: ESC exits the reader ----
+  await page.keyboard.press('Escape');
   await page.waitForTimeout(800);
+  const escOk = (await page.locator('.reader-root').count()) === 0 && (await page.locator('.book-card').count()) > 0;
+  console.log('F6 ESC exits reader:', escOk);
 
   // ---- feature 3: async douban auto-enrich fired when opening ----
   console.log('F3 autoEnrich calls:', await page.evaluate(() => window.__calls.auto));
@@ -127,7 +173,7 @@ async function main() {
   console.log('JS ERRORS:', errs.length ? '\n  ' + errs.join('\n  ') : 'none');
   await browser.close();
   server.close();
-  const pass = wheelOk && blurOk && autoOk && errs.length === 0;
+  const pass = wheelOk && pageOk && pageOk2 && selectOk && escOk && blurOk && autoOk && errs.length === 0;
   console.log('RESULT:', pass ? 'PASS' : 'FAIL');
   process.exit(pass ? 0 : 1);
 }

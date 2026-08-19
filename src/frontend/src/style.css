@@ -1031,9 +1031,13 @@ textarea:focus {
   position: absolute;
   top: 0;
   bottom: 0;
-  width: 22%;
+  /* narrow edge strips only, so text in the middle stays selectable */
+  width: 9%;
+  min-width: 40px;
   z-index: 10;
   cursor: pointer;
+  -webkit-user-select: none;
+  user-select: none;
 }
 .reader-nav-overlay.left {
   left: 0;
