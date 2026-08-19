@@ -2,6 +2,8 @@ import React, {useCallback, useEffect, useRef, useState} from 'react';
 import './style.css';
 import type {Book, Settings, Stats, Tag} from './types';
 import {App as Backend} from './api';
+import {EventsOn} from '../wailsjs/runtime/runtime';
+import {I18nProvider, normalizeLang, translate} from './i18n';
 import Sidebar from './components/Sidebar';
 import Bookshelf from './components/Bookshelf';
 import ReadingPage from './components/ReadingPage';
@@ -117,7 +119,12 @@ export default function App() {
     loadSettings();
     const onOpenScan = () => setSt((s) => ({...s, showScan: true}));
     window.addEventListener('open-scan', onOpenScan);
-    return () => window.removeEventListener('open-scan', onOpenScan);
+    // The tray menu can switch language; reload settings to re-render.
+    const offLang = EventsOn('settings:changed', () => loadSettings());
+    return () => {
+      window.removeEventListener('open-scan', onOpenScan);
+      offLang();
+    };
   }, [loadBooks, loadTags, loadStats, loadSettings]);
 
   // Apply the app-wide UI theme (light / dark / follow-system).
@@ -177,118 +184,124 @@ export default function App() {
     loadStats();
   }, [loadBooks, loadStats]);
 
+  const lang = normalizeLang(st.settings.language);
+
   return (
-    <div className="app">
-      {!st.reading && (
-        <>
-          <Sidebar
-            page={st.page}
-            onNav={(page) => setSt((s) => ({...s, page}))}
-            stats={st.stats}
+    <I18nProvider lang={lang}>
+      <div className="app">
+        {!st.reading && (
+          <>
+            <Sidebar
+              page={st.page}
+              onNav={(page) => setSt((s) => ({...s, page}))}
+              stats={st.stats}
+              collapsed={st.settings.sidebar_collapsed === '1'}
+              onToggleCollapsed={(c) => {
+                setSt((s) => ({...s, settings: {...s.settings, sidebar_collapsed: c ? '1' : '0'}}));
+                Backend.SetSettings({sidebar_collapsed: c ? '1' : '0'}).catch(() => {});
+              }}
+            />
+            <div className="main">
+              {st.page === 'bookshelf' && (
+                <Bookshelf
+                  books={st.books}
+                  loading={st.loading}
+                  count={st.stats?.total_books ?? 0}
+                  keyword={st.keyword}
+                  formats={st.formats}
+                  tagFilter={st.tagFilter}
+                  sort={st.sort}
+                  desc={st.desc}
+                  tags={st.tags}
+                  onKeyword={(v) => applyQuery({keyword: v})}
+                  onFormats={(v) => applyQuery({formats: v})}
+                  onTagFilter={(v) => applyQuery({tagFilter: v})}
+                  onSort={(v, desc) => applyQuery({sort: v, desc})}
+                  onOpen={openBook}
+                  onDetail={(b) => setSt((s) => ({...s, detailBook: b}))}
+                  onRefresh={refreshAll}
+                  onScan={() => setSt((s) => ({...s, showScan: true}))}
+                  onTags={() => setSt((s) => ({...s, showTags: true}))}
+                />
+              )}
+              {st.page === 'reading' && <ReadingPage onOpen={openBook} />}
+              {st.page === 'stats' && (
+                <StatsPage
+                  stats={st.stats}
+                  onOpen={openBook}
+                  onMisrecords={() => setSt((s) => ({...s, showMisrecords: true}))}
+                />
+              )}
+              {st.page === 'settings' && (
+                <SettingsPage
+                  settings={st.settings}
+                  onSaved={(s) => setSt((prev) => ({...prev, settings: s}))}
+                />
+              )}
+            </div>
+          </>
+        )}
+
+        {st.reading && <Reader book={st.reading} settings={st.settings} onClose={closeReader} />}
+
+        {st.showScan && (
+          <ScanDialog
+            settings={st.settings}
+            onClose={() => setSt((s) => ({...s, showScan: false}))}
+            onDone={(added) => {
+              setSt((s) => ({...s, showScan: false}));
+              if (added > 0) {
+                toast.ok(translate(lang, 'scan.addedToast', {n: added}));
+              }
+              refreshAll();
+            }}
           />
-          <div className="main">
-            {st.page === 'bookshelf' && (
-              <Bookshelf
-                books={st.books}
-                loading={st.loading}
-                count={st.stats?.total_books ?? 0}
-                keyword={st.keyword}
-                formats={st.formats}
-                tagFilter={st.tagFilter}
-                sort={st.sort}
-                desc={st.desc}
-                tags={st.tags}
-                onKeyword={(v) => applyQuery({keyword: v})}
-                onFormats={(v) => applyQuery({formats: v})}
-                onTagFilter={(v) => applyQuery({tagFilter: v})}
-                onSort={(v, desc) => applyQuery({sort: v, desc})}
-                onOpen={openBook}
-                onDetail={(b) => setSt((s) => ({...s, detailBook: b}))}
-                onRefresh={refreshAll}
-                onScan={() => setSt((s) => ({...s, showScan: true}))}
-                onTags={() => setSt((s) => ({...s, showTags: true}))}
-              />
-            )}
-            {st.page === 'reading' && <ReadingPage onOpen={openBook} />}
-            {st.page === 'stats' && (
-              <StatsPage
-                stats={st.stats}
-                onOpen={openBook}
-                onMisrecords={() => setSt((s) => ({...s, showMisrecords: true}))}
-              />
-            )}
-            {st.page === 'settings' && (
-              <SettingsPage
-                settings={st.settings}
-                onSaved={(s) => {
-                  setSt((prev) => ({...prev, settings: s}));
-                  toast.ok('设置已保存');
-                }}
-              />
-            )}
-          </div>
-        </>
-      )}
+        )}
 
-      {st.reading && <Reader book={st.reading} settings={st.settings} onClose={closeReader} />}
+        {st.showTags && (
+          <TagManager
+            tags={st.tags}
+            onClose={() => setSt((s) => ({...s, showTags: false}))}
+            onChanged={() => {
+              loadTags();
+              refreshAll();
+            }}
+          />
+        )}
 
-      {st.showScan && (
-        <ScanDialog
-          settings={st.settings}
-          onClose={() => setSt((s) => ({...s, showScan: false}))}
-          onDone={(added) => {
-            setSt((s) => ({...s, showScan: false}));
-            if (added > 0) {
-              toast.ok(`扫描完成，新增 ${added} 本书`);
-            }
-            refreshAll();
-          }}
-        />
-      )}
+        {st.showMisrecords && (
+          <MisrecordManager
+            onClose={() => setSt((s) => ({...s, showMisrecords: false}))}
+            onChanged={() => {
+              loadStats();
+              refreshAll();
+            }}
+          />
+        )}
 
-      {st.showTags && (
-        <TagManager
-          tags={st.tags}
-          onClose={() => setSt((s) => ({...s, showTags: false}))}
-          onChanged={() => {
-            loadTags();
-            refreshAll();
-          }}
-        />
-      )}
+        {st.detailBook && (
+          <BookDetail
+            book={st.detailBook}
+            tags={st.tags}
+            onClose={() => setSt((s) => ({...s, detailBook: null}))}
+            onChanged={(updated) => {
+              setSt((s) => ({...s, detailBook: updated}));
+              refreshAll();
+            }}
+            onOpen={() => {
+              const b = st.detailBook;
+              setSt((s) => ({...s, reading: b, detailBook: null}));
+            }}
+            onMisrecord={() => {
+              setSt((s) => ({...s, detailBook: null}));
+              refreshAll();
+            }}
+          />
+        )}
 
-      {st.showMisrecords && (
-        <MisrecordManager
-          onClose={() => setSt((s) => ({...s, showMisrecords: false}))}
-          onChanged={() => {
-            loadStats();
-            refreshAll();
-          }}
-        />
-      )}
-
-      {st.detailBook && (
-        <BookDetail
-          book={st.detailBook}
-          tags={st.tags}
-          onClose={() => setSt((s) => ({...s, detailBook: null}))}
-          onChanged={(updated) => {
-            setSt((s) => ({...s, detailBook: updated}));
-            refreshAll();
-          }}
-          onOpen={() => {
-            const b = st.detailBook;
-            setSt((s) => ({...s, reading: b, detailBook: null}));
-          }}
-          onMisrecord={() => {
-            setSt((s) => ({...s, detailBook: null}));
-            refreshAll();
-          }}
-        />
-      )}
-
-      <ToastWrap toast={toast} />
-    </div>
+        <ToastWrap toast={toast} />
+      </div>
+    </I18nProvider>
   );
 }
 

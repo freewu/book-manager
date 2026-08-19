@@ -1,6 +1,7 @@
 import React, {useEffect, useState} from 'react';
 import type {Book, Tag} from '../types';
 import {getCoverDataUrl} from '../api';
+import {useI18n} from '../i18n';
 
 interface Props {
   books: Book[];
@@ -32,12 +33,12 @@ const FORMATS = [
 ];
 
 const SORTS: [string, string][] = [
-  ['created', '入库时间'],
-  ['title', '书名'],
-  ['author', '作者'],
-  ['rating', '豆瓣评分'],
-  ['last_read', '最近阅读'],
-  ['size', '文件大小'],
+  ['created', 'sort.created'],
+  ['title', 'sort.title'],
+  ['author', 'sort.author'],
+  ['rating', 'sort.rating'],
+  ['last_read', 'sort.last_read'],
+  ['size', 'sort.size'],
 ];
 
 export default function Bookshelf({
@@ -60,6 +61,7 @@ export default function Bookshelf({
   onScan,
   onTags,
 }: Props) {
+  const {t} = useI18n();
   const [covers, setCovers] = useState<Record<number, string | null>>({});
 
   useEffect(() => {
@@ -99,14 +101,15 @@ export default function Bookshelf({
   return (
     <div className="main">
       <div className="toolbar">
-        <span className="title">书架</span>
+        <span className="title">{t('bookshelf.title')}</span>
         <span className="info">
-          共 {books.length} 本{count > books.length ? ` / ${count} 本藏书` : ''}
+          {t('bookshelf.count', {n: books.length})}
+          {count > books.length ? t('bookshelf.total', {n: count}) : ''}
         </span>
         <span className="spacer" />
         <div className="search-box toolbar-search">
           <input
-            placeholder="搜索书名 / 作者 / 出版社..."
+            placeholder={t('bookshelf.searchPlaceholder')}
             value={keyword}
             onChange={(e) => onKeyword(e.target.value)}
           />
@@ -114,31 +117,31 @@ export default function Bookshelf({
         <select className="toolbar-select" value={sort} onChange={(e) => onSort(e.target.value, desc)}>
           {SORTS.map(([v, l]) => (
             <option key={v} value={v}>
-              {l}
+              {t(l)}
             </option>
           ))}
         </select>
         <button
           className={`btn btn-soft btn-sm ${desc ? 'active' : ''}`}
-          title={desc ? '降序' : '升序'}
+          title={desc ? t('sort.desc') : t('sort.asc')}
           onClick={() => onSort(sort, !desc)}
         >
-          {desc ? '↓ 降序' : '↑ 升序'}
+          {desc ? t('sort.descShort') : t('sort.ascShort')}
         </button>
         <button className="btn btn-soft btn-sm" onClick={onTags}>
-          🏷️ 标签管理
+          {t('tag.manage')}
         </button>
         <button className="btn btn-soft btn-sm" onClick={onRefresh}>
-          ↻ 刷新
+          {t('btn.refresh')}
         </button>
         <button className="btn btn-primary btn-sm" onClick={onScan}>
-          🔍 扫描
+          {t('btn.scan')}
         </button>
       </div>
 
       {(formats.length > 0 || tagFilter.length > 0 || tags.length > 0) && (
         <div className="filter-bar">
-          <span className="filter-label">格式</span>
+          <span className="filter-label">{t('filter.format')}</span>
           <div className="chip-row">
             {FORMATS.map((f) => (
               <button
@@ -151,21 +154,21 @@ export default function Bookshelf({
             ))}
           </div>
           <span className="filter-label" style={{marginLeft: 16}}>
-            标签
+            {t('filter.tag')}
           </span>
           {tags.length === 0 ? (
-            <span className="filter-empty">暂无标签，在书本详情中添加</span>
+            <span className="filter-empty">{t('filter.noTags')}</span>
           ) : (
             <div className="chip-row tag-chips">
-              {tags.map((t) => (
+              {tags.map((tg) => (
                 <button
-                  key={t.id}
-                  className={`chip ${tagFilter.includes(t.id) ? 'active' : ''}`}
-                  onClick={() => toggleTag(t.id)}
+                  key={tg.id}
+                  className={`chip ${tagFilter.includes(tg.id) ? 'active' : ''}`}
+                  onClick={() => toggleTag(tg.id)}
                 >
-                  <span className="tag-dot" style={{background: t.color}} />
-                  {t.name}
-                  <span className="chip-cnt">{t.book_count}</span>
+                  <span className="tag-dot" style={{background: tg.color}} />
+                  {tg.name}
+                  <span className="chip-cnt">{tg.book_count}</span>
                 </button>
               ))}
             </div>
@@ -178,7 +181,7 @@ export default function Bookshelf({
                 onTagFilter([]);
               }}
             >
-              ✕ 清除筛选
+              {t('filter.clear')}
             </button>
           )}
         </div>
@@ -187,20 +190,17 @@ export default function Bookshelf({
       {loading && books.length === 0 ? (
         <div className="empty">
           <div className="big-icon">⏳</div>
-          <h2>正在加载...</h2>
+          <h2>{t('loading')}</h2>
         </div>
       ) : books.length === 0 ? (
         <div className="empty">
           <div className="big-icon">📚</div>
-          <h2>{activeFilterCount > 0 || keyword ? '没有符合条件的书籍' : '书架空空如也'}</h2>
+          <h2>{activeFilterCount > 0 || keyword ? t('empty.noMatch') : t('empty.shelf')}</h2>
           {activeFilterCount === 0 && !keyword && (
             <>
-              <p>
-                扫描你电脑中的电子书目录（支持 EPUB、PDF、MOBI、AZW3、KEPUB 等格式），
-                书籍信息会自动保存到本地数据库，并可从豆瓣获取封面与评分。
-              </p>
+              <p>{t('empty.intro')}</p>
               <button className="btn btn-primary" onClick={onScan}>
-                🔍 开始扫描
+                {t('empty.startScan')}
               </button>
             </>
           )}
@@ -219,6 +219,7 @@ export default function Bookshelf({
 }
 
 function BookCard({book, cover, onOpen, onDetail}: {book: Book; cover: string | null; onOpen: () => void; onDetail: () => void}) {
+  const {t} = useI18n();
   const fmt = book.format.toUpperCase();
   const progress = Math.round(book.read_progress * 10) / 10;
 
@@ -242,9 +243,9 @@ function BookCard({book, cover, onOpen, onDetail}: {book: Book; cover: string | 
             <div className="bar" style={{width: `${Math.min(progress, 100)}%`}} />
           </div>
         )}
-        {progress >= 99.5 && <div className="readmark">✅ 已读完</div>}
+        {progress >= 99.5 && <div className="readmark">{t('book.done')}</div>}
         <div className="book-hover-actions" onClick={(e) => e.stopPropagation()}>
-          <button title="详情 / 豆瓣 / 笔记" onClick={onDetail}>
+          <button title={t('book.detailTip')} onClick={onDetail}>
             ℹ️
           </button>
         </div>

@@ -2,6 +2,7 @@ import React, {useCallback, useEffect, useState} from 'react';
 import type {Book, DoubanBook, Note, Tag} from '../types';
 import {App, getCoverDataUrl, humanSize, humanDuration, fmtDate, invalidateCover} from '../api';
 import {useToast} from './Toast';
+import {useI18n} from '../i18n';
 
 interface Props {
   book: Book;
@@ -14,6 +15,7 @@ interface Props {
 
 export default function BookDetail({book: initial, tags, onClose, onChanged, onOpen, onMisrecord}: Props) {
   const toast = useToast();
+  const {t} = useI18n();
   const [book, setBook] = useState<Book>(initial);
   const [cover, setCover] = useState<string | null>(null);
   const [tab, setTab] = useState<'info' | 'notes'>('info');
@@ -53,11 +55,11 @@ export default function BookDetail({book: initial, tags, onClose, onChanged, onO
     setDoubanBusy(true);
     try {
       const updated = await App.FetchDouban(book.id);
-      toast.ok(`已获取豆瓣信息：${updated.douban_url ? '匹配成功' : '评分 0'}`);
+      toast.ok(t('detail.toastDoubanOk', {r: updated.douban_url ? t('detail.matchOk') : t('detail.ratingZero')}));
       invalidateCover(updated.id);
       await reload(updated);
     } catch (e) {
-      toast.err(`豆瓣获取失败：${String(e)}`);
+      toast.err(t('detail.toastDoubanFail', {e: String(e)}));
     } finally {
       setDoubanBusy(false);
     }
@@ -70,7 +72,7 @@ export default function BookDetail({book: initial, tags, onClose, onChanged, onO
       const r = await App.DoubanSearch(searchTerm);
       setSearchResults(r);
     } catch (e) {
-      toast.err(`搜索失败：${String(e)}`);
+      toast.err(t('detail.toastSearchFail', {e: String(e)}));
     } finally {
       setSearching(false);
     }
@@ -80,7 +82,7 @@ export default function BookDetail({book: initial, tags, onClose, onChanged, onO
     setBusy(true);
     try {
       await App.EnrichBookByTitle(book.id, d);
-      toast.ok(`已关联《${d.title}》`);
+      toast.ok(t('detail.toastLinked', {t: d.title}));
       invalidateCover(book.id);
       await reload(book);
     } catch (e) {
@@ -100,7 +102,7 @@ export default function BookDetail({book: initial, tags, onClose, onChanged, onO
     await App.UpdateBookMeta(book.id, edit.title, edit.author, edit.publisher, edit.description);
     setEditing(false);
     await reload(book);
-    toast.ok('已保存');
+    toast.ok(t('detail.toastSaved'));
   };
 
   const toggleTag = async (tid: number) => {
@@ -112,17 +114,17 @@ export default function BookDetail({book: initial, tags, onClose, onChanged, onO
   };
 
   const markMis = async () => {
-    const reason = prompt('标记为误录（可选原因）：', '');
+    const reason = prompt(t('detail.misPrompt'), '');
     if (reason === null) return;
     await App.MarkMisrecord(book.id, reason || '');
-    toast.ok('已标记为误录，后续扫描将跳过该文件');
+    toast.ok(t('detail.toastMisMarked'));
     onMisrecord();
   };
 
   const del = async () => {
-    if (!confirm(`确定从书架删除《${book.title}》吗？\n（不会删除磁盘上的文件）`)) return;
+    if (!confirm(t('detail.deleteConfirm', {t: book.title}))) return;
     await App.DeleteBook(book.id);
-    toast.ok('已删除');
+    toast.ok(t('detail.toastDeleted'));
     onMisrecord();
   };
 
@@ -132,7 +134,7 @@ export default function BookDetail({book: initial, tags, onClose, onChanged, onO
     setNoteText('');
     const n = await App.ListNotes(book.id);
     setNotes(n);
-    toast.ok('笔记已保存');
+    toast.ok(t('detail.toastNoteSaved'));
   };
 
   const delNote = async (id: number) => {
@@ -146,7 +148,7 @@ export default function BookDetail({book: initial, tags, onClose, onChanged, onO
     <div className="modal-mask" onClick={onClose}>
       <div className="modal wide" style={{width: 820}} onClick={(e) => e.stopPropagation()}>
         <div className="modal-head">
-          <h2>📖 书籍详情</h2>
+          <h2>{t('detail.title')}</h2>
           <button className="modal-close" onClick={onClose}>
             ✕
           </button>
@@ -164,13 +166,13 @@ export default function BookDetail({book: initial, tags, onClose, onChanged, onO
               <h3>
                 {book.title} <span style={{fontSize: 12, color: 'var(--text-3)'}}>({fmtBadge})</span>
               </h3>
-              <div className="sub">{book.author || '未知作者'}</div>
+              <div className="sub">{book.author || t('detail.unknownAuthor')}</div>
 
               {book.douban_rating > 0 && (
                 <div style={{display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap'}}>
                   <span className="detail-rating">⭐ {book.douban_rating.toFixed(1)}</span>
                   {book.douban_rating_count > 0 && (
-                    <span style={{fontSize: 12, color: 'var(--text-3)'}}>{book.douban_rating_count} 人评价</span>
+                    <span style={{fontSize: 12, color: 'var(--text-3)'}}>{t('detail.ratingCount', {n: book.douban_rating_count})}</span>
                   )}
                   {book.douban_url && (
                     <a
@@ -179,24 +181,24 @@ export default function BookDetail({book: initial, tags, onClose, onChanged, onO
                       rel="noreferrer"
                       style={{fontSize: 12, color: 'var(--accent)'}}
                     >
-                      豆瓣页面 ↗
+                      {t('detail.doubanPage')}
                     </a>
                   )}
                 </div>
               )}
 
               <div className="detail-meta">
-                <span className="k">出版社</span>
+                <span className="k">{t('detail.publisher')}</span>
                 <span>{book.publisher || '—'}</span>
-                <span className="k">语言</span>
+                <span className="k">{t('detail.language')}</span>
                 <span>{book.language || '—'}</span>
-                <span className="k">大小</span>
+                <span className="k">{t('detail.size')}</span>
                 <span>{humanSize(book.size)}</span>
-                <span className="k">阅读进度</span>
-                <span>{Math.round(book.read_progress * 10) / 10}%{book.total_read_seconds > 0 ? ` · 累计 ${humanDuration(book.total_read_seconds)}` : ''}</span>
-                <span className="k">入库时间</span>
+                <span className="k">{t('detail.progress')}</span>
+                <span>{Math.round(book.read_progress * 10) / 10}%{book.total_read_seconds > 0 ? t('detail.totalTime', {t: humanDuration(book.total_read_seconds)}) : ''}</span>
+                <span className="k">{t('detail.addedAt')}</span>
                 <span>{fmtDate(book.created_at)}</span>
-                <span className="k">文件位置</span>
+                <span className="k">{t('detail.filePath')}</span>
                 <span style={{wordBreak: 'break-all'}}>{book.path}</span>
                 <span className="k">MD5</span>
                 <span style={{fontSize: 11, color: 'var(--text-3)', wordBreak: 'break-all'}}>{book.hash}</span>
@@ -212,22 +214,22 @@ export default function BookDetail({book: initial, tags, onClose, onChanged, onO
 
               <div className="detail-actions">
                 <button className="btn btn-primary" onClick={onOpen}>
-                  📖 打开阅读
+                  {t('detail.open')}
                 </button>
                 <button className="btn btn-soft" onClick={fetchDouban} disabled={doubanBusy}>
-                  {doubanBusy ? '获取中...' : '🌐 豆瓣获取'}
+                  {doubanBusy ? t('detail.fetching') : t('detail.doubanFetch')}
                 </button>
                 <button className="btn btn-soft" onClick={() => App.OpenBookFolder(book.id)}>
-                  📁 打开文件夹
+                  {t('detail.openFolder')}
                 </button>
                 <button className="btn btn-soft" onClick={() => setEditing((v) => !v)}>
-                  ✏️ 编辑信息
+                  {t('detail.editInfo')}
                 </button>
                 <button className="btn btn-danger" onClick={markMis}>
-                  🚫 标记误录
+                  {t('detail.markMis')}
                 </button>
                 <button className="btn btn-danger" onClick={del}>
-                  🗑️ 删除
+                  {t('detail.delete')}
                 </button>
               </div>
             </div>
@@ -236,19 +238,19 @@ export default function BookDetail({book: initial, tags, onClose, onChanged, onO
           {editing && (
             <div style={{marginTop: 14, border: '1px solid var(--border)', borderRadius: 10, padding: 14}}>
               <div className="form-row">
-                <label>书名</label>
+                <label>{t('detail.title2')}</label>
                 <input value={edit.title} onChange={(e) => setEdit({...edit, title: e.target.value})} />
               </div>
               <div className="form-row">
-                <label>作者</label>
+                <label>{t('detail.author')}</label>
                 <input value={edit.author} onChange={(e) => setEdit({...edit, author: e.target.value})} />
               </div>
               <div className="form-row">
-                <label>出版社</label>
+                <label>{t('detail.publisher2')}</label>
                 <input value={edit.publisher} onChange={(e) => setEdit({...edit, publisher: e.target.value})} />
               </div>
               <div className="form-row">
-                <label>简介</label>
+                <label>{t('detail.desc')}</label>
                 <textarea
                   rows={3}
                   value={edit.description}
@@ -257,7 +259,7 @@ export default function BookDetail({book: initial, tags, onClose, onChanged, onO
                 />
               </div>
               <button className="btn btn-primary btn-sm" onClick={saveMeta}>
-                保存
+                {t('detail.save')}
               </button>
             </div>
           )}
@@ -266,17 +268,17 @@ export default function BookDetail({book: initial, tags, onClose, onChanged, onO
             <div style={{marginTop: 14}}>
               <div className="detail-tabs">
                 <button className={tab === 'info' ? 'active' : ''} onClick={() => setTab('info')}>
-                  标签 / 豆瓣
+                  {t('detail.tabTags')}
                 </button>
                 <button className={tab === 'notes' ? 'active' : ''} onClick={() => setTab('notes')}>
-                  笔记（{notes.length}）
+                  {t('detail.tabNotes', {n: notes.length})}
                 </button>
               </div>
 
               {tab === 'info' && (
                 <div>
                   <div className="form-row">
-                    <label>标签</label>
+                    <label>{t('detail.tags')}</label>
                     <div className="tag-picker">
                       {tags.map((t) => (
                         <span
@@ -292,15 +294,15 @@ export default function BookDetail({book: initial, tags, onClose, onChanged, onO
                   </div>
 
                   <div className="form-row">
-                    <label>豆瓣手动搜索（书名不匹配时可手动关联）</label>
+                    <label>{t('detail.doubanSearch')}</label>
                     <div style={{display: 'flex', gap: 8}}>
-                      <input value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} placeholder="输入书名搜索豆瓣" />
+                      <input value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} placeholder={t('detail.searchPlaceholder')} />
                       <button className="btn btn-soft" onClick={doSearch} disabled={searching}>
-                        {searching ? '搜索中...' : '搜索'}
+                        {searching ? t('detail.searching') : t('detail.search')}
                       </button>
                       {book.douban_url && (
                         <button className="btn btn-soft" onClick={clearDouban}>
-                          清除豆瓣信息
+                          {t('detail.clearDouban')}
                         </button>
                       )}
                     </div>
@@ -324,7 +326,7 @@ export default function BookDetail({book: initial, tags, onClose, onChanged, onO
                             <span style={{color: 'var(--text-3)', fontSize: 12}}>{r.author}</span>
                             <span style={{flex: 1}} />
                             <button className="btn btn-primary btn-sm" onClick={() => pickDouban(r)} disabled={busy}>
-                              关联
+                              {t('detail.link')}
                             </button>
                           </div>
                         ))}
@@ -339,19 +341,19 @@ export default function BookDetail({book: initial, tags, onClose, onChanged, onO
                   <div className="form-row">
                     <textarea
                       rows={2}
-                      placeholder="写下你的阅读笔记..."
+                      placeholder={t('detail.notePlaceholder')}
                       value={noteText}
                       onChange={(e) => setNoteText(e.target.value)}
                       style={{width: '100%'}}
                     />
                     <div style={{marginTop: 6}}>
                       <button className="btn btn-primary btn-sm" onClick={addNote}>
-                        ＋ 添加笔记
+                        {t('detail.addNote')}
                       </button>
                     </div>
                   </div>
                   {notes.length === 0 ? (
-                    <div className="empty-inline">暂无笔记</div>
+                    <div className="empty-inline">{t('detail.noNotes')}</div>
                   ) : (
                     notes.map((n) => (
                       <div key={n.id} className="note-item">
@@ -360,7 +362,7 @@ export default function BookDetail({book: initial, tags, onClose, onChanged, onO
                         <div className="meta">
                           <span>{fmtDate(n.created_at)}</span>
                           <span className="spacer" />
-                          <button onClick={() => delNote(n.id)}>删除</button>
+                          <button onClick={() => delNote(n.id)}>{t('detail.noteDelete')}</button>
                         </div>
                       </div>
                     ))
@@ -372,7 +374,7 @@ export default function BookDetail({book: initial, tags, onClose, onChanged, onO
 
           {book.description && (
             <div className="detail-desc" style={{marginTop: 10}}>
-              <b>简介：</b>
+              <b>{t('detail.descLabel')}</b>
               {book.description}
             </div>
           )}

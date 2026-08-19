@@ -1,6 +1,7 @@
 import React, {useEffect, useState} from 'react';
 import type {Stats} from '../types';
 import {App} from '../api';
+import {useI18n} from '../i18n';
 import type {Page} from '../App';
 import logo from '../assets/logo.png';
 
@@ -8,21 +9,24 @@ interface Props {
   page: Page;
   onNav: (page: Page) => void;
   stats: Stats | null;
+  collapsed: boolean;
+  onToggleCollapsed: (collapsed: boolean) => void;
 }
 
-const NAV: {key: Page; icon: string; label: string; hint?: (s: Stats | null) => string | null}[] = [
-  {key: 'bookshelf', icon: '📚', label: '书架'},
+const NAV: {key: Page; icon: string; labelKey: string; hint?: (s: Stats | null) => string | null}[] = [
+  {key: 'bookshelf', icon: '📚', labelKey: 'nav.bookshelf'},
   {
     key: 'reading',
     icon: '📖',
-    label: '阅读',
+    labelKey: 'nav.reading',
     hint: (s) => (s && s.reading_books > 0 ? String(s.reading_books) : null),
   },
-  {key: 'stats', icon: '📊', label: '统计'},
-  {key: 'settings', icon: '⚙️', label: '设置'},
+  {key: 'stats', icon: '📊', labelKey: 'nav.stats'},
+  {key: 'settings', icon: '⚙️', labelKey: 'nav.settings'},
 ];
 
-export default function Sidebar({page, onNav, stats}: Props) {
+export default function Sidebar({page, onNav, stats, collapsed, onToggleCollapsed}: Props) {
+  const {t} = useI18n();
   const [version, setVersion] = useState('');
   useEffect(() => {
     App.GetVersion()
@@ -31,12 +35,12 @@ export default function Sidebar({page, onNav, stats}: Props) {
   }, []);
 
   return (
-    <aside className="sidebar">
+    <aside className={`sidebar${collapsed ? ' collapsed' : ''}`}>
       <div className="logo">
         <img className="icon" src={logo} alt="book-manager" />
-        <div>
+        <div className="logo-text">
           book-manager
-          <small>本地电子书管理</small>
+          <small>{t('sidebar.subtitle')}</small>
         </div>
       </div>
 
@@ -48,9 +52,10 @@ export default function Sidebar({page, onNav, stats}: Props) {
               key={item.key}
               className={`nav-item ${page === item.key ? 'active' : ''}`}
               onClick={() => onNav(item.key)}
+              title={collapsed ? t(item.labelKey) : undefined}
             >
               <span className="nav-icon">{item.icon}</span>
-              <span className="nav-label">{item.label}</span>
+              <span className="nav-label">{t(item.labelKey)}</span>
               {hint && <span className="nav-badge">{hint}</span>}
             </button>
           );
@@ -58,9 +63,14 @@ export default function Sidebar({page, onNav, stats}: Props) {
       </nav>
 
       <div className="side-footer">
-        <img className="icon" src={logo} alt="" />
-        <span>book-manager</span>
-        {version && <b>{version}</b>}
+        <button
+          className="collapse-btn"
+          title={collapsed ? t('sidebar.expand') : t('sidebar.collapse')}
+          onClick={() => onToggleCollapsed(!collapsed)}
+        >
+          {collapsed ? '»' : '«'}
+        </button>
+        {!collapsed && version && <b className="side-version">{version}</b>}
       </div>
     </aside>
   );

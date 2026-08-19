@@ -1,6 +1,7 @@
 import React, {useEffect, useState} from 'react';
 import type {Book, ReadingSession, Stats} from '../types';
 import {App, humanSize, humanDuration, fmtDateTime} from '../api';
+import {useI18n} from '../i18n';
 
 interface Props {
   stats: Stats | null;
@@ -9,6 +10,7 @@ interface Props {
 }
 
 export default function StatsPage({stats, onOpen, onMisrecords}: Props) {
+  const {t} = useI18n();
   const [sessions, setSessions] = useState<ReadingSession[]>([]);
   const [recentBooks, setRecentBooks] = useState<Book[]>([]);
 
@@ -45,11 +47,11 @@ export default function StatsPage({stats, onOpen, onMisrecords}: Props) {
     return (
       <div className="main">
         <div className="toolbar">
-          <span className="title">统计</span>
+          <span className="title">{t('stats.title')}</span>
         </div>
         <div className="empty">
           <div className="big-icon">⏳</div>
-          <h2>正在加载...</h2>
+          <h2>{t('loading')}</h2>
         </div>
       </div>
     );
@@ -63,30 +65,30 @@ export default function StatsPage({stats, onOpen, onMisrecords}: Props) {
   return (
     <div className="main">
       <div className="toolbar">
-        <span className="title">统计</span>
+        <span className="title">{t('stats.title')}</span>
         <span className="spacer" />
         <button className="btn btn-soft btn-sm" onClick={onMisrecords}>
-          🚫 误录管理
+          {t('stats.misrecords')}
           {stats.total_misrecords > 0 && <span className="nav-badge mis-badge">{stats.total_misrecords}</span>}
         </button>
       </div>
 
       <div className="page-scroll">
         <div className="stats-grid">
-          <StatCard icon="📚" label="藏书" value={String(stats.total_books)} />
-          <StatCard icon="💾" label="总大小" value={humanSize(stats.total_size)} />
-          <StatCard icon="⏱️" label="累计阅读" value={humanDuration(stats.total_read_seconds)} />
-          <StatCard icon="📝" label="笔记" value={String(stats.total_notes)} />
-          <StatCard icon="📖" label="在读" value={String(stats.reading_books)} accent />
-          <StatCard icon="✅" label="已读完" value={String(stats.finished_books)} ok />
-          <StatCard icon="🆕" label="未读" value={String(stats.unread_books)} />
-          <StatCard icon="🚫" label="误录" value={String(stats.total_misrecords)} danger />
+          <StatCard icon="📚" label={t('stats.totalBooks')} value={String(stats.total_books)} />
+          <StatCard icon="💾" label={t('stats.totalSize')} value={humanSize(stats.total_size)} />
+          <StatCard icon="⏱️" label={t('stats.totalTime')} value={humanDuration(stats.total_read_seconds)} />
+          <StatCard icon="📝" label={t('stats.notes')} value={String(stats.total_notes)} />
+          <StatCard icon="📖" label={t('stats.reading')} value={String(stats.reading_books)} accent />
+          <StatCard icon="✅" label={t('stats.finished')} value={String(stats.finished_books)} ok />
+          <StatCard icon="🆕" label={t('stats.unread')} value={String(stats.unread_books)} />
+          <StatCard icon="🚫" label={t('stats.misrecord')} value={String(stats.total_misrecords)} danger />
         </div>
 
         <div className="page-section">
-          <h2 className="page-section-title">格式分布</h2>
+          <h2 className="page-section-title">{t('stats.formats')}</h2>
           {fmtCounts.length === 0 ? (
-            <p className="page-muted">暂无数据</p>
+            <p className="page-muted">{t('stats.noData')}</p>
           ) : (
             <div className="fmt-bars">
               {fmtCounts.map((f) => (
@@ -95,7 +97,7 @@ export default function StatsPage({stats, onOpen, onMisrecords}: Props) {
                   <div className="fmt-track">
                     <div className="fmt-fill" style={{width: `${(f.n / maxFmt) * 100}%`}} />
                   </div>
-                  <span className="fmt-num">{f.n} 本</span>
+                  <span className="fmt-num">{t('stats.count', {n: f.n})}</span>
                 </div>
               ))}
             </div>
@@ -104,7 +106,7 @@ export default function StatsPage({stats, onOpen, onMisrecords}: Props) {
 
         {recentBooks.length > 0 && (
           <div className="page-section">
-            <h2 className="page-section-title">最近阅读</h2>
+            <h2 className="page-section-title">{t('stats.recent')}</h2>
             <div className="recent-list">
               {recentBooks.map((b) => {
                 const pct = Math.min(Math.round(b.read_progress * 10) / 10, 100);
@@ -128,7 +130,7 @@ export default function StatsPage({stats, onOpen, onMisrecords}: Props) {
 
         {sessions.length > 0 && (
           <div className="page-section">
-            <h2 className="page-section-title">阅读记录</h2>
+            <h2 className="page-section-title">{t('stats.sessions')}</h2>
             <div className="session-list">
               {sessions.map((s) => (
                 <div className="session-item" key={s.id}>

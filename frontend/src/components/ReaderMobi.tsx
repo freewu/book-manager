@@ -2,6 +2,7 @@ import React, {forwardRef, useEffect, useImperativeHandle, useRef} from 'react';
 import type {Book} from '../types';
 import type {ReaderHandle} from './Reader';
 import {App} from '../api';
+import {useI18n} from '../i18n';
 
 interface Props {
   book: Book;
@@ -211,6 +212,7 @@ const ReaderMobi = forwardRef<ReaderHandle, Props>(function ReaderMobi(
   {book, data, fontSize, theme, onProgress, onActivity},
   ref,
 ) {
+  const {t} = useI18n();
   const scrollRef = useRef<HTMLDivElement>(null);
   const innerRef = useRef<HTMLDivElement>(null);
   const parsedRef = useRef<ParsedMobi | null>(null);
@@ -285,10 +287,10 @@ const ReaderMobi = forwardRef<ReaderHandle, Props>(function ReaderMobi(
       'position:absolute;right:16px;top:64px;z-index:30;background:#fff;border:1px solid #e4e6f0;border-radius:12px;box-shadow:0 8px 30px rgba(0,0,0,.2);padding:12px;width:300px;display:flex;flex-direction:column;gap:8px;';
     div.innerHTML = `
       <div style="font-size:12px;color:#6b7280;font-style:italic;max-height:70px;overflow:auto;border-left:3px solid #5b7cfa;padding-left:8px;">“${quote.slice(0, 300).replace(/</g, '&lt;')}”</div>
-      <textarea placeholder="写下你的想法..." rows="3" style="width:100%;border:1px solid #e4e6f0;border-radius:8px;padding:8px;font-size:13px;font-family:inherit;"></textarea>
+      <textarea placeholder="${t('reader.notePlaceholder')}" rows="3" style="width:100%;border:1px solid #e4e6f0;border-radius:8px;padding:8px;font-size:13px;font-family:inherit;"></textarea>
       <div style="display:flex;gap:8px;justify-content:flex-end;">
-        <button class="bm-note-cancel" style="padding:5px 10px;border-radius:7px;font-size:12px;background:#f3f4f8;">取消</button>
-        <button class="bm-note-save" style="padding:5px 10px;border-radius:7px;font-size:12px;background:#5b7cfa;color:#fff;">保存笔记</button>
+        <button class="bm-note-cancel" style="padding:5px 10px;border-radius:7px;font-size:12px;background:#f3f4f8;">${t('reader.noteCancel')}</button>
+        <button class="bm-note-save" style="padding:5px 10px;border-radius:7px;font-size:12px;background:#5b7cfa;color:#fff;">${t('reader.noteSave')}</button>
       </div>`;
     div.addEventListener('click', (e) => {
       e.stopPropagation();

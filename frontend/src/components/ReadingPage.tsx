@@ -1,12 +1,14 @@
 import React, {useEffect, useState} from 'react';
 import type {Book} from '../types';
 import {App, getCoverDataUrl, humanDuration, fmtDateTime} from '../api';
+import {useI18n} from '../i18n';
 
 interface Props {
   onOpen: (b: Book) => void;
 }
 
 export default function ReadingPage({onOpen}: Props) {
+  const {t} = useI18n();
   const [books, setBooks] = useState<Book[] | null>(null);
   const [covers, setCovers] = useState<Record<number, string | null>>({});
 
@@ -48,11 +50,11 @@ export default function ReadingPage({onOpen}: Props) {
     return (
       <div className="main">
         <div className="toolbar">
-          <span className="title">阅读</span>
+          <span className="title">{t('reading.title')}</span>
         </div>
         <div className="empty">
           <div className="big-icon">⏳</div>
-          <h2>正在加载...</h2>
+          <h2>{t('loading')}</h2>
         </div>
       </div>
     );
@@ -64,25 +66,23 @@ export default function ReadingPage({onOpen}: Props) {
   return (
     <div className="main">
       <div className="toolbar">
-        <span className="title">阅读</span>
-        <span className="info">
-          在读 {reading.length} 本 · 已读完 {finished.length} 本
-        </span>
+        <span className="title">{t('reading.title')}</span>
+        <span className="info">{t('reading.summary', {a: reading.length, b: finished.length})}</span>
       </div>
 
       {books.length === 0 ? (
         <div className="empty">
           <div className="big-icon">📖</div>
-          <h2>还没有阅读记录</h2>
-          <p>打开书架中的任意一本书，阅读进度会自动记录到这里。</p>
+          <h2>{t('reading.empty')}</h2>
+          <p>{t('reading.emptyHint')}</p>
         </div>
       ) : (
         <div className="page-scroll">
           {reading.length > 0 && (
-            <Section title="在读" books={reading} covers={covers} onOpen={onOpen} />
+            <Section title={t('reading.inProgress')} books={reading} covers={covers} onOpen={onOpen} />
           )}
           {finished.length > 0 && (
-            <Section title="已读完" books={finished} covers={covers} onOpen={onOpen} />
+            <Section title={t('reading.finished')} books={finished} covers={covers} onOpen={onOpen} />
           )}
         </div>
       )}
@@ -101,6 +101,7 @@ function Section({
   covers: Record<number, string | null>;
   onOpen: (b: Book) => void;
 }) {
+  const {t} = useI18n();
   return (
     <div className="page-section">
       <h2 className="page-section-title">{title}</h2>
@@ -127,12 +128,12 @@ function Section({
                 <div className="ba">{b.author || b.file_name}</div>
                 <div className="reading-progress">
                   <span className="rp-num">{pct}%</span>
-                  {b.last_read_at && <span className="rp-time">上次阅读 {fmtDateTime(b.last_read_at)}</span>}
+                  {b.last_read_at && <span className="rp-time">{t('reading.lastRead', {t: fmtDateTime(b.last_read_at)})}</span>}
                 </div>
                 <div className="reading-foot">
                   <span className="rp-seconds">⏱ {humanDuration(b.total_read_seconds)}</span>
                   <button className="btn btn-primary btn-sm" onClick={(e) => { e.stopPropagation(); onOpen(b); }}>
-                    {pct >= 99.5 ? '再看一遍' : '继续阅读'}
+                    {pct >= 99.5 ? t('reading.readAgain') : t('reading.continue')}
                   </button>
                 </div>
               </div>

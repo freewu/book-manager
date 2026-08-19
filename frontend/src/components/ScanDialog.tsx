@@ -1,6 +1,7 @@
 import React, {useEffect, useState} from 'react';
 import type {ScanProgress, Settings} from '../types';
 import {App, onScanProgress} from '../api';
+import {useI18n} from '../i18n';
 
 interface Props {
   settings: Settings;
@@ -17,6 +18,7 @@ const ALL_FORMATS = [
 ];
 
 export default function ScanDialog({settings, onClose, onDone}: Props) {
+  const {t} = useI18n();
   const [dirs, setDirs] = useState<string[]>([]);
   const [manual, setManual] = useState('');
   const [formats, setFormats] = useState<string[]>(() => {
@@ -73,17 +75,17 @@ export default function ScanDialog({settings, onClose, onDone}: Props) {
     <div className="modal-mask" onClick={running ? undefined : onClose}>
       <div className="modal" style={{width: 560}} onClick={(e) => e.stopPropagation()}>
         <div className="modal-head">
-          <h2>🔍 扫描电子书目录</h2>
+          <h2>{t('scan.title')}</h2>
           <button className="modal-close" onClick={onClose} disabled={running}>
             ✕
           </button>
         </div>
         <div className="modal-body">
           <div className="form-row">
-            <label>扫描目录</label>
+            <label>{t('scan.dirs')}</label>
             <div style={{display: 'flex', gap: 8, marginBottom: 8}}>
               <input
-                placeholder="或直接输入目录路径，如 E:\Books"
+                placeholder={t('scan.manualPlaceholder')}
                 value={manual}
                 onChange={(e) => setManual(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && addManual()}
@@ -92,11 +94,11 @@ export default function ScanDialog({settings, onClose, onDone}: Props) {
                 ＋
               </button>
               <button className="btn btn-primary" onClick={pickDir}>
-                选择文件夹
+                {t('scan.pick')}
               </button>
             </div>
             {dirs.length === 0 ? (
-              <div style={{fontSize: 12, color: 'var(--text-3)'}}>尚未添加目录</div>
+              <div style={{fontSize: 12, color: 'var(--text-3)'}}>{t('scan.noDirs')}</div>
             ) : (
               <div style={{display: 'flex', flexDirection: 'column', gap: 4}}>
                 {dirs.map((d) => (
@@ -120,7 +122,7 @@ export default function ScanDialog({settings, onClose, onDone}: Props) {
                       onClick={() => setDirs((prev) => prev.filter((x) => x !== d))}
                       disabled={running}
                     >
-                      移除
+                      {t('scan.remove')}
                     </button>
                   </div>
                 ))}
@@ -129,7 +131,7 @@ export default function ScanDialog({settings, onClose, onDone}: Props) {
           </div>
 
           <div className="form-row">
-            <label>扫描格式</label>
+            <label>{t('scan.formats')}</label>
             <div className="chip-row">
               {ALL_FORMATS.map((f) => (
                 <button
@@ -153,23 +155,23 @@ export default function ScanDialog({settings, onClose, onDone}: Props) {
                 onChange={(e) => setDoubanAuto(e.target.checked)}
                 style={{width: 'auto'}}
               />
-              扫描完成后自动从豆瓣获取封面 / 评分信息
+              {t('scan.doubanAuto')}
             </label>
           </div>
 
           {running && (
             <div className="form-row">
               <label>
-                {progress ? `正在处理 ${progress.current}/${progress.total} · ${progress.file || ''}` : '准备扫描...'}
+                {progress ? t('scan.processing', {cur: progress.current, total: progress.total, file: progress.file || ''}) : t('scan.preparing')}
               </label>
               <div className="progress-track">
                 <div className="fill" style={{width: `${pct}%`}} />
               </div>
               {progress && (
                 <div style={{display: 'flex', gap: 14, fontSize: 12, color: 'var(--text-2)', marginTop: 6}}>
-                  <span>✅ 新增 {progress.added}</span>
-                  <span>⏭️ 跳过 {progress.skipped}</span>
-                  <span>⚠️ 错误 {progress.errors}</span>
+                  <span>{t('scan.added', {n: progress.added})}</span>
+                  <span>{t('scan.skipped', {n: progress.skipped})}</span>
+                  <span>{t('scan.errors', {n: progress.errors})}</span>
                 </div>
               )}
             </div>
@@ -178,14 +180,19 @@ export default function ScanDialog({settings, onClose, onDone}: Props) {
           {progress?.finished && (
             <div className="form-row">
               <div style={{background: 'var(--ok-soft)', color: 'var(--ok)', padding: '8px 12px', borderRadius: 8, fontSize: 13}}>
-                ✅ {progress.message || '扫描完成'}：新增 {progress.added} 本，跳过 {progress.skipped} 本，错误 {progress.errors} 个
+                ✅ {t('scan.done', {
+                  msg: progress.message || t('scan.doneDefault'),
+                  a: progress.added,
+                  s: progress.skipped,
+                  e: progress.errors,
+                })}
               </div>
             </div>
           )}
 
           {log.length > 0 && (
             <div className="form-row">
-              <label>跳过 / 错误详情</label>
+              <label>{t('scan.logTitle')}</label>
               <div style={{maxHeight: 140, overflowY: 'auto', fontSize: 12, color: 'var(--text-2)', lineHeight: 1.8}}>
                 {log.slice(-12).map((p, i) => (
                   <div key={i}>
@@ -198,17 +205,17 @@ export default function ScanDialog({settings, onClose, onDone}: Props) {
         </div>
         <div className="modal-foot">
           <button className="btn btn-soft" onClick={onClose} disabled={running}>
-            关闭
+            {t('scan.close')}
           </button>
           <button className="btn btn-primary" onClick={start} disabled={running || dirs.length === 0}>
-            {running ? '扫描中...' : '开始扫描'}
+            {running ? t('scan.running') : t('scan.start')}
           </button>
           {!running && progress?.finished && (
             <button
               className="btn btn-ok"
               onClick={() => onDone(progress?.added ?? 0)}
             >
-              完成
+              {t('scan.finish')}
             </button>
           )}
         </div>

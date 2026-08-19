@@ -1,24 +1,27 @@
 import React, {useEffect, useState} from 'react';
 import type {Settings} from '../types';
 import {App} from '../api';
+import {useI18n, LANGS} from '../i18n';
 
 interface Props {
   settings: Settings;
   onSaved: (s: Settings) => void;
 }
 
-const UI_THEMES: {key: string; icon: string; label: string; hint: string}[] = [
-  {key: 'light', icon: '☀️', label: '浅色', hint: '始终使用浅色界面'},
-  {key: 'dark', icon: '🌙', label: '深色', hint: '始终使用深色界面'},
-  {key: 'system', icon: '🖥️', label: '跟随系统', hint: '随 Windows 外观自动切换'},
+const UI_THEMES: {key: string; icon: string; labelKey: string; hintKey: string}[] = [
+  {key: 'light', icon: '☀️', labelKey: 'theme.light', hintKey: 'theme.lightHint'},
+  {key: 'dark', icon: '🌙', labelKey: 'theme.dark', hintKey: 'theme.darkHint'},
+  {key: 'system', icon: '🖥️', labelKey: 'theme.system', hintKey: 'theme.systemHint'},
 ];
 
 export default function SettingsPage({settings, onSaved}: Props) {
+  const {t} = useI18n();
   const [idle, setIdle] = useState(settings.idle_seconds || '60');
   const [formats, setFormats] = useState(settings.formats || 'epub,pdf,mobi,azw3,kepub');
   const [doubanAuto, setDoubanAuto] = useState(settings.douban_auto === '1');
   const [readerTheme, setReaderTheme] = useState(settings.theme || 'light');
   const [uiTheme, setUiTheme] = useState(settings.ui_theme || 'system');
+  const [language, setLanguage] = useState(settings.language || 'zh-CN');
   const [dataDir, setDataDir] = useState('');
   const [version, setVersion] = useState('');
 
@@ -51,96 +54,128 @@ export default function SettingsPage({settings, onSaved}: Props) {
     }
   }, [uiTheme]);
 
-  const save = async () => {
-    const s: Settings = {
-      idle_seconds: String(Math.max(10, parseInt(idle) || 60)),
-      formats: formats
+  // Auto-save: every change is persisted to book.config.json immediately.
+  const persist = async (patch: Settings) => {
+    const merged: Settings = {...settings, ...patch};
+    try {
+      await App.SetSettings(patch);
+    } catch {
+      /* keep UI responsive; next change will retry */
+    }
+    onSaved(merged);
+  };
+
+  const saveIdle = (v: string) => {
+    setIdle(v);
+    persist({idle_seconds: String(Math.max(10, parseInt(v) || 60))});
+  };
+  const saveFormats = (v: string) => {
+    setFormats(v);
+    persist({
+      formats: v
         .split(',')
         .map((x) => x.trim().toLowerCase())
         .filter(Boolean)
         .join(','),
-      douban_auto: doubanAuto ? '1' : '0',
-      theme: readerTheme,
-      ui_theme: uiTheme,
-    };
-    await App.SetSettings(s);
-    onSaved(s);
+    });
+  };
+  const saveDoubanAuto = (v: boolean) => {
+    setDoubanAuto(v);
+    persist({douban_auto: v ? '1' : '0'});
+  };
+  const saveReaderTheme = (v: string) => {
+    setReaderTheme(v);
+    persist({theme: v});
+  };
+  const saveUiTheme = (v: string) => {
+    setUiTheme(v);
+    persist({ui_theme: v});
+  };
+  const saveLanguage = (v: string) => {
+    setLanguage(v);
+    persist({language: v});
   };
 
   return (
     <div className="main">
       <div className="toolbar">
-        <span className="title">设置</span>
+        <span className="title">{t('settings.title')}</span>
       </div>
       <div className="page-scroll">
         <div className="settings-card">
-          <h2 className="page-section-title">外观</h2>
+          <h2 className="page-section-title">{t('settings.appearance')}</h2>
 
           <div className="form-row">
-            <label>系统样式</label>
+            <label>{t('settings.language')}</label>
+            <select value={language} onChange={(e) => saveLanguage(e.target.value)} style={{width: '100%'}}>
+              {LANGS.map((l) => (
+                <option key={l.key} value={l.key}>
+                  {t(l.labelKey)}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="form-row">
+            <label>{t('settings.uiTheme')}</label>
             <div className="theme-cards">
-              {UI_THEMES.map((t) => (
+              {UI_THEMES.map((th) => (
                 <button
-                  key={t.key}
-                  className={`theme-card ${uiTheme === t.key ? 'active' : ''}`}
-                  onClick={() => setUiTheme(t.key)}
+                  key={th.key}
+                  className={`theme-card ${uiTheme === th.key ? 'active' : ''}`}
+                  onClick={() => saveUiTheme(th.key)}
                 >
-                  <span className="theme-card-icon">{t.icon}</span>
-                  <span className="theme-card-label">{t.label}</span>
-                  <span className="theme-card-hint">{t.hint}</span>
+                  <span className="theme-card-icon">{th.icon}</span>
+                  <span className="theme-card-label">{t(th.labelKey)}</span>
+                  <span className="theme-card-hint">{t(th.hintKey)}</span>
                 </button>
               ))}
             </div>
-            <div className="hint">设置整个应用（窗口、书架、统计等）的明暗外观，默认跟随系统。</div>
+            <div className="hint">{t('settings.uiThemeHint')}</div>
           </div>
 
           <div className="form-row">
-            <label>阅读器主题</label>
-            <select value={readerTheme} onChange={(e) => setReaderTheme(e.target.value)} style={{width: '100%'}}>
-              <option value="light">浅色</option>
-              <option value="dark">深色</option>
-              <option value="sepia">羊皮纸</option>
+            <label>{t('settings.readerTheme')}</label>
+            <select value={readerTheme} onChange={(e) => saveReaderTheme(e.target.value)} style={{width: '100%'}}>
+              <option value="light">{t('theme.light')}</option>
+              <option value="dark">{t('theme.dark')}</option>
+              <option value="sepia">{t('theme.sepia')}</option>
             </select>
-            <div className="hint">阅读器正文区域的显示主题（与系统样式相互独立）。</div>
+            <div className="hint">{t('settings.readerThemeHint')}</div>
           </div>
 
           <h2 className="page-section-title" style={{marginTop: 26}}>
-            阅读与扫描
+            {t('settings.readingScan')}
           </h2>
 
           <div className="form-row">
-            <label>阅读计时闲置上限（秒）</label>
-            <input type="number" min={10} value={idle} onChange={(e) => setIdle(e.target.value)} style={{maxWidth: 160}} />
-            <div className="hint">
-              阅读时长时间不翻页只累计该秒数，之后暂停计时，直到再次翻页。默认 60 秒。
-            </div>
+            <label>{t('settings.idleLimit')}</label>
+            <input type="number" min={10} value={idle} onChange={(e) => saveIdle(e.target.value)} style={{maxWidth: 160}} />
+            <div className="hint">{t('settings.idleHint')}</div>
           </div>
 
           <div className="form-row">
-            <label>扫描格式（逗号分隔）</label>
-            <input value={formats} onChange={(e) => setFormats(e.target.value)} placeholder="epub,pdf,mobi,azw3,kepub" />
+            <label>{t('settings.scanFormats')}</label>
+            <input value={formats} onChange={(e) => saveFormats(e.target.value)} placeholder="epub,pdf,mobi,azw3,kepub" />
           </div>
 
           <div className="form-row">
             <label style={{display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer'}}>
-              <input type="checkbox" checked={doubanAuto} onChange={(e) => setDoubanAuto(e.target.checked)} style={{width: 'auto'}} />
-              扫描完成后自动获取豆瓣信息
+              <input type="checkbox" checked={doubanAuto} onChange={(e) => saveDoubanAuto(e.target.checked)} style={{width: 'auto'}} />
+              {t('settings.doubanAuto')}
             </label>
           </div>
 
           {dataDir && (
             <div className="form-row">
-              <label>数据目录（book.db 位置）</label>
+              <label>{t('settings.dataDir')}</label>
               <div className="data-dir">{dataDir}</div>
             </div>
           )}
 
           <div className="form-row" style={{marginTop: 30}}>
-            <button className="btn btn-primary" onClick={save}>
-              💾 保存设置
-            </button>
-            <span style={{fontSize: 12, color: 'var(--text-3)', marginLeft: 12}}>
-              book-manager{version ? ` v${version}` : ''} · 本地电子书管理
+            <span style={{fontSize: 12, color: 'var(--text-3)'}}>
+              book-manager{version ? ` v${version}` : ''} · {t('settings.about')}
             </span>
           </div>
         </div>

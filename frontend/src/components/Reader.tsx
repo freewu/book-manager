@@ -1,6 +1,7 @@
 import React, {useCallback, useEffect, useRef, useState} from 'react';
 import type {Book, Settings} from '../types';
 import {App} from '../api';
+import {useI18n} from '../i18n';
 import ReaderEpub from './ReaderEpub';
 import ReaderPdf from './ReaderPdf';
 import ReaderMobi from './ReaderMobi';
@@ -24,6 +25,7 @@ export interface ReaderHandle {
 //   - if no page-turn / interaction happens for `idleLimit` seconds, stop counting
 //   - any interaction (page turn / click / key / scroll) resets the idle timer
 export default function Reader({book, settings, onClose}: Props) {
+  const {t} = useI18n();
   const idleLimit = Math.max(10, parseInt(settings.idle_seconds || '60') || 60);
   const theme = settings.theme || 'light';
 
@@ -148,15 +150,15 @@ export default function Reader({book, settings, onClose}: Props) {
     return (
       <div className="reader-root">
         <div className="reader-toolbar">
-          <button onClick={onClose}>← 返回书架</button>
+          <button onClick={onClose}>{t('reader.back')}</button>
           <span className="t-title">{book.title}</span>
         </div>
         <div className="empty">
           <div className="big-icon">⚠️</div>
-          <h2>无法打开这本书</h2>
+          <h2>{t('reader.cannotOpen')}</h2>
           <p style={{wordBreak: 'break-all'}}>{error}</p>
           <button className="btn btn-primary" onClick={onClose}>
-            返回书架
+            {t('reader.back')}
           </button>
         </div>
       </div>
@@ -167,12 +169,12 @@ export default function Reader({book, settings, onClose}: Props) {
     return (
       <div className="reader-root">
         <div className="reader-toolbar">
-          <button onClick={onClose}>← 返回书架</button>
+          <button onClick={onClose}>{t('reader.back')}</button>
           <span className="t-title">{book.title}</span>
         </div>
         <div className="empty">
           <div className="big-icon">⏳</div>
-          <h2>正在加载书籍...</h2>
+          <h2>{t('reader.loading')}</h2>
         </div>
       </div>
     );
@@ -188,16 +190,16 @@ export default function Reader({book, settings, onClose}: Props) {
       tabIndex={-1}
     >
       <div className="reader-toolbar">
-        <button onClick={goPrev}>‹ 上一页</button>
-        <button onClick={goNext}>下一页 ›</button>
+        <button onClick={goPrev}>{t('reader.prev')}</button>
+        <button onClick={goNext}>{t('reader.next')}</button>
         <span className="t-title">{book.title}</span>
         <span className="t-progress">
           {pageInfo.total > 0 ? `${pageInfo.page}/${pageInfo.total}` : ''} · {progress.toFixed(1)}%
         </span>
-        <span className="t-progress">本次 {Math.round(sessionSeconds / 60)} 分钟</span>
+        <span className="t-progress">{t('reader.session', {m: Math.round(sessionSeconds / 60)})}</span>
         <span className="spacer" />
         <button onClick={() => setShowSettings((v) => !v)}>Aa</button>
-        <button onClick={onClose}>✕ 关闭</button>
+        <button onClick={onClose}>{t('reader.close')}</button>
       </div>
 
       <div className="reader-body" onClick={markActivity}>
@@ -237,7 +239,7 @@ export default function Reader({book, settings, onClose}: Props) {
       {showSettings && (
         <div className="reader-settings-panel">
           <label>
-            字号：{fontSize}px
+            {t('reader.fontSize', {n: fontSize})}
             <input
               type="range"
               min={12}
@@ -246,7 +248,7 @@ export default function Reader({book, settings, onClose}: Props) {
               onChange={(e) => setFontSize(parseInt(e.target.value))}
             />
           </label>
-          <label>阅读计时闲置上限：{idleLimit} 秒（设置中可修改）</label>
+          <label>{t('reader.idleLimit', {n: idleLimit})}</label>
         </div>
       )}
     </div>

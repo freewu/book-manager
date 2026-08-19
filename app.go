@@ -9,6 +9,7 @@ import (
 
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 
+	"bookmanager/internal/config"
 	"bookmanager/internal/db"
 )
 
@@ -17,6 +18,7 @@ import (
 type App struct {
 	ctx      context.Context
 	store    *db.Store
+	config   *config.Config
 	dataDir  string
 	scanMu   sync.Mutex
 	scanning bool
@@ -44,10 +46,11 @@ func (a *App) startup(ctx context.Context) {
 		}
 	}
 	a.store = store
-	// ensure default settings exist
-	ensureDefaults(a.store)
+	// settings now live in data/book.config.json (JSON), with a one-time
+	// migration from the old SQLite settings table handled inside config.Load.
+	a.config = config.Load(a.dataDir, a.store.AllSettings())
 	// system tray (close-to-tray; the tray 退出 quits the app)
-	startTray(ctx, a.showMainWindow)
+	startTray(a)
 }
 
 func (a *App) shutdown(ctx context.Context) {
@@ -131,17 +134,4 @@ func tryMkdir(dir string) bool {
 	return true
 }
 
-func ensureDefaults(s *db.Store) {
-	defaults := map[string]string{
-		"idle_seconds": "60",
-		"formats":      "epub,pdf,mobi,azw3,kepub",
-		"douban_auto":  "0",
-		"theme":        "light",
-		"ui_theme":     "system",
-	}
-	for k, v := range defaults {
-		if s.GetSetting(k, "") == "" {
-			_ = s.SetSetting(k, v)
-		}
-	}
-}
+

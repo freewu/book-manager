@@ -13,33 +13,19 @@ import (
 	"bookmanager/internal/models"
 )
 
-// GetSettings returns the merged settings with defaults.
+// GetSettings returns the merged settings (JSON config) with defaults.
 func (a *App) GetSettings() models.Settings {
-	out := models.Settings{}
-	for k, v := range a.store.AllSettings() {
-		out[k] = v
-	}
-	if out["idle_seconds"] == "" {
-		out["idle_seconds"] = "60"
-	}
-	if out["formats"] == "" {
-		out["formats"] = "epub,pdf,mobi,azw3,kepub"
-	}
-	if out["douban_auto"] == "" {
-		out["douban_auto"] = "0"
-	}
-	if out["theme"] == "" {
-		out["theme"] = "light"
-	}
-	return out
+	return a.config.All()
 }
 
-// SetSettings applies a batch of settings.
+// SetSettings applies a batch of settings, persists them to book.config.json
+// and refreshes the tray menu language when it changes.
 func (a *App) SetSettings(values models.Settings) error {
-	for k, v := range values {
-		if err := a.store.SetSetting(k, v); err != nil {
-			return err
-		}
+	if err := a.config.SetAll(values); err != nil {
+		return err
+	}
+	if lang, ok := values["language"]; ok && lang != "" {
+		updateTrayLanguage(lang)
 	}
 	return nil
 }
