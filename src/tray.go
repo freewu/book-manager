@@ -69,6 +69,7 @@ func onTrayReady() {
 
 	lang := trayApp.config.Get("language")
 
+	trayVersionItem = systray.AddMenuItem("book-manager "+Version, "book-manager "+Version)
 	trayShowItem = systray.AddMenuItem("显示主界面", "显示主界面")
 	trayLangItem = systray.AddMenuItem("语言", "语言")
 	trayLangMenu[0] = trayLangItem.AddSubMenuItem("简体中文", "简体中文")
@@ -76,7 +77,6 @@ func onTrayReady() {
 	trayLangMenu[2] = trayLangItem.AddSubMenuItem("English", "English")
 	systray.AddSeparator()
 	trayQuitItem = systray.AddMenuItem("关闭", "关闭 book-manager")
-	trayVersionItem = systray.AddMenuItem("book-manager "+Version, "book-manager "+Version)
 
 	updateTrayLanguage(lang)
 

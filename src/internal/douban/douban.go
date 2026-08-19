@@ -280,7 +280,10 @@ func suggest(title string) (*models.DoubanBook, error) {
 	return nil, fmt.Errorf("no result from suggest")
 }
 
-// DownloadCover fetches the cover image bytes.
+// DownloadCover fetches the cover image bytes, verifying the response is a
+// real image. Douban's CDN uses per-host anti-hotlinking: some imgN hosts
+// return an HTML challenge instead of the picture, so we retry on img2 and
+// with the larger /l/ size before giving up.
 func DownloadCover(picURL string) ([]byte, error) {
 	if picURL == "" {
 		return nil, fmt.Errorf("no cover url")
@@ -289,5 +292,48 @@ func DownloadCover(picURL string) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	return body, nil
+	if isImage(body) {
+		return body, nil
+	}
+	for _, alt := range coverAlternatives(picURL) {
+		b2, err2 := httpGet(alt)
+		if err2 == nil && isImage(b2) {
+			return b2, nil
+		}
+	}
+	return nil, fmt.Errorf("cover not an image (got %d bytes: %q)", len(body), firstBytes(body))
+}
+
+// isImage reports whether b looks like a decodable picture (jpeg/png/gif/bmp).
+func isImage(b []byte) bool {
+	if len(b) < 4 {
+		return false
+	}
+	return bytes.HasPrefix(b, []byte{0xff, 0xd8, 0xff}) || // jpeg
+		bytes.HasPrefix(b, []byte{0x89, 'P', 'N', 'G'}) || // png
+		bytes.HasPrefix(b, []byte{'G', 'I', 'F'}) || // gif
+		bytes.HasPrefix(b, []byte{'B', 'M'}) // bmp
+}
+
+func firstBytes(b []byte) string {
+	if len(b) > 24 {
+		b = b[:24]
+	}
+	return string(b)
+}
+
+// coverAlternatives tries a more reliable CDN host and the large size.
+func coverAlternatives(u string) []string {
+	out := []string{}
+	alt := regexp.MustCompile(`img\d+\.doubanio\.com`).ReplaceAllString(u, "img2.doubanio.com")
+	if alt != u {
+		out = append(out, alt)
+	}
+	if strings.Contains(u, "/view/subject/") {
+		l := strings.Replace(u, "/m/public/", "/l/public/", 1)
+		if l != u {
+			out = append(out, l)
+		}
+	}
+	return out
 }
