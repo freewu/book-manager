@@ -6,15 +6,19 @@ import (
 	"path/filepath"
 	"runtime"
 
-	"github.com/sqweek/dialog"
+	wailsRuntime "github.com/wailsapp/wails/v2/pkg/runtime"
 
 	"bookmanager/internal/models"
 	"bookmanager/internal/scanner"
 )
 
 // PickScanDir opens a native folder picker and remembers the choice.
+// Uses the Wails runtime dialog so it is owned by the main window and
+// always appears in front of it.
 func (a *App) PickScanDir() (string, error) {
-	dir, err := dialog.Directory().Title("选择电子书目录").Browse()
+	dir, err := wailsRuntime.OpenDirectoryDialog(a.ctx, wailsRuntime.OpenDialogOptions{
+		Title: "选择电子书目录",
+	})
 	if err != nil {
 		if err.Error() == "cancelled" || err.Error() == "dialog cancelled" {
 			return "", nil

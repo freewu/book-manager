@@ -4,7 +4,6 @@ go 1.25.0
 
 require (
 	github.com/getlantern/systray v1.2.2
-	github.com/sqweek/dialog v0.0.0-20260123140253-64c163d53aac
 	github.com/wailsapp/wails/v2 v2.15.0
 	golang.org/x/sys v0.47.0
 	modernc.org/sqlite v1.56.0
@@ -12,7 +11,6 @@ require (
 
 require (
 	git.sr.ht/~jackmordaunt/go-toast/v2 v2.0.3 // indirect
-	github.com/TheTitanrain/w32 v0.0.0-20180517000239-4f5cfb03fabf // indirect
 	github.com/bep/debounce v1.2.1 // indirect
 	github.com/dustin/go-humanize v1.0.1 // indirect
 	github.com/getlantern/context v0.0.0-20190109183933-c447772a6520 // indirect

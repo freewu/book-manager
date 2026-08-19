@@ -286,6 +286,8 @@ textarea:focus {
   padding: 8px 4px 2px;
   font-size: 11px;
   color: var(--text-3);
+  margin-top: auto;
+  padding-bottom: 0;
 }
 .side-footer .icon {
   width: 16px;
@@ -1125,6 +1127,7 @@ textarea:focus {
   flex-direction: column;
   gap: 4px;
   margin-top: 8px;
+  flex: 1;
 }
 .nav-item {
   display: flex;

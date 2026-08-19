@@ -21,6 +21,7 @@ var (
 type trayLabels struct {
 	show  string
 	quit  string
+	lang  string
 	langs [3]string
 }
 
@@ -35,17 +36,18 @@ func labelsFor(lang string) trayLabels {
 	}
 	switch lang {
 	case "zh-TW":
-		return trayLabels{show: "顯示主界面", quit: "退出", langs: names}
+		return trayLabels{show: "顯示主界面", quit: "退出", lang: "語言", langs: names}
 	case "en":
-		return trayLabels{show: "Show main window", quit: "Quit", langs: names}
+		return trayLabels{show: "Show main window", quit: "Quit", lang: "Language", langs: names}
 	default: // zh-CN
-		return trayLabels{show: "显示主界面", quit: "退出", langs: names}
+		return trayLabels{show: "显示主界面", quit: "退出", lang: "语言", langs: names}
 	}
 }
 
 var (
 	trayShowItem *systray.MenuItem
 	trayQuitItem *systray.MenuItem
+	trayLangItem *systray.MenuItem
 	trayLangMenu [3]*systray.MenuItem
 )
 
@@ -66,9 +68,10 @@ func onTrayReady() {
 	lang := trayApp.config.Get("language")
 
 	trayShowItem = systray.AddMenuItem("显示主界面", "显示主界面")
-	trayLangMenu[0] = systray.AddMenuItem("简体中文", "简体中文")
-	trayLangMenu[1] = systray.AddMenuItem("繁體中文", "繁體中文")
-	trayLangMenu[2] = systray.AddMenuItem("English", "English")
+	trayLangItem = systray.AddMenuItem("语言", "语言")
+	trayLangMenu[0] = trayLangItem.AddSubMenuItem("简体中文", "简体中文")
+	trayLangMenu[1] = trayLangItem.AddSubMenuItem("繁體中文", "繁體中文")
+	trayLangMenu[2] = trayLangItem.AddSubMenuItem("English", "English")
 	systray.AddSeparator()
 	trayQuitItem = systray.AddMenuItem("退出", "退出 book-manager")
 
@@ -113,6 +116,10 @@ func updateTrayLanguage(lang string) {
 	if trayShowItem != nil {
 		trayShowItem.SetTitle(l.show)
 		trayShowItem.SetTooltip(l.show)
+	}
+	if trayLangItem != nil {
+		trayLangItem.SetTitle(l.lang)
+		trayLangItem.SetTooltip(l.lang)
 	}
 	for i, it := range trayLangMenu {
 		if it != nil {
