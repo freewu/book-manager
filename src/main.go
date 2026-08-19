@@ -4,6 +4,7 @@ import (
 	"context"
 	"embed"
 	"path/filepath"
+	"sync/atomic"
 
 	"github.com/wailsapp/wails/v2"
 	"github.com/wailsapp/wails/v2/pkg/options"
@@ -14,6 +15,10 @@ import (
 
 //go:embed all:frontend/dist
 var assets embed.FS
+
+// quitting is set when the user chooses to exit from the tray menu (关闭).
+// The close button hides to tray, but an explicit quit must bypass that.
+var quitting atomic.Bool
 
 func main() {
 	app := NewApp()
@@ -34,6 +39,9 @@ func main() {
 		OnShutdown:       app.shutdown,
 		// Close button hides to the system tray instead of quitting.
 		OnBeforeClose: func(ctx context.Context) (preventClose bool) {
+			if quitting.Load() {
+				return false // explicit quit from tray menu: really exit
+			}
 			runtime.WindowHide(ctx)
 			return true
 		},

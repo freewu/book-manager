@@ -19,10 +19,11 @@ var (
 
 // Tray menu labels per language.
 type trayLabels struct {
-	show  string
-	quit  string
-	lang  string
-	langs [3]string
+	show    string
+	quit    string
+	lang    string
+	version string
+	langs   [3]string
 }
 
 func labelsFor(lang string) trayLabels {
@@ -36,19 +37,20 @@ func labelsFor(lang string) trayLabels {
 	}
 	switch lang {
 	case "zh-TW":
-		return trayLabels{show: "顯示主界面", quit: "退出", lang: "語言", langs: names}
+		return trayLabels{show: "顯示主界面", quit: "關閉", lang: "語言", version: "版本信息", langs: names}
 	case "en":
-		return trayLabels{show: "Show main window", quit: "Quit", lang: "Language", langs: names}
+		return trayLabels{show: "Show main window", quit: "Close", lang: "Language", version: "About", langs: names}
 	default: // zh-CN
-		return trayLabels{show: "显示主界面", quit: "退出", lang: "语言", langs: names}
+		return trayLabels{show: "显示主界面", quit: "关闭", lang: "语言", version: "版本信息", langs: names}
 	}
 }
 
 var (
-	trayShowItem *systray.MenuItem
-	trayQuitItem *systray.MenuItem
-	trayLangItem *systray.MenuItem
-	trayLangMenu [3]*systray.MenuItem
+	trayShowItem    *systray.MenuItem
+	trayQuitItem    *systray.MenuItem
+	trayLangItem    *systray.MenuItem
+	trayVersionItem *systray.MenuItem
+	trayLangMenu    [3]*systray.MenuItem
 )
 
 // startTray launches the system tray icon + menu in a background goroutine.
@@ -73,7 +75,8 @@ func onTrayReady() {
 	trayLangMenu[1] = trayLangItem.AddSubMenuItem("繁體中文", "繁體中文")
 	trayLangMenu[2] = trayLangItem.AddSubMenuItem("English", "English")
 	systray.AddSeparator()
-	trayQuitItem = systray.AddMenuItem("退出", "退出 book-manager")
+	trayQuitItem = systray.AddMenuItem("关闭", "关闭 book-manager")
+	trayVersionItem = systray.AddMenuItem("版本信息", "查看版本信息")
 
 	updateTrayLanguage(lang)
 
@@ -90,6 +93,14 @@ func onTrayReady() {
 				switchTrayLanguage("zh-TW")
 			case <-trayLangMenu[2].ClickedCh:
 				switchTrayLanguage("en")
+			case <-trayVersionItem.ClickedCh:
+				if appCtx != nil {
+					runtime.MessageDialog(appCtx, runtime.MessageDialogOptions{
+						Type:    runtime.InfoDialog,
+						Title:   "book-manager",
+						Message: "book-manager\n版本 " + Version,
+					})
+				}
 			case <-trayQuitItem.ClickedCh:
 				systray.Quit()
 			}
@@ -131,11 +142,16 @@ func updateTrayLanguage(lang string) {
 		trayQuitItem.SetTitle(l.quit)
 		trayQuitItem.SetTooltip(l.quit)
 	}
+	if trayVersionItem != nil {
+		trayVersionItem.SetTitle(l.version)
+		trayVersionItem.SetTooltip(l.version)
+	}
 }
 
 // onTrayExit is invoked after systray.Quit(); it terminates the app.
 func onTrayExit() {
 	if appCtx != nil {
+		quitting.Store(true)
 		runtime.Quit(appCtx)
 	}
 }
