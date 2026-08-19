@@ -121,7 +121,14 @@ function buildMobi({encoding = 65001, title = 'MobiTest', titleBytes = null} = {
 }
 
 // ---- parser (mirrors ReaderMobi.tsx) ----
-function palmDocDecompress(input, maxOut = 64 * 1024 * 1024) {
+function palmRef(ctx, out, distance) {
+  const src = out.length - distance;
+  if (src >= 0) return out[src];
+  if (ctx && ctx.length + out.length >= distance) return ctx[ctx.length + out.length - distance];
+  return 0x20;
+}
+
+function palmDocDecompress(input, ctx, maxOut = 64 * 1024 * 1024) {
   const out = [];
   let i = 0;
   while (i < input.length && out.length < maxOut) {
@@ -137,7 +144,7 @@ function palmDocDecompress(input, maxOut = 64 * 1024 * 1024) {
       const length = (c2 >> 5) + 3;
       const distance = ((c & 0x1f) << 8) | c2;
       const spaces = (c >> 5) & 7;
-      for (let j = 0; j < length && out.length < maxOut; j++) out.push(out[out.length - distance]);
+      for (let j = 0; j < length && out.length < maxOut; j++) out.push(palmRef(ctx, out, distance));
       for (let j = 0; j < spaces && out.length < maxOut; j++) out.push(0x20);
     } else {
       const c2 = input[i++];
@@ -145,7 +152,7 @@ function palmDocDecompress(input, maxOut = 64 * 1024 * 1024) {
       const length = (c3 >> 5) + 11;
       const distance = ((c & 0x1f) << 16) | (c2 << 8) | c3;
       const spaces = (c >> 5) & 7;
-      for (let j = 0; j < length && out.length < maxOut; j++) out.push(out[out.length - distance]);
+      for (let j = 0; j < length && out.length < maxOut; j++) out.push(palmRef(ctx, out, distance));
       for (let j = 0; j < spaces && out.length < maxOut; j++) out.push(0x20);
     }
   }
@@ -227,7 +234,7 @@ function decodeSmart(bytes, encoding) {
   if (declaredOk && (encoding === 65001 || encoding === 936 || encoding === 949 || encoding === 950 || encoding === 932)) {
     return declared;
   }
-  if (utf8Ratio(bytes) > 0.9) {
+  if (utf8Ratio(bytes) > 0.8) {
     return new TextDecoder('utf-8').decode(bytes);
   }
   const g = new TextDecoder('gbk').decode(bytes);
@@ -289,6 +296,7 @@ function parseMobi(buf) {
   const textParts = [];
   const rec0Text = rec0.subarray(textStart);
   if (rec0Text.length > 0) textParts.push(rec0Text);
+  const palmCtx = Array.from(rec0Text);
 
   const hasImages = firstImage > 0 && firstImage < numRecords;
   const last =
@@ -300,9 +308,22 @@ function parseMobi(buf) {
     const end = r + 1 < numRecords ? recOffsets[r + 1] : buf.byteLength;
     const rec = new Uint8Array(buf, off, end - off);
     let data;
-    if (recAttrs[r] & 0x02) data = palmDocDecompress(rec);
-    else data = rec;
+    if (recAttrs[r] & 0x02) data = palmDocDecompress(rec, palmCtx);
+    else {
+      // attr says raw, but many real-world MOBI omit the PalmDoc flag while
+      // the records are actually PalmDoc-compressed. Keep the decompress only
+      // if it clearly improves UTF-8 validity.
+      const rawRatio = utf8Ratio(rec);
+      if (rawRatio < 0.9) {
+        const d = palmDocDecompress(rec, palmCtx);
+        const dRatio = d.length > 0 ? utf8Ratio(d) : 0;
+        data = dRatio > rawRatio + 0.15 && dRatio > 0.85 ? d : rec;
+      } else {
+        data = rec;
+      }
+    }
     textParts.push(data);
+    for (let j = 0; j < data.length; j++) palmCtx.push(data[j]);
   }
 
   let text = textParts

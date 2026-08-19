@@ -76,7 +76,7 @@ func onTrayReady() {
 	trayLangMenu[2] = trayLangItem.AddSubMenuItem("English", "English")
 	systray.AddSeparator()
 	trayQuitItem = systray.AddMenuItem("关闭", "关闭 book-manager")
-	trayVersionItem = systray.AddMenuItem("版本信息", "查看版本信息")
+	trayVersionItem = systray.AddMenuItem("版本信息 "+Version, "查看版本信息")
 
 	updateTrayLanguage(lang)
 
@@ -95,11 +95,8 @@ func onTrayReady() {
 				switchTrayLanguage("en")
 			case <-trayVersionItem.ClickedCh:
 				if appCtx != nil {
-					runtime.MessageDialog(appCtx, runtime.MessageDialogOptions{
-						Type:    runtime.InfoDialog,
-						Title:   "book-manager",
-						Message: "book-manager\n版本 " + Version,
-					})
+					// 点击跳转到 GitHub 项目页
+					runtime.BrowserOpenURL(appCtx, "https://github.com/freewu/book-manager")
 				}
 			case <-trayQuitItem.ClickedCh:
 				systray.Quit()

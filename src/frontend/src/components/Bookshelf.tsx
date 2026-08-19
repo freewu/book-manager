@@ -389,11 +389,11 @@ function BookCard({
   return (
     <div className="book-card" onClick={onOpen} onContextMenu={(e) => onCtx(e)}>
       <div className="book-cover">
+        <span className="fmt-badge">{fmt}</span>
         {cover ? (
           <img src={cover} alt={book.title} loading="lazy" />
         ) : (
           <div className="placeholder">
-            <span className="fmt-badge">{fmt}</span>
             <span className="title-text">{book.title}</span>
             {book.author && <span style={{fontSize: 11, color: 'var(--text-3)'}}>{book.author}</span>}
           </div>
