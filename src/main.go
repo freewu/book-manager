@@ -10,14 +10,14 @@ import (
 	"github.com/wailsapp/wails/v2/pkg/options"
 	"github.com/wailsapp/wails/v2/pkg/options/assetserver"
 	"github.com/wailsapp/wails/v2/pkg/options/windows"
-	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
 //go:embed all:frontend/dist
 var assets embed.FS
 
-// quitting is set when the user chooses to exit from the tray menu (关闭).
-// The close button hides to tray, but an explicit quit must bypass that.
+// quitting is set when the user chooses to exit from the tray menu (关闭),
+// so the tray exit path still works even though the close button now quits
+// directly. Kept for defensive purposes / future close-to-tray opt-in.
 var quitting atomic.Bool
 
 func main() {
@@ -37,13 +37,10 @@ func main() {
 		OnStartup:        app.startup,
 		OnDomReady:       app.domReady,
 		OnShutdown:       app.shutdown,
-		// Close button hides to the system tray instead of quitting.
+		// Close button quits the app completely so no process lingers after exit.
+		// (The tray icon stays available while the app runs.)
 		OnBeforeClose: func(ctx context.Context) (preventClose bool) {
-			if quitting.Load() {
-				return false // explicit quit from tray menu: really exit
-			}
-			runtime.WindowHide(ctx)
-			return true
+			return false
 		},
 		// Only one instance may run; a second launch brings the first to front.
 		SingleInstanceLock: &options.SingleInstanceLock{

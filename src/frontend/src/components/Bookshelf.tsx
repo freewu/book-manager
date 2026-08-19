@@ -283,7 +283,6 @@ export default function Bookshelf({
                 book={b}
                 cover={covers[b.id] ?? null}
                 onOpen={() => onOpen(b)}
-                onDetail={() => onDetail(b)}
                 onCtx={(e) => openCtx(e, b)}
               />
             ))}
@@ -376,13 +375,11 @@ function BookCard({
   book,
   cover,
   onOpen,
-  onDetail,
   onCtx,
 }: {
   book: Book;
   cover: string | null;
   onOpen: () => void;
-  onDetail: () => void;
   onCtx: (e: React.MouseEvent) => void;
 }) {
   const {t} = useI18n();
@@ -410,11 +407,6 @@ function BookCard({
           </div>
         )}
         {progress >= 99.5 && <div className="readmark">{t('book.done')}</div>}
-        <div className="book-hover-actions" onClick={(e) => e.stopPropagation()}>
-          <button title={t('book.detailTip')} onClick={onDetail}>
-            ℹ️
-          </button>
-        </div>
       </div>
       <div className="book-meta">
         <div className="bt">{book.title}</div>
