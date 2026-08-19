@@ -63,6 +63,7 @@ CREATE TABLE IF NOT EXISTS books (
     douban_rating_count INTEGER NOT NULL DEFAULT 0,
     douban_authors TEXT NOT NULL DEFAULT '',
     misrecord INTEGER NOT NULL DEFAULT 0,
+    douban_fail_count INTEGER NOT NULL DEFAULT 0,
     current_location TEXT NOT NULL DEFAULT '',
     current_page INTEGER NOT NULL DEFAULT 0,
     total_pages INTEGER NOT NULL DEFAULT 0,
@@ -134,8 +135,12 @@ CREATE TABLE IF NOT EXISTS scan_dirs (
 `
 
 func (s *Store) migrate() error {
-	_, err := s.db.Exec(schema)
-	return err
+	if _, err := s.db.Exec(schema); err != nil {
+		return err
+	}
+	// migrations for pre-existing databases (idempotent, ignore "duplicate column")
+	_, _ = s.db.Exec(`ALTER TABLE books ADD COLUMN douban_fail_count INTEGER NOT NULL DEFAULT 0`)
+	return nil
 }
 
 func (s *Store) DB() *sql.DB { return s.db }

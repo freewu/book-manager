@@ -20,6 +20,7 @@ type Book struct {
 	DoubanRatingCount int     `json:"douban_rating_count"`
 	DoubanAuthors     string  `json:"douban_authors"`
 	Misrecord         bool    `json:"misrecord"`
+	DoubanFailCount  int     `json:"douban_fail_count"` // consecutive auto-enrich failures (>=3 stops retries)
 	CurrentLocation   string  `json:"current_location"` // epub cfi / pdf page / mobi position
 	CurrentPage       int     `json:"current_page"`
 	TotalPages        int     `json:"total_pages"`

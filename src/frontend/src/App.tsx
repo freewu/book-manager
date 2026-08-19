@@ -174,17 +174,45 @@ export default function App() {
     loadStats();
   }, [loadBooks, loadTags, loadStats]);
 
+  const lang = normalizeLang(st.settings.language);
+
+  // Async douban enrichment fired when a book is opened. On success the
+  // editable metadata (title / author / publisher) is corrected to the douban
+  // values; after 3 consecutive failures auto-retry stops until the user
+  // manually edits the title (which resets the counter server-side).
+  const triggerAutoEnrich = useCallback(
+    (b: Book) => {
+      (async () => {
+        try {
+          const updated = await Backend.AutoEnrichBook(b.id);
+          if (!updated) return;
+          if (updated.douban_url || updated.douban_rating > 0) {
+            setSt((s) => ({
+              ...s,
+              books: s.books.map((x) => (x.id === updated.id ? updated : x)),
+            }));
+            toast.ok(translate(lang, 'detail.toastAutoEnriched', {t: updated.title}));
+          } else if (updated.douban_fail_count >= 3) {
+            toast.err(translate(lang, 'detail.toastAutoStopped'));
+          }
+        } catch {
+          /* silent: enrich failures are counted server-side */
+        }
+      })();
+    },
+    [toast, lang],
+  );
+
   const openBook = useCallback((b: Book) => {
     setSt((s) => ({...s, reading: b, detailBook: null}));
-  }, []);
+    triggerAutoEnrich(b);
+  }, [triggerAutoEnrich]);
 
   const closeReader = useCallback(() => {
     setSt((s) => ({...s, reading: null}));
     loadBooks();
     loadStats();
   }, [loadBooks, loadStats]);
-
-  const lang = normalizeLang(st.settings.language);
 
   return (
     <I18nProvider lang={lang}>
@@ -292,6 +320,7 @@ export default function App() {
               const b = st.detailBook;
               if (!b) return;
               setSt((s) => ({...s, reading: b, detailBook: null}));
+              triggerAutoEnrich(b);
             }}
             onMisrecord={() => {
               setSt((s) => ({...s, detailBook: null}));

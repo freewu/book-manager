@@ -54,6 +54,9 @@ const ReaderEpub = forwardRef<ReaderHandle, Props>(function ReaderEpub(
       onProgressRef.current(cfi, current, total, Math.max(0, Math.min(100, pct)));
     });
 
+    // epubjs swaps iframe contents between pages; re-attach the wheel handler
+    rendition.on('rendered', attachWheel);
+
     // selection → note
     rendition.on('selected', (cfiRange: string, contents: any) => {
       const sel = contents.window.getSelection();
@@ -180,8 +183,50 @@ const ReaderEpub = forwardRef<ReaderHandle, Props>(function ReaderEpub(
     },
   }));
 
+  // Wheel over the reading area turns pages. epubjs renders into an iframe,
+  // whose wheel events do not bubble to the React container, so we listen on
+  // the iframe's own document (re-attached after each re-render). Throttled so
+  // one wheel gesture does not cascade into many flips.
+  const lastWheelRef = useRef(0);
+  const wheelNative = (e: WheelEvent) => {
+    const now = Date.now();
+    if (now - lastWheelRef.current < 500) return;
+    const r = renditionRef.current;
+    if (!r) return;
+    if (Math.abs(e.deltaY) < 8) return;
+    lastWheelRef.current = now;
+    if (e.deltaY > 0) {
+      r.next();
+    } else {
+      r.prev();
+    }
+    onActivityRef.current();
+  };
+  const attachedDocs = useRef(new WeakSet<Document>());
+  const attachWheel = () => {
+    const iframe = containerRef.current?.querySelector('iframe');
+    const doc = iframe?.contentDocument;
+    if (doc && !attachedDocs.current.has(doc)) {
+      attachedDocs.current.add(doc);
+      doc.addEventListener('wheel', wheelNative, {passive: true});
+    }
+  };
+  // keep the container listener too (events outside the iframe, e.g. margins)
+  const onWheel = (e: React.WheelEvent) => {
+    const now = Date.now();
+    if (now - lastWheelRef.current < 500) return;
+    if (Math.abs(e.deltaY) < 8) return;
+    lastWheelRef.current = now;
+    if (e.deltaY > 0) {
+      renditionRef.current?.next();
+    } else {
+      renditionRef.current?.prev();
+    }
+    onActivityRef.current();
+  };
+
   return (
-    <div style={{position: 'relative', width: '100%', height: '100%'}}>
+    <div style={{position: 'relative', width: '100%', height: '100%'}} onWheel={onWheel}>
       <div ref={containerRef} id="epub-view" />
       <div className="reader-nav-overlay left" onClick={() => renditionRef.current?.prev()} />
       <div className="reader-nav-overlay right" onClick={() => renditionRef.current?.next()} />

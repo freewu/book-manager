@@ -27,6 +27,7 @@ export interface Book {
   douban_rating_count: number;
   douban_authors: string;
   misrecord: boolean;
+  douban_fail_count: number;
   current_location: string;
   current_page: number;
   total_pages: number;

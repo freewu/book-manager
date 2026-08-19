@@ -6,6 +6,10 @@ export function AddScanDir(arg1) {
   return window['go']['main']['App']['AddScanDir'](arg1);
 }
 
+export function AutoEnrichBook(arg1) {
+  return window['go']['main']['App']['AutoEnrichBook'](arg1);
+}
+
 export function ClearDoubanInfo(arg1) {
   return window['go']['main']['App']['ClearDoubanInfo'](arg1);
 }

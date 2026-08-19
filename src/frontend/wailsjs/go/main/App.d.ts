@@ -5,6 +5,8 @@ import {main} from '../models';
 
 export function AddScanDir(arg1:string):Promise<void>;
 
+export function AutoEnrichBook(arg1:number):Promise<models.Book>;
+
 export function ClearDoubanInfo(arg1:number):Promise<void>;
 
 export function ClearMisrecords():Promise<void>;

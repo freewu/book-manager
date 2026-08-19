@@ -106,9 +106,7 @@ export default function BookDetail({book: initial, tags, onClose, onChanged, onO
 
   const saveMeta = async () => {
     await App.UpdateBookMeta(book.id, edit.title, edit.author, edit.publisher, edit.description);
-    setEditing(false);
     await reload(book);
-    toast.ok(t('detail.toastSaved'));
   };
 
   const toggleTag = async (tid: number) => {
@@ -233,7 +231,10 @@ export default function BookDetail({book: initial, tags, onClose, onChanged, onO
                     kkfileview
                   </button>
                 )}
-                <button className="btn btn-soft" onClick={() => setEditing((v) => !v)}>
+                <button className="btn btn-soft" onClick={() => setEditing((v) => {
+                  if (!v) setEdit({title: book.title, author: book.author, publisher: book.publisher, description: book.description});
+                  return !v;
+                })}>
                   {t('detail.editInfo')}
                 </button>
                 <button className="btn btn-danger" onClick={markMis}>
@@ -248,17 +249,18 @@ export default function BookDetail({book: initial, tags, onClose, onChanged, onO
 
           {editing && (
             <div style={{marginTop: 14, border: '1px solid var(--border)', borderRadius: 10, padding: 14}}>
+              <div style={{fontSize: 12, color: 'var(--text-3)', marginBottom: 8}}>{t('detail.blurHint')}</div>
               <div className="form-row">
                 <label>{t('detail.title2')}</label>
-                <input value={edit.title} onChange={(e) => setEdit({...edit, title: e.target.value})} />
+                <input value={edit.title} onChange={(e) => setEdit({...edit, title: e.target.value})} onBlur={saveMeta} />
               </div>
               <div className="form-row">
                 <label>{t('detail.author')}</label>
-                <input value={edit.author} onChange={(e) => setEdit({...edit, author: e.target.value})} />
+                <input value={edit.author} onChange={(e) => setEdit({...edit, author: e.target.value})} onBlur={saveMeta} />
               </div>
               <div className="form-row">
                 <label>{t('detail.publisher2')}</label>
-                <input value={edit.publisher} onChange={(e) => setEdit({...edit, publisher: e.target.value})} />
+                <input value={edit.publisher} onChange={(e) => setEdit({...edit, publisher: e.target.value})} onBlur={saveMeta} />
               </div>
               <div className="form-row">
                 <label>{t('detail.desc')}</label>
@@ -266,12 +268,11 @@ export default function BookDetail({book: initial, tags, onClose, onChanged, onO
                   rows={3}
                   value={edit.description}
                   onChange={(e) => setEdit({...edit, description: e.target.value})}
+                  onBlur={saveMeta}
                   style={{width: '100%'}}
                 />
               </div>
-              <button className="btn btn-primary btn-sm" onClick={saveMeta}>
-                {t('detail.save')}
-              </button>
+              <div style={{fontSize: 12, color: 'var(--text-3)'}}>{t('detail.toastSaved')} ✓</div>
             </div>
           )}
 

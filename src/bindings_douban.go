@@ -114,6 +114,62 @@ func (a *App) EnrichBookByTitle(bookID int64, dbBook models.DoubanBook) error {
 	return nil
 }
 
+// AutoEnrichBook is fired asynchronously when a book is opened. It fetches
+// douban info and, on success, corrects title/author/publisher using the
+// douban data as the source of truth. Consecutive failures are counted per
+// book; after 3 failures auto-retry stops until the user manually edits the
+// book name (UpdateBookMeta resets the counter).
+func (a *App) AutoEnrichBook(bookID int64) (*models.Book, error) {
+	book, err := a.store.GetBook(bookID)
+	if err != nil {
+		return nil, err
+	}
+	// Already enriched or retry limit reached — nothing to do.
+	if book.DoubanURL != "" || book.DoubanRating > 0 {
+		return book, nil
+	}
+	if book.DoubanFailCount >= 3 {
+		return book, nil
+	}
+	title := book.Title
+	if title == "" {
+		title = book.FileName
+	}
+	dbBook, err := douban.SearchByTitle(title)
+	if err != nil {
+		_ = a.store.IncrementDoubanFail(bookID)
+		return nil, err
+	}
+	coverPath := book.CoverPath
+	if dbBook.Pic != "" {
+		data, derr := douban.DownloadCover(dbBook.Pic)
+		if derr == nil {
+			if p, cerr := a.saveCoverPNG(data, *book); cerr == nil {
+				coverPath = p
+			}
+		}
+	}
+	// Douban is the source of truth for the editable metadata.
+	publisher := parsePubInfoPublisher(dbBook.PubInfo)
+	if err := a.store.UpdateBookMeta(bookID, dbBook.Title, dbBook.Author, publisher, book.Description); err != nil {
+		return nil, err
+	}
+	if err := a.store.UpdateDoubanInfo(bookID, dbBook.URL, dbBook.Rating, dbBook.Count, dbBook.Author, coverPath); err != nil {
+		return nil, err
+	}
+	return a.store.GetBook(bookID)
+}
+
+// parsePubInfoPublisher extracts the publisher from douban's abstract line
+// ("publisher / year / price" style).
+func parsePubInfoPublisher(pubInfo string) string {
+	p := strings.TrimSpace(pubInfo)
+	if i := strings.Index(p, "/"); i > 0 {
+		p = strings.TrimSpace(p[:i])
+	}
+	return p
+}
+
 // StartEnrichAll asynchronously fetches douban info for every book that has
 // no rating yet, emitting douban:progress / douban:done events to the UI.
 func (a *App) StartEnrichAll() (int, error) {

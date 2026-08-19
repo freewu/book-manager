@@ -23,20 +23,21 @@ type BookQuery struct {
 
 const bookCols = `b.id, b.path, b.file_name, b.format, b.title, b.author, b.publisher, b.language,
 	b.description, b.size, b.hash, b.cover_path, b.douban_url, b.douban_rating,
-	b.douban_rating_count, b.douban_authors, b.misrecord, b.current_location, b.current_page,
+	b.douban_rating_count, b.douban_authors, b.misrecord, b.douban_fail_count, b.current_location, b.current_page,
 	b.total_pages, b.read_progress, b.last_read_at, b.total_read_seconds,
 	(SELECT COUNT(*) FROM notes n WHERE n.book_id = b.id),
 	b.created_at, b.updated_at`
 
 func scanBook(row interface{ Scan(...any) error }) (models.Book, error) {
 	var b models.Book
-	var mis int
+	var mis, failCount int
 	err := row.Scan(&b.ID, &b.Path, &b.FileName, &b.Format, &b.Title, &b.Author, &b.Publisher,
 		&b.Language, &b.Description, &b.Size, &b.Hash, &b.CoverPath, &b.DoubanURL,
-		&b.DoubanRating, &b.DoubanRatingCount, &b.DoubanAuthors, &mis, &b.CurrentLocation,
-		&b.CurrentPage, &b.TotalPages, &b.ReadProgress, &b.LastReadAt, &b.TotalReadSeconds,
+		&b.DoubanRating, &b.DoubanRatingCount, &b.DoubanAuthors, &mis, &failCount,
+		&b.CurrentLocation, &b.CurrentPage, &b.TotalPages, &b.ReadProgress, &b.LastReadAt, &b.TotalReadSeconds,
 		&b.NoteCount, &b.CreatedAt, &b.UpdatedAt)
 	b.Misrecord = mis == 1
+	b.DoubanFailCount = failCount
 	b.HasCover = b.CoverPath != ""
 	return b, err
 }
@@ -188,17 +189,25 @@ func (s *Store) UpsertScannedBook(b *models.Book) (int64, bool, error) {
 	return id, true, nil
 }
 
-// UpdateBookMeta updates editable book fields.
+// UpdateBookMeta edits editable book fields. A manual edit also resets the
+// douban auto-enrich failure counter (the user corrected the name).
 func (s *Store) UpdateBookMeta(id int64, title, author, publisher, description string) error {
 	_, err := s.db.Exec(`UPDATE books SET title=?, author=?, publisher=?, description=?,
-		updated_at=datetime('now','localtime') WHERE id=?`, title, author, publisher, description, id)
+		douban_fail_count=0, updated_at=datetime('now','localtime') WHERE id=?`, title, author, publisher, description, id)
 	return err
 }
 
-// UpdateDoubanInfo stores douban enriched data.
+// UpdateDoubanInfo stores douban enriched data and resets the fail counter.
 func (s *Store) UpdateDoubanInfo(id int64, url string, rating float64, count int, authors string, coverPath string) error {
 	_, err := s.db.Exec(`UPDATE books SET douban_url=?, douban_rating=?, douban_rating_count=?, douban_authors=?, cover_path=?,
-		updated_at=datetime('now','localtime') WHERE id=?`, url, rating, count, authors, coverPath, id)
+		douban_fail_count=0, updated_at=datetime('now','localtime') WHERE id=?`, url, rating, count, authors, coverPath, id)
+	return err
+}
+
+// IncrementDoubanFail bumps the consecutive auto-enrich failure counter.
+func (s *Store) IncrementDoubanFail(id int64) error {
+	_, err := s.db.Exec(`UPDATE books SET douban_fail_count=douban_fail_count+1,
+		updated_at=datetime('now','localtime') WHERE id=?`, id)
 	return err
 }
 

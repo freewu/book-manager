@@ -70,6 +70,7 @@ export namespace models {
 	    douban_rating_count: number;
 	    douban_authors: string;
 	    misrecord: boolean;
+	    douban_fail_count: number;
 	    current_location: string;
 	    current_page: number;
 	    total_pages: number;
@@ -105,6 +106,7 @@ export namespace models {
 	        this.douban_rating_count = source["douban_rating_count"];
 	        this.douban_authors = source["douban_authors"];
 	        this.misrecord = source["misrecord"];
+	        this.douban_fail_count = source["douban_fail_count"];
 	        this.current_location = source["current_location"];
 	        this.current_page = source["current_page"];
 	        this.total_pages = source["total_pages"];
