@@ -118,3 +118,15 @@ export interface ScanProgress {
   errors: number;
   total_new: number;
 }
+
+export interface DoubanProgress {
+  current: number;
+  total: number;
+  title: string;
+  status: string;
+  message: string;
+  finished: boolean;
+  ok: number;
+  errors: number;
+  skipped: number;
+}

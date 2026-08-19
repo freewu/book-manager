@@ -94,6 +94,10 @@ export function GetVersion() {
   return window['go']['main']['App']['GetVersion']();
 }
 
+export function KKFileAddr() {
+  return window['go']['main']['App']['KKFileAddr']();
+}
+
 export function ListNotes(arg1) {
   return window['go']['main']['App']['ListNotes'](arg1);
 }
@@ -116,6 +120,10 @@ export function MarkMisrecord(arg1, arg2) {
 
 export function OpenBookFolder(arg1) {
   return window['go']['main']['App']['OpenBookFolder'](arg1);
+}
+
+export function OpenWithKKFileView(arg1) {
+  return window['go']['main']['App']['OpenWithKKFileView'](arg1);
 }
 
 export function PickScanDir() {
@@ -150,12 +158,20 @@ export function SetBookTags(arg1, arg2) {
   return window['go']['main']['App']['SetBookTags'](arg1, arg2);
 }
 
+export function SetKKFileAddr(arg1) {
+  return window['go']['main']['App']['SetKKFileAddr'](arg1);
+}
+
 export function SetSettings(arg1) {
   return window['go']['main']['App']['SetSettings'](arg1);
 }
 
 export function SetUiTheme(arg1) {
   return window['go']['main']['App']['SetUiTheme'](arg1);
+}
+
+export function StartEnrichAll() {
+  return window['go']['main']['App']['StartEnrichAll']();
 }
 
 export function UnmarkMisrecord(arg1) {

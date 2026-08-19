@@ -1,6 +1,6 @@
 import React, {useEffect, useState} from 'react';
-import type {Settings} from '../types';
-import {App} from '../api';
+import type {DoubanProgress, Settings} from '../types';
+import {App, onDoubanDone, onDoubanProgress} from '../api';
 import {useI18n, LANGS} from '../i18n';
 
 interface Props {
@@ -24,6 +24,28 @@ export default function SettingsPage({settings, onSaved}: Props) {
   const [language, setLanguage] = useState(settings.language || 'zh-CN');
   const [dataDir, setDataDir] = useState('');
   const [version, setVersion] = useState('');
+  const [kkfile, setKkfile] = useState(settings.kkfile_addr || 'http://127.0.0.1:8012');
+  const [dbProgress, setDbProgress] = useState<DoubanProgress | null>(null);
+
+  useEffect(() => {
+    const offP = onDoubanProgress((p) => setDbProgress(p));
+    const offD = onDoubanDone(() => setDbProgress(null));
+    return () => { offP(); offD(); };
+  }, []);
+
+  const startDoubanSync = async () => {
+    try {
+      setDbProgress({current: 0, total: 0, title: '', status: 'ok', message: '', finished: false, ok: 0, errors: 0, skipped: 0});
+      await App.StartEnrichAll();
+    } catch {
+      setDbProgress(null);
+    }
+  };
+
+  const saveKkfile = (v: string) => {
+    setKkfile(v);
+    persist({kkfile_addr: v});
+  };
 
   useEffect(() => {
     App.DataDir().then(setDataDir).catch(() => setDataDir(''));
@@ -164,6 +186,34 @@ export default function SettingsPage({settings, onSaved}: Props) {
               <input type="checkbox" checked={doubanAuto} onChange={(e) => saveDoubanAuto(e.target.checked)} style={{width: 'auto'}} />
               {t('settings.doubanAuto')}
             </label>
+          </div>
+
+          <div className="form-row">
+            <label>{t('settings.doubanSync')}</label>
+            <div style={{display: 'flex', flexDirection: 'column', gap: 6, width: '100%', maxWidth: 420}}>
+              <div style={{display: 'flex', gap: 8, alignItems: 'center'}}>
+                <button className="btn" onClick={startDoubanSync} disabled={!!dbProgress}>
+                  {dbProgress ? t('settings.doubanSyncing', {cur: dbProgress.current || 0, total: dbProgress.total || 0, title: dbProgress.title || ''}) : t('settings.doubanSync')}
+                </button>
+              </div>
+              {dbProgress && dbProgress.total > 0 && (
+                <div className="progress-track" style={{width: '100%'}}>
+                  <div className="progress-fill" style={{width: `${Math.round((dbProgress.current / dbProgress.total) * 100)}%`}} />
+                </div>
+              )}
+              {dbProgress && dbProgress.finished && (
+                <span style={{fontSize: 12, color: 'var(--text-2)'}}>
+                  {t('settings.doubanDone', {ok: dbProgress.ok, errors: dbProgress.errors, skipped: dbProgress.skipped})}
+                </span>
+              )}
+              <div className="hint">{t('settings.doubanSyncHint')}</div>
+            </div>
+          </div>
+
+          <div className="form-row">
+            <label>{t('settings.kkfileAddr')}</label>
+            <input value={kkfile} onChange={(e) => saveKkfile(e.target.value)} style={{maxWidth: 280}} />
+            <div className="hint">{t('settings.kkfileHint')}</div>
           </div>
 
           {dataDir && (

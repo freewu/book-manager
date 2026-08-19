@@ -228,6 +228,11 @@ export default function BookDetail({book: initial, tags, onClose, onChanged, onO
                 <button className="btn btn-soft" onClick={() => App.OpenBookFolder(book.id)}>
                   {t('detail.openFolder')}
                 </button>
+                {(book.format === 'mobi' || book.format === 'azw3') && (
+                  <button className="btn btn-soft" onClick={() => App.OpenWithKKFileView(book.id).catch(() => {})}>
+                    kkfileview
+                  </button>
+                )}
                 <button className="btn btn-soft" onClick={() => setEditing((v) => !v)}>
                   {t('detail.editInfo')}
                 </button>

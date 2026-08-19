@@ -1,7 +1,7 @@
 // Thin wrappers over the generated wails bindings + shared helpers.
 import * as App from '../wailsjs/go/main/App';
 import {EventsOn, EventsOff} from '../wailsjs/runtime/runtime';
-import type {ScanProgress} from './types';
+import type {DoubanProgress, ScanProgress} from './types';
 
 export {App};
 
@@ -42,7 +42,7 @@ export async function getCoverDataUrl(bookId: number, force = false): Promise<st
       coverCache.set(bookId, {data: '', ts: Date.now()});
       return null;
     }
-    const dataUrl = `data:image/jpeg;base64,${b64}`;
+    const dataUrl = `data:${b64.startsWith('iVBORw0KGgo') ? 'image/png' : 'image/jpeg'};base64,${b64}`;
     coverCache.set(bookId, {data: dataUrl, ts: Date.now()});
     return dataUrl;
   } catch {
@@ -68,6 +68,16 @@ export function base64ToArrayBuffer(b64: string): ArrayBuffer {
 export function onScanProgress(cb: (p: ScanProgress) => void): () => void {
   EventsOn('scan:progress', (p: ScanProgress) => cb(p));
   return () => EventsOff('scan:progress');
+}
+
+export function onDoubanProgress(cb: (p: DoubanProgress) => void): () => void {
+  EventsOn('douban:progress', (p: DoubanProgress) => cb(p));
+  return () => EventsOff('douban:progress');
+}
+
+export function onDoubanDone(cb: () => void): () => void {
+  EventsOn('douban:done', () => cb());
+  return () => EventsOff('douban:done');
 }
 
 export function fmtDate(s: string): string {

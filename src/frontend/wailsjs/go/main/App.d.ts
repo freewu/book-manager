@@ -49,6 +49,8 @@ export function GetSystemDarkMode():Promise<boolean>;
 
 export function GetVersion():Promise<string>;
 
+export function KKFileAddr():Promise<string>;
+
 export function ListNotes(arg1:number):Promise<Array<models.Note>>;
 
 export function ListReadingSessions(arg1:number):Promise<Array<models.ReadingSession>>;
@@ -60,6 +62,8 @@ export function ListTags():Promise<Array<models.Tag>>;
 export function MarkMisrecord(arg1:number,arg2:string):Promise<void>;
 
 export function OpenBookFolder(arg1:number):Promise<void>;
+
+export function OpenWithKKFileView(arg1:number):Promise<string>;
 
 export function PickScanDir():Promise<string>;
 
@@ -77,9 +81,13 @@ export function ScanStatus():Promise<boolean>;
 
 export function SetBookTags(arg1:number,arg2:Array<number>):Promise<void>;
 
+export function SetKKFileAddr(arg1:string):Promise<void>;
+
 export function SetSettings(arg1:models.Settings):Promise<void>;
 
 export function SetUiTheme(arg1:string):Promise<void>;
+
+export function StartEnrichAll():Promise<number>;
 
 export function UnmarkMisrecord(arg1:number):Promise<void>;
 

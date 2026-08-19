@@ -76,7 +76,7 @@ func onTrayReady() {
 	trayLangMenu[2] = trayLangItem.AddSubMenuItem("English", "English")
 	systray.AddSeparator()
 	trayQuitItem = systray.AddMenuItem("关闭", "关闭 book-manager")
-	trayVersionItem = systray.AddMenuItem("版本信息 "+Version, "查看版本信息")
+	trayVersionItem = systray.AddMenuItem("book-manager "+Version, "book-manager "+Version)
 
 	updateTrayLanguage(lang)
 
@@ -140,8 +140,8 @@ func updateTrayLanguage(lang string) {
 		trayQuitItem.SetTooltip(l.quit)
 	}
 	if trayVersionItem != nil {
-		trayVersionItem.SetTitle(l.version + " " + Version)
-		trayVersionItem.SetTooltip(l.version + " " + Version)
+		trayVersionItem.SetTitle("book-manager " + Version)
+		trayVersionItem.SetTooltip("book-manager " + Version)
 	}
 }
 

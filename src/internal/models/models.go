@@ -119,6 +119,19 @@ type DoubanBook struct {
 	PubInfo string  `json:"pub_info"`
 }
 
+// DoubanProgress is emitted while batch-enriching books with douban info.
+type DoubanProgress struct {
+	Current  int    `json:"current"`
+	Total    int    `json:"total"`
+	Title    string `json:"title"`
+	Status   string `json:"status"` // ok / skip / error
+	Message  string `json:"message"`
+	Finished bool   `json:"finished"`
+	Ok       int    `json:"ok"`
+	Errors   int    `json:"errors"`
+	Skipped  int    `json:"skipped"`
+}
+
 // Settings is the key/value settings map exposed to the UI.
 type Settings map[string]string
 
