@@ -67,6 +67,7 @@ const DICT: Dict = {
   'ctx.douban': {'zh-CN': '🌐 查看豆瓣', 'zh-TW': '🌐 查看豆瓣', 'en': '🌐 View on Douban'},
   'ctx.misrecord': {'zh-CN': '🚫 误录', 'zh-TW': '🚫 誤錄', 'en': '🚫 Mark misrecord'},
   'ctx.tags': {'zh-CN': '🏷️ 设置标签', 'zh-TW': '🏷️ 設定標籤', 'en': '🏷️ Set tags'},
+  'ctx.folder': {'zh-CN': '📁 所在目录', 'zh-TW': '📁 所在目錄', 'en': '📁 Open folder'},
   'ctx.noDouban': {'zh-CN': '暂无豆瓣链接', 'zh-TW': '暫無豆瓣連結', 'en': 'No Douban link yet'},
   'ctx.tagsTitle': {'zh-CN': '🏷️ 设置标签', 'zh-TW': '🏷️ 設定標籤', 'en': '🏷️ Set tags'},
   'ctx.misConfirm': {

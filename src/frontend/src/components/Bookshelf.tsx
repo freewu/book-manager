@@ -208,9 +208,8 @@ export default function Bookshelf({
         </button>
       </div>
 
-      {(formats.length > 0 || tagFilter.length > 0 || tags.length > 0) && (
-        <div className="filter-bar">
-          <span className="filter-label">{t('filter.format')}</span>
+      <div className="filter-bar">
+        <span className="filter-label">{t('filter.format')}</span>
           <div className="chip-row">
             {FORMATS.map((f) => (
               <button
@@ -254,7 +253,6 @@ export default function Bookshelf({
             </button>
           )}
         </div>
-      )}
 
       {loading && books.length === 0 ? (
         <div className="empty">
@@ -315,6 +313,14 @@ export default function Bookshelf({
             }}
           >
             {t('ctx.douban')}
+          </button>
+          <button
+            onClick={() => {
+              App.OpenBookFolder(ctx.book.id).catch(() => {});
+              setCtx(null);
+            }}
+          >
+            {t('ctx.folder')}
           </button>
           <button
             className="danger"
