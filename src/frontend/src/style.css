@@ -11,6 +11,7 @@
   --accent-soft: #eef2ff;
   --danger: #e5484d;
   --danger-soft: #fdecec;
+  --hover: #eef0f6;
   --ok: #2fa36b;
   --ok-soft: #e6f6ee;
   --warn: #d97706;
@@ -34,6 +35,7 @@
   --accent-soft: #2b3557;
   --danger: #f0656a;
   --danger-soft: #3d2729;
+  --hover: #262a33;
   --ok: #4cc38a;
   --ok-soft: #1f3a2e;
   --warn: #f0a64a;
@@ -548,6 +550,50 @@ textarea:focus {
 }
 .book-hover-actions button:hover {
   transform: scale(1.1);
+}
+
+/* ============ Bookshelf right-click context menu ============ */
+.ctx-mask {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+}
+.ctx-menu {
+  position: fixed;
+  z-index: 2001;
+  min-width: 176px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  box-shadow: var(--shadow-lg);
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+}
+.ctx-menu button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 9px 11px;
+  font-size: 13px;
+  border: none;
+  background: none;
+  border-radius: 7px;
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.ctx-menu button:hover:not(:disabled) {
+  background: var(--hover);
+}
+.ctx-menu button.danger {
+  color: var(--danger);
+}
+.ctx-menu button:disabled {
+  opacity: 0.45;
+  cursor: default;
 }
 
 /* ============ Empty state ============ */

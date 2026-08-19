@@ -53,6 +53,9 @@ func main() {
 			// a common cause of blank windows in packaged apps.
 			WebviewUserDataPath: filepath.Join(dataDir, "webview2"),
 		},
+		// Allow right-click contextmenu events to reach the DOM (default menus are
+		// suppressed by Wails in production; our own shelf context menu needs them).
+		EnableDefaultContextMenu: true,
 	})
 
 	if err != nil {

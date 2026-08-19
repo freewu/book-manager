@@ -62,6 +62,19 @@ const DICT: Dict = {
   'book.done': {'zh-CN': '✅ 已读完', 'zh-TW': '✅ 已讀完', 'en': '✅ Finished'},
   'book.detailTip': {'zh-CN': '详情 / 豆瓣 / 笔记', 'zh-TW': '詳情 / 豆瓣 / 筆記', 'en': 'Details / Douban / Notes'},
 
+  // ---- bookshelf context menu (right-click on a book) ----
+  'ctx.info': {'zh-CN': '📖 本书信息', 'zh-TW': '📖 本書資訊', 'en': '📖 Book info'},
+  'ctx.douban': {'zh-CN': '🌐 查看豆瓣', 'zh-TW': '🌐 查看豆瓣', 'en': '🌐 View on Douban'},
+  'ctx.misrecord': {'zh-CN': '🚫 误录', 'zh-TW': '🚫 誤錄', 'en': '🚫 Mark misrecord'},
+  'ctx.tags': {'zh-CN': '🏷️ 设置标签', 'zh-TW': '🏷️ 設定標籤', 'en': '🏷️ Set tags'},
+  'ctx.noDouban': {'zh-CN': '暂无豆瓣链接', 'zh-TW': '暫無豆瓣連結', 'en': 'No Douban link yet'},
+  'ctx.tagsTitle': {'zh-CN': '🏷️ 设置标签', 'zh-TW': '🏷️ 設定標籤', 'en': '🏷️ Set tags'},
+  'ctx.misConfirm': {
+    'zh-CN': '将《{t}》标记为误录？\n下次扫描将跳过该文件。',
+    'zh-TW': '將《{t}》標記為誤錄？\n下次掃描將跳過該檔案。',
+    'en': 'Mark 《{t}》 as a misrecord?\nIt will be skipped on the next scan.',
+  },
+
   // ---- reading page ----
   'reading.title': {'zh-CN': '阅读', 'zh-TW': '閱讀', 'en': 'Reading'},
   'reading.summary': {'zh-CN': '在读 {a} 本 · 已读完 {b} 本', 'zh-TW': '在讀 {a} 本 · 已讀完 {b} 本', 'en': '{a} reading · {b} finished'},

@@ -1,7 +1,9 @@
-import React, {useEffect, useState} from 'react';
+import React, {useEffect, useRef, useState} from 'react';
 import type {Book, Tag} from '../types';
-import {getCoverDataUrl} from '../api';
+import {App, getCoverDataUrl} from '../api';
+import {BrowserOpenURL} from '../../wailsjs/runtime/runtime';
 import {useI18n} from '../i18n';
+import {useToast} from './Toast';
 
 interface Props {
   books: Book[];
@@ -62,7 +64,14 @@ export default function Bookshelf({
   onTags,
 }: Props) {
   const {t} = useI18n();
+  const toast = useToast();
   const [covers, setCovers] = useState<Record<number, string | null>>({});
+  // Right-click context menu: {screen position + target book} | null
+  const [ctx, setCtx] = useState<{x: number; y: number; book: Book} | null>(null);
+  // Tag picker dialog opened from the context menu
+  const [tagFor, setTagFor] = useState<Book | null>(null);
+  // timeStamp of the right-click that opened the current menu
+  const ctxOpenedAt = useRef(0);
 
   useEffect(() => {
     const map: Record<number, string | null> = {};
@@ -97,6 +106,66 @@ export default function Bookshelf({
   };
 
   const activeFilterCount = formats.length + tagFilter.length;
+
+  const openCtx = (e: React.MouseEvent, book: Book) => {
+    e.preventDefault();
+    e.stopPropagation();
+    ctxOpenedAt.current = e.timeStamp;
+    setCtx({x: e.clientX, y: e.clientY, book});
+  };
+
+  // Close the context menu on outside click / right-click / ESC.
+  // (No fullscreen overlay: it made the WebView2 window minimize on some
+  // GPU-disabled setups, so we use global listeners instead.)
+  useEffect(() => {
+    if (!ctx) return;
+    const close = () => setCtx(null);
+    const onDown = (e: MouseEvent) => {
+      if (!(e.target as HTMLElement).closest('.ctx-menu')) close();
+    };
+    const onCtx = (e: MouseEvent) => {
+      e.preventDefault();
+      // ignore the very right-click that opened this menu
+      if (e.timeStamp === ctxOpenedAt.current) return;
+      close();
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') close();
+    };
+    document.addEventListener('mousedown', onDown, true);
+    document.addEventListener('contextmenu', onCtx, true);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('mousedown', onDown, true);
+      document.removeEventListener('contextmenu', onCtx, true);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [ctx]);
+
+  const markMisrecord = async (b: Book) => {
+    if (!confirm(t('ctx.misConfirm', {t: b.title}))) return;
+    try {
+      await App.MarkMisrecord(b.id, '');
+      toast.ok(t('detail.toastMisMarked'));
+      onRefresh();
+    } catch (e) {
+      toast.err(String(e));
+    }
+  };
+
+  const toggleBookTag = async (b: Book, tid: number) => {
+    const ids = b.tags.some((x) => x.id === tid)
+      ? b.tags.filter((x) => x.id !== tid).map((x) => x.id)
+      : [...b.tags.map((x) => x.id), tid];
+    await App.SetBookTags(b.id, ids);
+    try {
+      const fresh = await App.GetBook(b.id);
+      setTagFor(fresh);
+    } catch {
+      /* ignore */
+    }
+    onRefresh();
+  };
 
   return (
     <div className="main">
@@ -209,8 +278,93 @@ export default function Bookshelf({
         <div className="shelf">
           <div className="book-grid">
             {books.map((b) => (
-              <BookCard key={b.id} book={b} cover={covers[b.id] ?? null} onOpen={() => onOpen(b)} onDetail={() => onDetail(b)} />
+              <BookCard
+                key={b.id}
+                book={b}
+                cover={covers[b.id] ?? null}
+                onOpen={() => onOpen(b)}
+                onDetail={() => onDetail(b)}
+                onCtx={(e) => openCtx(e, b)}
+              />
             ))}
+          </div>
+        </div>
+      )}
+
+      {ctx && (
+        <div
+          className="ctx-menu"
+          style={{
+            left: Math.min(ctx.x, window.innerWidth - 190),
+            top: Math.min(ctx.y, window.innerHeight - 150),
+          }}
+        >
+          <button
+            onClick={() => {
+              onDetail(ctx.book);
+              setCtx(null);
+            }}
+          >
+            {t('ctx.info')}
+          </button>
+          <button
+            disabled={!ctx.book.douban_url}
+            title={ctx.book.douban_url ? ctx.book.douban_url : t('ctx.noDouban')}
+            onClick={() => {
+              if (ctx.book.douban_url) BrowserOpenURL(ctx.book.douban_url);
+              setCtx(null);
+            }}
+          >
+            {t('ctx.douban')}
+          </button>
+          <button
+            className="danger"
+            onClick={() => {
+              const b = ctx.book;
+              setCtx(null);
+              markMisrecord(b);
+            }}
+          >
+            {t('ctx.misrecord')}
+          </button>
+          <button
+            onClick={() => {
+              setTagFor(ctx.book);
+              setCtx(null);
+            }}
+          >
+            {t('ctx.tags')}
+          </button>
+        </div>
+      )}
+
+      {tagFor && (
+        <div className="modal-mask" onClick={() => setTagFor(null)}>
+          <div className="modal" style={{width: 430}} onClick={(e) => e.stopPropagation()}>
+            <div className="modal-head">
+              <h2>{t('ctx.tagsTitle')}</h2>
+              <button className="modal-close" onClick={() => setTagFor(null)}>
+                ✕
+              </button>
+            </div>
+            <div className="modal-body">
+              <div className="sub" style={{marginBottom: 10}}>
+                {tagFor.title}
+              </div>
+              <div className="tag-picker">
+                {tags.map((tg) => (
+                  <span
+                    key={tg.id}
+                    className={`tag-choice ${tagFor.tags.some((x) => x.id === tg.id) ? 'on' : ''}`}
+                    style={tagFor.tags.some((x) => x.id === tg.id) ? {background: tg.color, borderColor: tg.color} : {}}
+                    onClick={() => toggleBookTag(tagFor, tg.id)}
+                  >
+                    {tg.name}
+                  </span>
+                ))}
+                {tags.length === 0 && <span className="filter-empty">{t('filter.noTags')}</span>}
+              </div>
+            </div>
           </div>
         </div>
       )}
@@ -218,13 +372,25 @@ export default function Bookshelf({
   );
 }
 
-function BookCard({book, cover, onOpen, onDetail}: {book: Book; cover: string | null; onOpen: () => void; onDetail: () => void}) {
+function BookCard({
+  book,
+  cover,
+  onOpen,
+  onDetail,
+  onCtx,
+}: {
+  book: Book;
+  cover: string | null;
+  onOpen: () => void;
+  onDetail: () => void;
+  onCtx: (e: React.MouseEvent) => void;
+}) {
   const {t} = useI18n();
   const fmt = book.format.toUpperCase();
   const progress = Math.round(book.read_progress * 10) / 10;
 
   return (
-    <div className="book-card" onClick={onOpen}>
+    <div className="book-card" onClick={onOpen} onContextMenu={(e) => onCtx(e)}>
       <div className="book-cover">
         {cover ? (
           <img src={cover} alt={book.title} loading="lazy" />
