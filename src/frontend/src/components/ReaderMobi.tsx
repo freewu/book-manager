@@ -307,7 +307,13 @@ async function parseMobi(buf: ArrayBuffer): Promise<ParsedMobi> {
     .map((p) => decodeSmart(p, encoding))
     .join('')
     .replace(/\x00/g, '')
-    .replace(/\x1b/g, '');
+    .replace(/\ufffd/g, ' ')
+    .replace(/\x1b/g, '')
+    // attr=0-but-compressed books hit back-ref failures that leak HTML
+    // attribute fragments (e.g. ` epos="000"`) into text nodes; strip
+    // stray `name="value"` fragments that sit between tags only.
+    .replace(/(^|>)\s*([^<]*?)(<|$)/g, (m, a: string, mid: string, c: string) =>
+      a + mid.replace(/\s?[a-z][a-z0-9-]{0,10}\s*=\s*"[^"]{0,60}"/g, ' ') + c);
   // mobi markup → html
   let html = text.replace(/<mbp:pagebreak\s*\/?>/gi, '<div class="mbp-pagebreak"></div>');
   html = html.replace(/<mbp:section\b[^>]*\/?>/gi, '<div class="mbp-section"></div>');

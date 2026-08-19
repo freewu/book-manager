@@ -330,7 +330,10 @@ function parseMobi(buf) {
     .map((p) => decodeSmart(p, encoding))
     .join('')
     .replace(/\x00/g, '')
-    .replace(/<mbp:pagebreak\s*\/?>/gi, '<div class="mbp-pagebreak"></div>');
+    .replace(/\ufffd/g, ' ')
+    .replace(/<mbp:pagebreak\s*\/?>/gi, '<div class="mbp-pagebreak"></div>')
+    .replace(/(^|>)\s*([^<]*?)(<|$)/g, (m, a, mid, c) =>
+      a + mid.replace(/\s?[a-z][a-z0-9-]{0,10}\s*=\s*"[^"]{0,60}"/g, ' ') + c);
   text = text.replace(/<img[^>]*recindex=["']?(\d+)["']?[^>]*\/?>/gi, (m, idx) => {
     const n = firstImage + parseInt(idx);
     if (n >= 0 && n < numRecords) {

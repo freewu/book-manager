@@ -140,8 +140,8 @@ func updateTrayLanguage(lang string) {
 		trayQuitItem.SetTooltip(l.quit)
 	}
 	if trayVersionItem != nil {
-		trayVersionItem.SetTitle(l.version)
-		trayVersionItem.SetTooltip(l.version)
+		trayVersionItem.SetTitle(l.version + " " + Version)
+		trayVersionItem.SetTooltip(l.version + " " + Version)
 	}
 }
 
