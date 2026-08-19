@@ -17,18 +17,19 @@ interface ParsedMobi {
   title: string;
   html: string;
   totalChars: number;
+  blobs: string[]; // blob URLs to revoke on unmount
 }
 
 // ---------- PalmDoc decompression ----------
-function palmDocDecompress(input: Uint8Array): Uint8Array {
+function palmDocDecompress(input: Uint8Array, maxOut = 64 * 1024 * 1024): Uint8Array {
   const out: number[] = [];
   let i = 0;
-  while (i < input.length) {
+  while (i < input.length && out.length < maxOut) {
     const c = input[i++];
     if (c === 0x00) {
       if (i < input.length) out.push(input[i++]);
     } else if (c >= 0x01 && c <= 0x08) {
-      for (let j = 0; j < c && i < input.length; j++) out.push(input[i++]);
+      for (let j = 0; j < c && i < input.length && out.length < maxOut; j++) out.push(input[i++]);
     } else if (c >= 0x09 && c <= 0x7f) {
       out.push(c);
     } else if (c >= 0x80 && c <= 0xbf) {
@@ -36,20 +37,16 @@ function palmDocDecompress(input: Uint8Array): Uint8Array {
       const length = (c2 >> 5) + 3;
       const distance = ((c & 0x1f) << 8) | c2;
       const spaces = (c >> 5) & 7;
-      for (let j = 0; j < length; j++) {
-        out.push(out[out.length - distance]);
-      }
-      for (let j = 0; j < spaces; j++) out.push(0x20);
+      for (let j = 0; j < length && out.length < maxOut; j++) out.push(out[out.length - distance]);
+      for (let j = 0; j < spaces && out.length < maxOut; j++) out.push(0x20);
     } else {
       const c2 = input[i++];
       const c3 = input[i++];
       const length = (c3 >> 5) + 11;
       const distance = ((c & 0x1f) << 16) | (c2 << 8) | c3;
       const spaces = (c >> 5) & 7;
-      for (let j = 0; j < length; j++) {
-        out.push(out[out.length - distance]);
-      }
-      for (let j = 0; j < spaces; j++) out.push(0x20);
+      for (let j = 0; j < length && out.length < maxOut; j++) out.push(out[out.length - distance]);
+      for (let j = 0; j < spaces && out.length < maxOut; j++) out.push(0x20);
     }
   }
   return new Uint8Array(out);
@@ -60,7 +57,11 @@ async function zlibDecompress(input: Uint8Array): Promise<Uint8Array> {
     const copy = new Uint8Array(input);
     const blob = new Blob([copy.buffer]);
     const stream = blob.stream().pipeThrough(new DecompressionStream('deflate'));
-    const buf = await new Response(stream).arrayBuffer();
+    // Guard against WebView2 implementations that never settle on corrupt data.
+    const timer = new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error('deflate timeout')), 3000),
+    );
+    const buf = await Promise.race([new Response(stream).arrayBuffer(), timer]);
     return new Uint8Array(buf);
   } catch {
     return input;
@@ -72,14 +73,59 @@ function decodeText(bytes: Uint8Array, encoding: number): string {
   let end = bytes.length;
   while (end > 0 && (bytes[end - 1] === 0 || bytes[end - 1] === 0x20)) end--;
   const slice = bytes.slice(0, end);
+  const label =
+    {
+      65001: 'utf-8',
+      936: 'gbk', // 简体中文
+      949: 'euc-kr', // 韩文
+      950: 'big5', // 繁体中文
+      932: 'shift_jis', // 日文
+    }[encoding] || 'windows-1252';
   try {
-    if (encoding === 65001) {
-      return new TextDecoder('utf-8').decode(slice);
-    }
-    return new TextDecoder('windows-1252').decode(slice);
+    return new TextDecoder(label).decode(slice);
   } catch {
     return new TextDecoder('utf-8').decode(slice);
   }
+}
+
+// Mojibake detector: U+FFFD or a majority of Latin-1/IPA-range chars means
+// the bytes were decoded with the wrong table (e.g. GBK read as CP1252).
+function looksGarbled(s: string): boolean {
+  if (!s) return false;
+  let n = 0;
+  let susp = 0;
+  for (const ch of s) {
+    const cp = ch.codePointAt(0) ?? 0;
+    if (cp === 0xfffd) return true;
+    if (cp >= 0x80 && cp <= 0x2ff) susp++;
+    n++;
+  }
+  return susp > 0 && susp * 2 >= n;
+}
+
+function hasCJK(s: string): boolean {
+  for (const ch of s) {
+    const cp = ch.codePointAt(0) ?? 0;
+    if (cp >= 0x4e00 && cp <= 0x9fff) return true;
+  }
+  return false;
+}
+
+// Decode with the declared encoding; if the result looks like mojibake,
+// retry common CJK encodings (many Chinese MOBI claim CP1252/UTF-8 but
+// actually store GBK / Shift-JIS bytes).
+function decodeSmart(bytes: Uint8Array, encoding: number): string {
+  const s = decodeText(bytes, encoding);
+  if (!looksGarbled(s)) return s;
+  for (const enc of ['gbk', 'shift_jis', 'big5']) {
+    try {
+      const alt = new TextDecoder(enc).decode(bytes);
+      if (!looksGarbled(alt) && hasCJK(alt)) return alt;
+    } catch {
+      // ignore unsupported encodings
+    }
+  }
+  return s;
 }
 
 function sniffMime(b: Uint8Array): string {
@@ -87,15 +133,6 @@ function sniffMime(b: Uint8Array): string {
   if (b.length > 6 && b[0] === 0x47 && b[1] === 0x49 && b[2] === 0x46) return 'image/gif';
   if (b.length > 3 && b[0] === 0xff && b[1] === 0xd8) return 'image/jpeg';
   return 'image/jpeg';
-}
-
-function toBase64(bytes: Uint8Array): string {
-  let s = '';
-  const chunk = 0x8000;
-  for (let i = 0; i < bytes.length; i += chunk) {
-    s += String.fromCharCode.apply(null, Array.from(bytes.subarray(i, i + chunk)));
-  }
-  return btoa(s);
 }
 
 // ---------- mobi file parsing ----------
@@ -133,7 +170,7 @@ async function parseMobi(buf: ArrayBuffer): Promise<ParsedMobi> {
 
   let title = '';
   if (fullNameLen > 0 && fullNameOff + fullNameLen <= rec0.length) {
-    title = decodeText(rec0.subarray(fullNameOff, fullNameOff + fullNameLen), encoding);
+    title = decodeSmart(rec0.subarray(fullNameOff, fullNameOff + fullNameLen), encoding);
   }
 
   // EXTH end = start of text in record 0
@@ -179,7 +216,7 @@ async function parseMobi(buf: ArrayBuffer): Promise<ParsedMobi> {
     pos += p.length;
   }
 
-  let text = decodeText(all, encoding);
+  let text = decodeSmart(all, encoding);
 
   // mobi markup → html
   text = text.replace(/\x00/g, '');
@@ -187,7 +224,9 @@ async function parseMobi(buf: ArrayBuffer): Promise<ParsedMobi> {
   text = text.replace(/<mbp:pagebreak\s*\/?>/gi, '<div class="mbp-pagebreak"></div>');
   text = text.replace(/<mbp:section\b[^>]*\/?>/gi, '<div class="mbp-section"></div>');
 
-  // inline images
+  // inline images — use blob URLs so the browser decodes them off the main
+  // thread (base64 data URLs would block the UI for large embedded images)
+  const blobs: string[] = [];
   text = text.replace(/<img[^>]*recindex=["']?(\d+)["']?[^>]*\/?>/gi, (m, idx: string) => {
     const n = firstImage + parseInt(idx);
     if (n >= 0 && n < numRecords) {
@@ -198,13 +237,15 @@ async function parseMobi(buf: ArrayBuffer): Promise<ParsedMobi> {
       const imgLen = dv.getUint32(off + 4, false) || rec.length - 8;
       if (imgOff >= 0 && imgLen > 0 && imgOff + imgLen <= rec.length) {
         const img = rec.subarray(imgOff, imgOff + imgLen);
-        return `<img src="data:${sniffMime(img)};base64,${toBase64(img)}" style="max-width:100%;" />`;
+        const url = URL.createObjectURL(new Blob([img], {type: sniffMime(img)}));
+        blobs.push(url);
+        return `<img src="${url}" style="max-width:100%;" />`;
       }
     }
     return '';
   });
 
-  return {title, html: text, totalChars: text.length};
+  return {title, html: text, totalChars: text.length, blobs};
 }
 
 // ---------- component ----------
@@ -274,6 +315,10 @@ const ReaderMobi = forwardRef<ReaderHandle, Props>(function ReaderMobi(
     return () => {
       alive = false;
       if (innerRef.current) innerRef.current.innerHTML = '';
+      if (parsedRef.current?.blobs?.length) {
+        for (const u of parsedRef.current.blobs) URL.revokeObjectURL(u);
+        parsedRef.current.blobs = [];
+      }
       if (noteAnchorRef.current) noteAnchorRef.current.remove();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps

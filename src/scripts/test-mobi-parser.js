@@ -2,6 +2,13 @@
 // synthetic PalmDB/MOBI file built with the same structure as the Go test.
 const assert = require('assert');
 
+// node has no URL.createObjectURL — mock it (ReaderMobi.tsx uses it for images)
+if (typeof URL.createObjectURL !== 'function') {
+  let n = 0;
+  URL.createObjectURL = () => 'blob:mock-' + n++;
+  URL.revokeObjectURL = () => {};
+}
+
 // ---- build a synthetic mobi ----
 // palmdocLiteralCompress encodes data using only literal tokens (valid PalmDoc).
 // Note: tokens 0x01-0x08 copy N following bytes verbatim (no repetition).
@@ -27,12 +34,12 @@ function palmdocLiteralCompress(data) {
   return out;
 }
 
-function buildMobi() {
+function buildMobi({encoding = 65001, title = 'MobiTest', titleBytes = null} = {}) {
   const te = new TextEncoder();
   const text = te.encode('<h1>Mobi Chapter</h1><p>Hello from the mobi reader test.</p><img recindex="0"/>');
   const compressed = palmdocLiteralCompress(text);
 
-  const title = 'MobiTest';
+  const titleEnc = titleBytes || te.encode(title);
   const author = 'TestAuthor';
   const publisher = 'PubCo';
   const headerLen = 232;
@@ -40,7 +47,7 @@ function buildMobi() {
   const exthRecords = [
     [100, te.encode(author)],
     [101, te.encode(publisher)],
-    [129, te.encode(title)],
+    [129, titleEnc],
     [201, new Uint8Array([0, 0, 0, 0])],
   ];
   let exthLen = 12;
@@ -63,18 +70,18 @@ function buildMobi() {
   const dv = new DataView(mh.buffer);
   dv.setUint32(4, headerLen, false);
   dv.setUint32(8, 2, false);
-  dv.setUint16(12, 65001, false);
+  dv.setUint16(12, encoding, false);
   dv.setUint32(84, headerLen + exthLen, false);
-  dv.setUint32(88, title.length, false);
+  dv.setUint32(88, titleEnc.length, false);
   dv.setUint32(92, 2, false);
   dv.setUint32(112, 0x40, false);
   dv.setUint32(168, 1, false);
   dv.setUint32(172, 1, false);
 
-  const rec0 = new Uint8Array(headerLen + exthLen + title.length);
+  const rec0 = new Uint8Array(headerLen + exthLen + titleEnc.length);
   rec0.set(mh, 0);
   rec0.set(exth, headerLen);
-  rec0.set(te.encode(title), headerLen + exthLen);
+  rec0.set(titleEnc, headerLen + exthLen);
 
   const jpg = new Uint8Array([0xff, 0xd8, 0xff, 0xe0, 0x00, 0x10, 0x4a, 0x46, 0x49, 0x46, ...new Array(200).fill(0), 0xff, 0xd9]);
   const rec2 = new Uint8Array(8 + jpg.length);
@@ -114,15 +121,15 @@ function buildMobi() {
 }
 
 // ---- parser (mirrors ReaderMobi.tsx) ----
-function palmDocDecompress(input) {
+function palmDocDecompress(input, maxOut = 64 * 1024 * 1024) {
   const out = [];
   let i = 0;
-  while (i < input.length) {
+  while (i < input.length && out.length < maxOut) {
     const c = input[i++];
     if (c === 0x00) {
       if (i < input.length) out.push(input[i++]);
     } else if (c >= 0x01 && c <= 0x08) {
-      for (let j = 0; j < c && i < input.length; j++) out.push(input[i++]);
+      for (let j = 0; j < c && i < input.length && out.length < maxOut; j++) out.push(input[i++]);
     } else if (c >= 0x09 && c <= 0x7f) {
       out.push(c);
     } else if (c >= 0x80 && c <= 0xbf) {
@@ -130,16 +137,16 @@ function palmDocDecompress(input) {
       const length = (c2 >> 5) + 3;
       const distance = ((c & 0x1f) << 8) | c2;
       const spaces = (c >> 5) & 7;
-      for (let j = 0; j < length; j++) out.push(out[out.length - distance]);
-      for (let j = 0; j < spaces; j++) out.push(0x20);
+      for (let j = 0; j < length && out.length < maxOut; j++) out.push(out[out.length - distance]);
+      for (let j = 0; j < spaces && out.length < maxOut; j++) out.push(0x20);
     } else {
       const c2 = input[i++];
       const c3 = input[i++];
       const length = (c3 >> 5) + 11;
       const distance = ((c & 0x1f) << 16) | (c2 << 8) | c3;
       const spaces = (c >> 5) & 7;
-      for (let j = 0; j < length; j++) out.push(out[out.length - distance]);
-      for (let j = 0; j < spaces; j++) out.push(0x20);
+      for (let j = 0; j < length && out.length < maxOut; j++) out.push(out[out.length - distance]);
+      for (let j = 0; j < spaces && out.length < maxOut; j++) out.push(0x20);
     }
   }
   return new Uint8Array(out);
@@ -150,6 +157,58 @@ function sniffMime(b) {
   if (b.length > 6 && b[0] === 0x47 && b[1] === 0x49 && b[2] === 0x46) return 'image/gif';
   if (b.length > 3 && b[0] === 0xff && b[1] === 0xd8) return 'image/jpeg';
   return 'image/jpeg';
+}
+
+function decodeText(bytes, encoding) {
+  let end = bytes.length;
+  while (end > 0 && (bytes[end - 1] === 0 || bytes[end - 1] === 0x20)) end--;
+  const slice = bytes.slice(0, end);
+  const label =
+    {
+      65001: 'utf-8',
+      936: 'gbk',
+      949: 'euc-kr',
+      950: 'big5',
+      932: 'shift_jis',
+    }[encoding] || 'windows-1252';
+  try {
+    return new TextDecoder(label).decode(slice);
+  } catch {
+    return new TextDecoder('utf-8').decode(slice);
+  }
+}
+
+function looksGarbled(s) {
+  if (!s) return false;
+  let n = 0;
+  let susp = 0;
+  for (const ch of s) {
+    const cp = ch.codePointAt(0) || 0;
+    if (cp === 0xfffd) return true;
+    if (cp >= 0x80 && cp <= 0x2ff) susp++;
+    n++;
+  }
+  return susp > 0 && susp * 2 >= n;
+}
+
+function hasCJK(s) {
+  for (const ch of s) {
+    const cp = ch.codePointAt(0) || 0;
+    if (cp >= 0x4e00 && cp <= 0x9fff) return true;
+  }
+  return false;
+}
+
+function decodeSmart(bytes, encoding) {
+  const s = decodeText(bytes, encoding);
+  if (!looksGarbled(s)) return s;
+  for (const enc of ['gbk', 'shift_jis', 'big5']) {
+    try {
+      const alt = new TextDecoder(enc).decode(bytes);
+      if (!looksGarbled(alt) && hasCJK(alt)) return alt;
+    } catch {}
+  }
+  return s;
 }
 
 function parseMobi(buf) {
@@ -184,7 +243,7 @@ function parseMobi(buf) {
 
   let title = '';
   if (fullNameLen > 0 && fullNameOff + fullNameLen <= rec0.length) {
-    title = new TextDecoder('utf-8').decode(rec0.subarray(fullNameOff, fullNameOff + fullNameLen));
+    title = decodeSmart(rec0.subarray(fullNameOff, fullNameOff + fullNameLen), encoding);
   }
 
   let exthEnd = headerLen;
@@ -221,7 +280,7 @@ function parseMobi(buf) {
     all.set(p, pos);
     pos += p.length;
   }
-  let text = new TextDecoder('utf-8').decode(all);
+  let text = decodeSmart(all, encoding);
   text = text.replace(/\x00/g, '');
   text = text.replace(/<mbp:pagebreak\s*\/?>/gi, '<div class="mbp-pagebreak"></div>');
   text = text.replace(/<img[^>]*recindex=["']?(\d+)["']?[^>]*\/?>/gi, (m, idx) => {
@@ -234,7 +293,7 @@ function parseMobi(buf) {
       const imgLen = dv.getUint32(off + 4, false) || rec.length - 8;
       if (imgOff >= 0 && imgLen > 0 && imgOff + imgLen <= rec.length) {
         const img = rec.subarray(imgOff, imgOff + imgLen);
-        return `<img src="data:${sniffMime(img)};base64,..." />`;
+        return `<img src="${URL.createObjectURL(new Blob([img], {type: sniffMime(img)}))}" style="max-width:100%;" />`;
       }
     }
     return '';
@@ -242,17 +301,21 @@ function parseMobi(buf) {
   return {title, html: text};
 }
 
-// ---- run ----
+// ---- run: utf-8 happy path ----
 const file = buildMobi();
-const dv = new DataView(file.buffer);
-const numRecords = dv.getUint16(76, false);
-const offs = [];
-for (let i = 0; i < numRecords; i++) offs.push(dv.getUint32(78 + i * 8, false));
 const parsed = parseMobi(file.buffer);
 assert.strictEqual(parsed.title, 'MobiTest', 'title mismatch');
 assert.ok(parsed.html.includes('Mobi Chapter'), 'text missing');
 assert.ok(parsed.html.includes('Hello from the mobi reader test.'), 'compressed text missing');
-assert.ok(parsed.html.includes('data:image/jpeg;base64'), 'inline image missing');
-console.log('mobi JS parser: OK');
+assert.ok(parsed.html.includes('src="blob:'), 'inline image should use a blob URL');
+console.log('mobi JS parser: OK (utf-8)');
 console.log('  title =', parsed.title);
-console.log('  html  =', parsed.html);
+console.log('  html  =', parsed.html.slice(0, 120));
+
+// ---- run: GBK title claimed as CP1252 (mojibake → smart fallback) ----
+const gbkTitle = new Uint8Array([0xc2, 0xd2, 0xc2, 0xeb, 0xca, 0xe9, 0xc3, 0xfb, 0xb2, 0xe2, 0xca, 0xd4]); // 乱码书名测试
+const fileGbk = buildMobi({encoding: 1252, titleBytes: gbkTitle});
+const parsedGbk = parseMobi(fileGbk.buffer);
+assert.strictEqual(parsedGbk.title, '乱码书名测试', 'GBK title should be recovered via fallback');
+console.log('mobi JS parser: OK (gbk fallback)');
+console.log('  gbk title =', parsedGbk.title);
