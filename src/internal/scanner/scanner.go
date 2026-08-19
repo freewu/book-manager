@@ -84,11 +84,20 @@ func (sc *Scanner) Process(fi FileInfo, dataDir string) (*models.Book, error) {
 		// metadata parsing failed; still add the book with filename as title
 		meta = &models.BookMeta{}
 	}
+	// Mojibake titles (e.g. GBK-encoded MOBI metadata decoded as CP1252/UTF-8)
+	// are useless; fall back to the file name so the shelf stays readable.
+	title := meta.Title
+	if parser.LookGarbled(title) {
+		title = ""
+	}
+	if title == "" {
+		title = strings.TrimSuffix(filepath.Base(fi.Path), filepath.Ext(fi.Path))
+	}
 	book := &models.Book{
 		Path:      fi.Path,
 		FileName:  filepath.Base(fi.Path),
 		Format:    fi.Format,
-		Title:     meta.Title,
+		Title:     title,
 		Author:    meta.Author,
 		Publisher: meta.Publisher,
 		Language:  meta.Language,
