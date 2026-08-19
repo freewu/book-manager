@@ -1,4 +1,4 @@
-import React, {useCallback, useEffect, useState} from 'react';
+import React, {useCallback, useEffect, useRef, useState} from 'react';
 import type {Book, DoubanBook, Note, Tag} from '../types';
 import {App, getCoverDataUrl, humanSize, humanDuration, fmtDate, invalidateCover} from '../api';
 import {useToast} from './Toast';
@@ -29,21 +29,27 @@ export default function BookDetail({book: initial, tags, onClose, onChanged, onO
   const [searchResults, setSearchResults] = useState<DoubanBook[]>([]);
   const [searching, setSearching] = useState(false);
 
+  // Keep the latest onChanged in a ref so `reload` stays stable; otherwise
+  // every parent render re-creates onChanged → reload changes → the effect
+  // below re-runs → reload → onChanged → … an infinite refresh loop that
+  // freezes the modal and makes it impossible to close.
+  const onChangedRef = useRef(onChanged);
+  onChangedRef.current = onChanged;
   const reload = useCallback(async (b: Book) => {
     const fresh = await App.GetBook(b.id);
     setBook(fresh);
-    onChanged(fresh);
+    onChangedRef.current(fresh);
     if (fresh.has_cover) {
       const u = await getCoverDataUrl(fresh.id, true);
       setCover(u);
     } else {
       setCover(null);
     }
-  }, [onChanged]);
+  }, []);
 
   useEffect(() => {
     reload(initial);
-  }, [initial, reload]);
+  }, [initial.id, reload]);
 
   useEffect(() => {
     if (tab === 'notes') {

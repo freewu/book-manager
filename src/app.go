@@ -77,6 +77,14 @@ func (a *App) showMainWindow() {
 	runtime.WindowSetAlwaysOnTop(a.ctx, false)
 }
 
+// hideToTray hides the main window; the tray icon keeps the app alive.
+// The close button calls this instead of quitting.
+func (a *App) hideToTray() {
+	if a.ctx != nil {
+		runtime.WindowHide(a.ctx)
+	}
+}
+
 // emitEvent fires a Wails runtime event to the frontend.
 func (a *App) emitEvent(name string, data any) {
 	if a.ctx != nil {

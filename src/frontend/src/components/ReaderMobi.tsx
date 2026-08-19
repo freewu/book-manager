@@ -111,21 +111,72 @@ function hasCJK(s: string): boolean {
   return false;
 }
 
-// Decode with the declared encoding; if the result looks like mojibake,
-// retry common CJK encodings (many Chinese MOBI claim CP1252/UTF-8 but
-// actually store GBK / Shift-JIS bytes).
+// Decode with the declared encoding, falling back to byte probing:
+// real-world MOBI often declare 0/CP1252 while actually storing UTF-8 or
+// GBK, and the content may contain a few corrupt/raw records. We therefore
+// trust a clean declared decode only for explicit CJK/UTF-8 encodings, and
+// otherwise pick by UTF-8 byte validity ratio (a real UTF-8 book stays
+// >90% valid even with stray garbage bytes).
+function utf8Ratio(bytes: Uint8Array): number {
+  const n = bytes.length;
+  if (n === 0) return 1;
+  const lim = Math.min(n, 131072); // sample first 128 KB
+  let valid = 0;
+  let total = 0;
+  let i = 0;
+  while (i < lim) {
+    const b = bytes[i];
+    total++;
+    if (b < 0x80) {
+      valid++;
+      i++;
+    } else if (b >= 0xc2 && b <= 0xdf) {
+      if (i + 1 < n && bytes[i + 1] >= 0x80 && bytes[i + 1] <= 0xbf) {
+        valid++;
+        i += 2;
+      } else i++;
+    } else if (b >= 0xe0 && b <= 0xef) {
+      const b1 = bytes[i + 1];
+      const b2 = bytes[i + 2];
+      if (b1 !== undefined && b2 !== undefined && b1 >= 0x80 && b1 <= 0xbf && b2 >= 0x80 && b2 <= 0xbf) {
+        valid++;
+        i += 3;
+      } else i++;
+    } else if (b >= 0xf0 && b <= 0xf4) {
+      const b1 = bytes[i + 1];
+      const b2 = bytes[i + 2];
+      const b3 = bytes[i + 3];
+      if (b1 !== undefined && b2 !== undefined && b3 !== undefined && b1 >= 0x80 && b1 <= 0xbf && b2 >= 0x80 && b2 <= 0xbf && b3 >= 0x80 && b3 <= 0xbf) {
+        valid++;
+        i += 4;
+      } else i++;
+    } else i++;
+  }
+  return total > 0 ? valid / total : 1;
+}
+
 function decodeSmart(bytes: Uint8Array, encoding: number): string {
-  const s = decodeText(bytes, encoding);
-  if (!looksGarbled(s)) return s;
-  for (const enc of ['gbk', 'shift_jis', 'big5']) {
+  const declared = encoding === 0 ? null : decodeText(bytes, encoding);
+  const declaredOk = declared !== null && !looksGarbled(declared);
+  // Trust an explicit clean declared decode for UTF-8 / CJK encodings.
+  if (declaredOk && (encoding === 65001 || encoding === 936 || encoding === 949 || encoding === 950 || encoding === 932)) {
+    return declared;
+  }
+  // Unknown or CP1252-declared: probe the raw bytes.
+  if (utf8Ratio(bytes) > 0.9) {
+    return new TextDecoder('utf-8').decode(bytes);
+  }
+  const g = new TextDecoder('gbk').decode(bytes);
+  if (hasCJK(g) && !looksGarbled(g)) return g;
+  for (const enc of ['shift_jis', 'big5']) {
     try {
       const alt = new TextDecoder(enc).decode(bytes);
-      if (!looksGarbled(alt) && hasCJK(alt)) return alt;
+      if (hasCJK(alt) && !looksGarbled(alt)) return alt;
     } catch {
       // ignore unsupported encodings
     }
   }
-  return s;
+  return declared ?? new TextDecoder('windows-1252').decode(bytes);
 }
 
 function sniffMime(b: Uint8Array): string {
@@ -171,6 +222,9 @@ async function parseMobi(buf: ArrayBuffer): Promise<ParsedMobi> {
   let title = '';
   if (fullNameLen > 0 && fullNameOff + fullNameLen <= rec0.length) {
     title = decodeSmart(rec0.subarray(fullNameOff, fullNameOff + fullNameLen), encoding);
+    // reject garbage titles (control / replacement chars) → empty so the
+    // caller falls back to the real book title from the database
+    if (/[\x00-\x08\x0b\x0c\x0e-\x1f\ufffd]/.test(title)) title = '';
   }
 
   // EXTH end = start of text in record 0
@@ -184,13 +238,19 @@ async function parseMobi(buf: ArrayBuffer): Promise<ParsedMobi> {
   let textStart = mobiOff + exthEnd;
   if (textStart < 0 || textStart > rec0.length) textStart = 0;
 
-  // decompress text records
+  // decompress text records. Some real-world books have firstContent/
+  // lastContent = 0 (meaning "unknown") but do have an image section; we must
+  // stop before the first image record, otherwise hundreds of binary JPEG
+  // records get decoded as text (garbage + slow).
   const textParts: Uint8Array[] = [];
   const rec0Text = rec0.subarray(textStart);
   if (rec0Text.length > 0) textParts.push(rec0Text);
 
-  const last = Math.min(lastContent || firstContent || numRecords - 1, numRecords - 1);
-  for (let r = Math.max(1, firstContent); r <= last; r++) {
+  const hasImages = firstImage > 0 && firstImage < numRecords;
+  const last =
+    lastContent || firstContent || (hasImages ? firstImage - 1 : numRecords - 1);
+  const lastClamped = Math.min(Math.max(last, 1), numRecords - 1);
+  for (let r = Math.max(1, firstContent); r <= lastClamped; r++) {
     if (r >= numRecords) break;
     const off = recOffsets[r];
     const end = r + 1 < numRecords ? recOffsets[r + 1] : buf.byteLength;
@@ -206,28 +266,22 @@ async function parseMobi(buf: ArrayBuffer): Promise<ParsedMobi> {
     textParts.push(data);
   }
 
-  // concatenate
-  let total = 0;
-  for (const p of textParts) total += p.length;
-  const all = new Uint8Array(total);
-  let pos = 0;
-  for (const p of textParts) {
-    all.set(p, pos);
-    pos += p.length;
-  }
-
-  let text = decodeSmart(all, encoding);
-
+  // decode each record separately: these books mix encodings across records
+  // (e.g. ASCII markup + UTF-8 body + stray GBK fragments), so a single
+  // whole-buffer decode is wrong more often than not.
+  const text = textParts
+    .map((p) => decodeSmart(p, encoding))
+    .join('')
+    .replace(/\x00/g, '')
+    .replace(/\x1b/g, '');
   // mobi markup → html
-  text = text.replace(/\x00/g, '');
-  text = text.replace(/\x1b/g, '');
-  text = text.replace(/<mbp:pagebreak\s*\/?>/gi, '<div class="mbp-pagebreak"></div>');
-  text = text.replace(/<mbp:section\b[^>]*\/?>/gi, '<div class="mbp-section"></div>');
+  let html = text.replace(/<mbp:pagebreak\s*\/?>/gi, '<div class="mbp-pagebreak"></div>');
+  html = html.replace(/<mbp:section\b[^>]*\/?>/gi, '<div class="mbp-section"></div>');
 
   // inline images — use blob URLs so the browser decodes them off the main
   // thread (base64 data URLs would block the UI for large embedded images)
   const blobs: string[] = [];
-  text = text.replace(/<img[^>]*recindex=["']?(\d+)["']?[^>]*\/?>/gi, (m, idx: string) => {
+  html = html.replace(/<img[^>]*recindex=["']?(\d+)["']?[^>]*\/?>/gi, (m, idx: string) => {
     const n = firstImage + parseInt(idx);
     if (n >= 0 && n < numRecords) {
       const off = recOffsets[n];
@@ -245,7 +299,7 @@ async function parseMobi(buf: ArrayBuffer): Promise<ParsedMobi> {
     return '';
   });
 
-  return {title, html: text, totalChars: text.length, blobs};
+  return {title, html, totalChars: html.length, blobs};
 }
 
 // ---------- component ----------
@@ -278,12 +332,28 @@ const ReaderMobi = forwardRef<ReaderHandle, Props>(function ReaderMobi(
         const container = scrollRef.current;
         const inner = innerRef.current;
         if (!container || !inner) return;
-        inner.innerHTML = parsed.html;
 
-        // initial scroll to saved progress
-        if (book.read_progress > 1) {
-          container.scrollTop = (container.scrollHeight - container.clientHeight) * (book.read_progress / 100);
-        }
+        // Render large books in chunks so the UI stays responsive: setting a
+        // 10-15 MB HTML string via innerHTML blocks the main thread for
+        // seconds. Each 1 MB chunk is parsed into a fragment and appended,
+        // yielding to the event loop between chunks.
+        const html = parsed.html;
+        const CHUNK = 1024 * 1024;
+        let idx = 0;
+        const renderNext = () => {
+          if (!alive) return;
+          const end = Math.min(idx + CHUNK, html.length);
+          const frag = document.createRange().createContextualFragment(html.slice(idx, end));
+          inner.appendChild(frag);
+          idx = end;
+          if (idx < html.length) {
+            setTimeout(renderNext, 0);
+          } else if (book.read_progress > 1) {
+            // restore saved progress once the full content is in the DOM
+            container.scrollTop = (container.scrollHeight - container.clientHeight) * (book.read_progress / 100);
+          }
+        };
+        renderNext();
 
         const onScroll = () => {
           const el = scrollRef.current;

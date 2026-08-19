@@ -16,8 +16,7 @@ import (
 var assets embed.FS
 
 // quitting is set when the user chooses to exit from the tray menu (关闭),
-// so the tray exit path still works even though the close button now quits
-// directly. Kept for defensive purposes / future close-to-tray opt-in.
+// so the tray exit path still works even though the close button hides to tray.
 var quitting atomic.Bool
 
 func main() {
@@ -40,7 +39,12 @@ func main() {
 		// Close button quits the app completely so no process lingers after exit.
 		// (The tray icon stays available while the app runs.)
 		OnBeforeClose: func(ctx context.Context) (preventClose bool) {
-			return false
+			if quitting.Load() {
+				return false // real quit from the tray 关闭 menu item
+			}
+			// close button → hide to tray; the tray 关闭 menu is the way to quit
+			app.hideToTray()
+			return true
 		},
 		// Only one instance may run; a second launch brings the first to front.
 		SingleInstanceLock: &options.SingleInstanceLock{

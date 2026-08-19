@@ -199,16 +199,46 @@ function hasCJK(s) {
   return false;
 }
 
+function utf8Ratio(bytes) {
+  const n = bytes.length;
+  if (n === 0) return 1;
+  const lim = Math.min(n, 131072);
+  let valid = 0, total = 0, i = 0;
+  while (i < lim) {
+    const b = bytes[i];
+    total++;
+    if (b < 0x80) { valid++; i++; }
+    else if (b >= 0xc2 && b <= 0xdf) {
+      if (i + 1 < n && bytes[i + 1] >= 0x80 && bytes[i + 1] <= 0xbf) { valid++; i += 2; } else i++;
+    } else if (b >= 0xe0 && b <= 0xef) {
+      const b1 = bytes[i + 1], b2 = bytes[i + 2];
+      if (b1 !== undefined && b2 !== undefined && b1 >= 0x80 && b1 <= 0xbf && b2 >= 0x80 && b2 <= 0xbf) { valid++; i += 3; } else i++;
+    } else if (b >= 0xf0 && b <= 0xf4) {
+      const b1 = bytes[i + 1], b2 = bytes[i + 2], b3 = bytes[i + 3];
+      if (b1 !== undefined && b2 !== undefined && b3 !== undefined && b1 >= 0x80 && b1 <= 0xbf && b2 >= 0x80 && b2 <= 0xbf && b3 >= 0x80 && b3 <= 0xbf) { valid++; i += 4; } else i++;
+    } else i++;
+  }
+  return total > 0 ? valid / total : 1;
+}
+
 function decodeSmart(bytes, encoding) {
-  const s = decodeText(bytes, encoding);
-  if (!looksGarbled(s)) return s;
-  for (const enc of ['gbk', 'shift_jis', 'big5']) {
+  const declared = encoding === 0 ? null : decodeText(bytes, encoding);
+  const declaredOk = declared !== null && !looksGarbled(declared);
+  if (declaredOk && (encoding === 65001 || encoding === 936 || encoding === 949 || encoding === 950 || encoding === 932)) {
+    return declared;
+  }
+  if (utf8Ratio(bytes) > 0.9) {
+    return new TextDecoder('utf-8').decode(bytes);
+  }
+  const g = new TextDecoder('gbk').decode(bytes);
+  if (hasCJK(g) && !looksGarbled(g)) return g;
+  for (const enc of ['shift_jis', 'big5']) {
     try {
       const alt = new TextDecoder(enc).decode(bytes);
-      if (!looksGarbled(alt) && hasCJK(alt)) return alt;
+      if (hasCJK(alt) && !looksGarbled(alt)) return alt;
     } catch {}
   }
-  return s;
+  return declared ?? new TextDecoder('windows-1252').decode(bytes);
 }
 
 function parseMobi(buf) {
@@ -260,8 +290,11 @@ function parseMobi(buf) {
   const rec0Text = rec0.subarray(textStart);
   if (rec0Text.length > 0) textParts.push(rec0Text);
 
-  const last = Math.min(lastContent || firstContent || numRecords - 1, numRecords - 1);
-  for (let r = Math.max(1, firstContent); r <= last; r++) {
+  const hasImages = firstImage > 0 && firstImage < numRecords;
+  const last =
+    lastContent || firstContent || (hasImages ? firstImage - 1 : numRecords - 1);
+  const lastClamped = Math.min(Math.max(last, 1), numRecords - 1);
+  for (let r = Math.max(1, firstContent); r <= lastClamped; r++) {
     if (r >= numRecords) break;
     const off = recOffsets[r];
     const end = r + 1 < numRecords ? recOffsets[r + 1] : buf.byteLength;
@@ -272,17 +305,11 @@ function parseMobi(buf) {
     textParts.push(data);
   }
 
-  let total = 0;
-  for (const p of textParts) total += p.length;
-  const all = new Uint8Array(total);
-  let pos = 0;
-  for (const p of textParts) {
-    all.set(p, pos);
-    pos += p.length;
-  }
-  let text = decodeSmart(all, encoding);
-  text = text.replace(/\x00/g, '');
-  text = text.replace(/<mbp:pagebreak\s*\/?>/gi, '<div class="mbp-pagebreak"></div>');
+  let text = textParts
+    .map((p) => decodeSmart(p, encoding))
+    .join('')
+    .replace(/\x00/g, '')
+    .replace(/<mbp:pagebreak\s*\/?>/gi, '<div class="mbp-pagebreak"></div>');
   text = text.replace(/<img[^>]*recindex=["']?(\d+)["']?[^>]*\/?>/gi, (m, idx) => {
     const n = firstImage + parseInt(idx);
     if (n >= 0 && n < numRecords) {
