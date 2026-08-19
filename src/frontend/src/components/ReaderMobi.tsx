@@ -3,6 +3,7 @@ import type {Book} from '../types';
 import type {ReaderHandle} from './Reader';
 import {App} from '../api';
 import {useI18n} from '../i18n';
+import {MOBI} from 'foliate-js/mobi.js';
 
 interface Props {
   book: Book;
@@ -16,330 +17,61 @@ interface Props {
 interface ParsedMobi {
   title: string;
   html: string;
-  totalChars: number;
-  blobs: string[]; // blob URLs to revoke on unmount
+  destroy?: () => void;
 }
 
-// ---------- PalmDoc decompression ----------
-function palmDocDecompress(input: Uint8Array, ctx?: number[], maxOut = 64 * 1024 * 1024): Uint8Array {
-  const out: number[] = [];
-  let i = 0;
-  while (i < input.length && out.length < maxOut) {
-    const c = input[i++];
-    if (c === 0x00) {
-      if (i < input.length) out.push(input[i++]);
-    } else if (c >= 0x01 && c <= 0x08) {
-      for (let j = 0; j < c && i < input.length && out.length < maxOut; j++) out.push(input[i++]);
-    } else if (c >= 0x09 && c <= 0x7f) {
-      out.push(c);
-    } else if (c >= 0x80 && c <= 0xbf) {
-      const c2 = input[i++];
-      const length = (c2 >> 5) + 3;
-      const distance = ((c & 0x1f) << 8) | c2;
-      const spaces = (c >> 5) & 7;
-      for (let j = 0; j < length && out.length < maxOut; j++) out.push(palmRef(ctx, out, distance));
-      for (let j = 0; j < spaces && out.length < maxOut; j++) out.push(0x20);
-    } else {
-      const c2 = input[i++];
-      const c3 = input[i++];
-      const length = (c3 >> 5) + 11;
-      const distance = ((c & 0x1f) << 16) | (c2 << 8) | c3;
-      const spaces = (c >> 5) & 7;
-      for (let j = 0; j < length && out.length < maxOut; j++) out.push(palmRef(ctx, out, distance));
-      for (let j = 0; j < spaces && out.length < maxOut; j++) out.push(0x20);
-    }
-  }
-  return new Uint8Array(out);
-}
-
-// Resolve a PalmDoc back-reference. The reference points `distance` bytes
-// before the current position in the (conceptual) whole-book text stream;
-// some real-world MOBI compressors write references that reach into earlier
-// records (and into record-0 padding), so fall back to the accumulated
-// context `ctx` before giving up.
-function palmRef(ctx: number[] | undefined, out: number[], distance: number): number {
-  const src = out.length - distance;
-  if (src >= 0) return out[src];
-  if (ctx && ctx.length + out.length >= distance) return ctx[ctx.length + out.length - distance];
-  return 0x20; // unreachable reference → space
-}
-
-async function zlibDecompress(input: Uint8Array): Promise<Uint8Array> {
+// `unzlib` is only used to decompress embedded FONT resources (rare). Provide
+// a native fallback via DecompressionStream; on failure keep the raw bytes so
+// the book still renders.
+const unzlib = async (data: Uint8Array): Promise<Uint8Array> => {
   try {
-    const copy = new Uint8Array(input);
-    const blob = new Blob([copy.buffer]);
-    const stream = blob.stream().pipeThrough(new DecompressionStream('deflate'));
-    // Guard against WebView2 implementations that never settle on corrupt data.
-    const timer = new Promise<never>((_, reject) =>
-      setTimeout(() => reject(new Error('deflate timeout')), 3000),
-    );
-    const buf = await Promise.race([new Response(stream).arrayBuffer(), timer]);
-    return new Uint8Array(buf);
+    const copy = new Uint8Array(data);
+    const stream = new Blob([copy as BlobPart]).stream().pipeThrough(new DecompressionStream('deflate'));
+    return new Uint8Array(await new Response(stream).arrayBuffer());
   } catch {
-    return input;
+    return data;
   }
-}
+};
 
-function decodeText(bytes: Uint8Array, encoding: number): string {
-  // trim trailing NUL padding
-  let end = bytes.length;
-  while (end > 0 && (bytes[end - 1] === 0 || bytes[end - 1] === 0x20)) end--;
-  const slice = bytes.slice(0, end);
-  const label =
-    {
-      65001: 'utf-8',
-      936: 'gbk', // 简体中文
-      949: 'euc-kr', // 韩文
-      950: 'big5', // 繁体中文
-      932: 'shift_jis', // 日文
-    }[encoding] || 'windows-1252';
-  try {
-    return new TextDecoder(label).decode(slice);
-  } catch {
-    return new TextDecoder('utf-8').decode(slice);
-  }
-}
-
-// Mojibake detector: U+FFFD or a majority of Latin-1/IPA-range chars means
-// the bytes were decoded with the wrong table (e.g. GBK read as CP1252).
-function looksGarbled(s: string): boolean {
-  if (!s) return false;
-  let n = 0;
-  let susp = 0;
-  for (const ch of s) {
-    const cp = ch.codePointAt(0) ?? 0;
-    if (cp === 0xfffd) return true;
-    if (cp >= 0x80 && cp <= 0x2ff) susp++;
-    n++;
-  }
-  return susp > 0 && susp * 2 >= n;
-}
-
-function hasCJK(s: string): boolean {
-  for (const ch of s) {
-    const cp = ch.codePointAt(0) ?? 0;
-    if (cp >= 0x4e00 && cp <= 0x9fff) return true;
-  }
-  return false;
-}
-
-// Decode with the declared encoding, falling back to byte probing:
-// real-world MOBI often declare 0/CP1252 while actually storing UTF-8 or
-// GBK, and the content may contain a few corrupt/raw records. We therefore
-// trust a clean declared decode only for explicit CJK/UTF-8 encodings, and
-// otherwise pick by UTF-8 byte validity ratio (a real UTF-8 book stays
-// >90% valid even with stray garbage bytes).
-function utf8Ratio(bytes: Uint8Array): number {
-  const n = bytes.length;
-  if (n === 0) return 1;
-  const lim = Math.min(n, 131072); // sample first 128 KB
-  let valid = 0;
-  let total = 0;
-  let i = 0;
-  while (i < lim) {
-    const b = bytes[i];
-    total++;
-    if (b < 0x80) {
-      valid++;
-      i++;
-    } else if (b >= 0xc2 && b <= 0xdf) {
-      if (i + 1 < n && bytes[i + 1] >= 0x80 && bytes[i + 1] <= 0xbf) {
-        valid++;
-        i += 2;
-      } else i++;
-    } else if (b >= 0xe0 && b <= 0xef) {
-      const b1 = bytes[i + 1];
-      const b2 = bytes[i + 2];
-      if (b1 !== undefined && b2 !== undefined && b1 >= 0x80 && b1 <= 0xbf && b2 >= 0x80 && b2 <= 0xbf) {
-        valid++;
-        i += 3;
-      } else i++;
-    } else if (b >= 0xf0 && b <= 0xf4) {
-      const b1 = bytes[i + 1];
-      const b2 = bytes[i + 2];
-      const b3 = bytes[i + 3];
-      if (b1 !== undefined && b2 !== undefined && b3 !== undefined && b1 >= 0x80 && b1 <= 0xbf && b2 >= 0x80 && b2 <= 0xbf && b3 >= 0x80 && b3 <= 0xbf) {
-        valid++;
-        i += 4;
-      } else i++;
-    } else i++;
-  }
-  return total > 0 ? valid / total : 1;
-}
-
-function decodeSmart(bytes: Uint8Array, encoding: number): string {
-  const declared = encoding === 0 ? null : decodeText(bytes, encoding);
-  const declaredOk = declared !== null && !looksGarbled(declared);
-  // Trust an explicit clean declared decode for UTF-8 / CJK encodings.
-  if (declaredOk && (encoding === 65001 || encoding === 936 || encoding === 949 || encoding === 950 || encoding === 932)) {
-    return declared;
-  }
-  // Unknown or CP1252-declared: probe the raw bytes. Threshold 0.8 —
-  // PalmDoc-decompressed records keep some stray control bytes, so a
-  // real UTF-8 body can score as low as 0.85; GBK/CP1252 bodies stay
-  // well below 0.8.
-  if (utf8Ratio(bytes) > 0.8) {
-    return new TextDecoder('utf-8').decode(bytes);
-  }
-  const g = new TextDecoder('gbk').decode(bytes);
-  if (hasCJK(g) && !looksGarbled(g)) return g;
-  for (const enc of ['shift_jis', 'big5']) {
-    try {
-      const alt = new TextDecoder(enc).decode(bytes);
-      if (hasCJK(alt) && !looksGarbled(alt)) return alt;
-    } catch {
-      // ignore unsupported encodings
-    }
-  }
-  return declared ?? new TextDecoder('windows-1252').decode(bytes);
-}
-
-function sniffMime(b: Uint8Array): string {
-  if (b.length > 8 && b[0] === 0x89 && b[1] === 0x50 && b[2] === 0x4e && b[3] === 0x47) return 'image/png';
-  if (b.length > 6 && b[0] === 0x47 && b[1] === 0x49 && b[2] === 0x46) return 'image/gif';
-  if (b.length > 3 && b[0] === 0xff && b[1] === 0xd8) return 'image/jpeg';
-  return 'image/jpeg';
-}
-
-// ---------- mobi file parsing ----------
+// ---------- mobi parsing via foliate-js ----------
+// foliate-js implements a complete Mobipocket / KF8 (AZW3) parser:
+// standard PalmDOC LZ77 decompression, Huff/CDIC, combo MOBI/KF8 files,
+// trailing-entries handling and charset detection (UTF-8 / CP1252 / GBK ...).
+// Each `section` corresponds to one `<mbp:pagebreak>` slice; we load every
+// section's fully-resolved HTML document (embedded images already replaced
+// with blob URLs) and concatenate their bodies into one scrollable stream.
 async function parseMobi(buf: ArrayBuffer): Promise<ParsedMobi> {
-  const dv = new DataView(buf);
-  const numRecords = dv.getUint16(76, false);
-  const recList = 78;
-  const recOffsets: number[] = [];
-  const recAttrs: number[] = [];
-  for (let i = 0; i < numRecords; i++) {
-    recOffsets.push(dv.getUint32(recList + i * 8, false));
-    recAttrs.push(dv.getUint8(recList + i * 8 + 4));
+  const mobi = new MOBI({unzlib} as never);
+  const book = await mobi.open(new Blob([buf]));
+  const title = (book as {metadata?: {title?: string}}).metadata?.title ?? '';
+  const parts: string[] = [];
+  for (const s of (book as {sections: Array<{load: () => Promise<string>}>}).sections) {
+    const url = await s.load();
+    const resp = await fetch(url);
+    const html = await resp.text();
+    const doc = new DOMParser().parseFromString(html, 'text/html');
+    // keep the injected default stylesheet (blockquote margins etc.) and the
+    // section body; drop scripts and the outer html wrapper
+    const head = doc.head;
+    const styles = head ? Array.from(head.querySelectorAll('style,link[rel="stylesheet"]')).map((n) => n.outerHTML).join('') : '';
+    const body = doc.body;
+    if (body) parts.push(styles + body.innerHTML);
   }
-  const rec0End = numRecords > 1 ? recOffsets[1] : buf.byteLength;
-  const rec0 = new Uint8Array(buf, recOffsets[0], rec0End - recOffsets[0]);
-
-  // find MOBI magic in record 0
-  let mobiOff = -1;
-  for (let i = 0; i < rec0.length - 4; i++) {
-    if (rec0[i] === 0x4d && rec0[i + 1] === 0x4f && rec0[i + 2] === 0x42 && rec0[i + 3] === 0x49) {
-      mobiOff = i;
-      break;
-    }
-  }
-  if (mobiOff < 0) throw new Error('不是有效的 MOBI 文件');
-  const base = recOffsets[0] + mobiOff;
-  const headerLen = dv.getUint32(base + 4, false);
-  const encoding = dv.getUint16(base + 12, false);
-  const fullNameOff = dv.getUint32(base + 84, false);
-  const fullNameLen = dv.getUint32(base + 88, false);
-  const firstImage = dv.getUint32(base + 92, false);
-  const exthFlags = dv.getUint32(base + 112, false);
-  const firstContent = dv.getUint32(base + 168, false);
-  const lastContent = dv.getUint32(base + 172, false);
-
-  let title = '';
-  if (fullNameLen > 0 && fullNameOff + fullNameLen <= rec0.length) {
-    title = decodeSmart(rec0.subarray(fullNameOff, fullNameOff + fullNameLen), encoding);
-    // reject garbage titles (control / replacement chars) → empty so the
-    // caller falls back to the real book title from the database
-    if (/[\x00-\x08\x0b\x0c\x0e-\x1f\ufffd]/.test(title)) title = '';
-  }
-
-  // EXTH end = start of text in record 0
-  let exthEnd = headerLen;
-  if (exthFlags & 0x40 && mobiOff + exthEnd + 4 <= rec0.length) {
-    const s = mobiOff + exthEnd;
-    if (String.fromCharCode(rec0[s], rec0[s + 1], rec0[s + 2], rec0[s + 3]) === 'EXTH') {
-      exthEnd += dv.getUint32(base + headerLen + 4, false);
-    }
-  }
-  let textStart = mobiOff + exthEnd;
-  if (textStart < 0 || textStart > rec0.length) textStart = 0;
-
-  // decompress text records. Some real-world books have firstContent/
-  // lastContent = 0 (meaning "unknown") but do have an image section; we must
-  // stop before the first image record, otherwise hundreds of binary JPEG
-  // records get decoded as text (garbage + slow).
-  const textParts: Uint8Array[] = [];
-  const rec0Text = rec0.subarray(textStart);
-  if (rec0Text.length > 0) textParts.push(rec0Text);
-  // Accumulated whole-book text stream: PalmDoc back-references in these
-  // books sometimes point into earlier records (or record-0 padding).
-  const palmCtx: number[] = Array.from(rec0Text);
-
-  const hasImages = firstImage > 0 && firstImage < numRecords;
-  const last =
-    lastContent || firstContent || (hasImages ? firstImage - 1 : numRecords - 1);
-  const lastClamped = Math.min(Math.max(last, 1), numRecords - 1);
-  for (let r = Math.max(1, firstContent); r <= lastClamped; r++) {
-    if (r >= numRecords) break;
-    const off = recOffsets[r];
-    const end = r + 1 < numRecords ? recOffsets[r + 1] : buf.byteLength;
-    const rec = new Uint8Array(buf, off, end - off);
-    let data: Uint8Array;
-    if (recAttrs[r] & 0x02) {
-      data = palmDocDecompress(rec, palmCtx);
-    } else if (rec.length > 2 && rec[0] === 0x78) {
-      data = await zlibDecompress(rec);
-    } else {
-      // attr says raw, but many real-world MOBI omit the PalmDoc flag while
-      // the records are actually PalmDoc-compressed. Detect it by trying a
-      // decompress and keeping it only if it clearly improves UTF-8 validity
-      // (plain UTF-8/GBK text decompressed "accidentally" stays garbage).
-      const rawRatio = utf8Ratio(rec);
-      if (rawRatio < 0.9) {
-        const d = palmDocDecompress(rec, palmCtx);
-        const dRatio = d.length > 0 ? utf8Ratio(d) : 0;
-        if (dRatio > rawRatio + 0.15 && dRatio > 0.85) {
-          data = d;
-        } else {
-          data = rec;
-        }
-      } else {
-        data = rec;
-      }
-    }
-    textParts.push(data);
-    for (let j = 0; j < data.length; j++) palmCtx.push(data[j]);
-  }
-
-  // decode each record separately: these books mix encodings across records
-  // (e.g. ASCII markup + UTF-8 body + stray GBK fragments), so a single
-  // whole-buffer decode is wrong more often than not.
-  const text = textParts
-    .map((p) => decodeSmart(p, encoding))
-    .join('')
-    .replace(/\x00/g, '')
+  const html = parts
+    .join('<div class="mbp-pagebreak"></div>')
     .replace(/\ufffd/g, ' ')
-    .replace(/\x1b/g, '')
-    // attr=0-but-compressed books hit back-ref failures that leak HTML
-    // attribute fragments (e.g. ` epos="000"`) into text nodes; strip
-    // stray `name="value"` fragments that sit between tags only.
-    .replace(/(^|>)\s*([^<]*?)(<|$)/g, (m, a: string, mid: string, c: string) =>
-      a + mid.replace(/\s?[a-z][a-z0-9-]{0,10}\s*=\s*"[^"]{0,60}"/g, ' ') + c);
-  // mobi markup → html
-  let html = text.replace(/<mbp:pagebreak\s*\/?>/gi, '<div class="mbp-pagebreak"></div>');
-  html = html.replace(/<mbp:section\b[^>]*\/?>/gi, '<div class="mbp-section"></div>');
-
-  // inline images — use blob URLs so the browser decodes them off the main
-  // thread (base64 data URLs would block the UI for large embedded images)
-  const blobs: string[] = [];
-  html = html.replace(/<img[^>]*recindex=["']?(\d+)["']?[^>]*\/?>/gi, (m, idx: string) => {
-    const n = firstImage + parseInt(idx);
-    if (n >= 0 && n < numRecords) {
-      const off = recOffsets[n];
-      const end = n + 1 < numRecords ? recOffsets[n + 1] : buf.byteLength;
-      const rec = new Uint8Array(buf, off, end - off);
-      const imgOff = dv.getUint32(off, false) || 8;
-      const imgLen = dv.getUint32(off + 4, false) || rec.length - 8;
-      if (imgOff >= 0 && imgLen > 0 && imgOff + imgLen <= rec.length) {
-        const img = rec.subarray(imgOff, imgOff + imgLen);
-        const url = URL.createObjectURL(new Blob([img], {type: sniffMime(img)}));
-        blobs.push(url);
-        return `<img src="${url}" style="max-width:100%;" />`;
+    .replace(/\x00/g, '');
+  return {
+    title,
+    html,
+    destroy: () => {
+      try {
+        (book as {destroy?: () => void}).destroy?.();
+      } catch {
+        // ignore
       }
-    }
-    return '';
-  });
-
-  return {title, html, totalChars: html.length, blobs};
+    },
+  };
 }
 
 // ---------- component ----------
@@ -374,7 +106,7 @@ const ReaderMobi = forwardRef<ReaderHandle, Props>(function ReaderMobi(
         if (!container || !inner) return;
 
         // Render large books in chunks so the UI stays responsive: setting a
-        // 10-15 MB HTML string via innerHTML blocks the main thread for
+        // multi-MB HTML string via innerHTML blocks the main thread for
         // seconds. Each 1 MB chunk is parsed into a fragment and appended,
         // yielding to the event loop between chunks.
         const html = parsed.html;
@@ -425,9 +157,10 @@ const ReaderMobi = forwardRef<ReaderHandle, Props>(function ReaderMobi(
     return () => {
       alive = false;
       if (innerRef.current) innerRef.current.innerHTML = '';
-      if (parsedRef.current?.blobs?.length) {
-        for (const u of parsedRef.current.blobs) URL.revokeObjectURL(u);
-        parsedRef.current.blobs = [];
+      try {
+        parsedRef.current?.destroy?.();
+      } catch {
+        // ignore
       }
       if (noteAnchorRef.current) noteAnchorRef.current.remove();
     };

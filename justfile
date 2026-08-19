@@ -44,7 +44,7 @@ test-go:
 
 # JS 端 MOBI 解析器验证
 test-js:
-    cd {{app}} && {{node}} scripts/test-mobi-parser.js
+    cd {{app}}/frontend && {{node}} scripts/test-mobi-parser.cjs
 
 # 前端 UI 冒烟测试（需 Edge + playwright-core）
 ui-test:

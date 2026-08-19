@@ -175,13 +175,6 @@ export default function App() {
   }, [loadBooks, loadTags, loadStats]);
 
   const openBook = useCallback((b: Book) => {
-    const fmt = (b.format || '').toLowerCase();
-    // mobi / azw3 are opened with the external kkfileview preview instead of
-    // the built-in reader (built-in decoder cannot fully recover these files).
-    if (fmt === 'mobi' || fmt === 'azw3') {
-      Backend.OpenWithKKFileView(b.id).catch(() => {});
-      return;
-    }
     setSt((s) => ({...s, reading: b, detailBook: null}));
   }, []);
 
@@ -298,11 +291,6 @@ export default function App() {
             onOpen={() => {
               const b = st.detailBook;
               if (!b) return;
-              const fmt = (b.format || '').toLowerCase();
-              if (fmt === 'mobi' || fmt === 'azw3') {
-                Backend.OpenWithKKFileView(b.id).catch(() => {});
-                return;
-              }
               setSt((s) => ({...s, reading: b, detailBook: null}));
             }}
             onMisrecord={() => {
