@@ -1,15 +1,14 @@
 # build output
-build/bin
-build/windows/installer/*.exe
+src/build/bin
+src/build/windows/installer/*.exe
 release/
 
 # frontend
-frontend/node_modules
-frontend/dist
+src/frontend/node_modules
+src/frontend/dist
 
 # app data (sqlite db, covers)
-data/
-testdata/
+src/data/
 
 # misc
 *.log

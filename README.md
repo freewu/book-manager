@@ -1,6 +1,6 @@
 # 书架 · 本地电子书管理
 
-基于 **Wails v2 + React + Vite** 的本地电子书管理应用，数据全部保存在本地 SQLite 数据库中（`./data/book.db`）。
+基于 **Wails v2 + React + Vite** 的本地电子书管理应用，数据全部保存在本地 SQLite 数据库中（`src/build/bin/data/book.db`）。
 
 当前版本：**v0.1.0**
 
@@ -33,11 +33,11 @@
 ```bash
 just setup    # 安装前端依赖
 just dev      # 开发模式（热重载）
-just build    # 构建生产版本（build/bin/book-manager.exe）
+just build    # 构建生产版本（src/build/bin/book-manager.exe）
 just release  # 发布构建 → release/book-manager.exe
 just test     # 全部测试（Go 后端 + JS 解析器 + UI 冒烟）
 just ui-test  # 前端 UI 冒烟测试（需 Edge + playwright-core）
-just icon     # 从 logo.png 重新生成应用图标（logo.png → appicon.png / icon.ico）
+just icon     # 从 asserts/logo.png 重新生成应用图标（→ build/appicon.png / icon.ico）
 just fmt      # Go 格式化 + 静态检查
 just push "message"  # 提交并推送（中文 message）
 ```
@@ -47,16 +47,16 @@ just push "message"  # 提交并推送（中文 message）
 ### 测试
 
 ```bash
-just test-go   # Go 后端单元测试（internal/...）
-just test-js   # JS 端 MOBI 解析器验证（scripts/test-mobi-parser.js）
+just test-go   # Go 后端单元测试（src/internal/...）
+just test-js   # JS 端 MOBI 解析器验证（src/scripts/test-mobi-parser.js）
 just ui-test   # UI 冒烟测试：真实浏览器（headless Edge）加载前端，验证各弹窗与 EPUB 渲染
 ```
 
 ## 数据存储
 
-- 数据库：`./data/book.db`（SQLite，可通过环境变量 `BOOKMANAGER_DATA_DIR` 覆盖目录）
-- 封面缓存：`./data/covers/`
-- Git 中不保留任何用户数据（`data/` 已在 `.gitignore`）
+- 数据库：`src/build/bin/data/book.db`（SQLite，可通过环境变量 `BOOKMANAGER_DATA_DIR` 覆盖目录）
+- 封面缓存：`src/build/bin/data/covers/`
+- Git 中不保留任何用户数据（`src/data/` 已在 `.gitignore`）
 
 ## 已知问题与规避
 

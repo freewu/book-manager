@@ -35,26 +35,28 @@ just push "feat: xxx"   # 提交并推送
 - 项目在 WSL 中开发，Go / Node / Wails 使用 Windows 侧工具链：
   `go.exe`、`node.exe`、`npm.cmd`、`wails.exe`（位于 `/mnt/c/Users/24358/go/bin`）。
 - SQLite 用 `modernc.org/sqlite`（纯 Go，无 CGO），Windows 构建无需额外工具链。
-- 数据存储在应用目录 `./data/book.db`（可用环境变量 `BOOKMANAGER_DATA_DIR` 覆盖）。
+- 数据存储在应用目录 `src/build/bin/data/book.db`（基于 exe 路径，可用环境变量 `BOOKMANAGER_DATA_DIR` 覆盖）。
 - **白屏规避**：`main.go` 中 `Windows.WebviewGpuIsDisabled: true` 必须保留。
   移除后本机新版 WebView2 + GPU 会不重绘（窗口只剩背景色）。测试过真实 exe 才能确认渲染正常。
-- 版本号唯一来源是根目录 `version.go` 的 `const Version`；发版时改它并重新 `just release`。
+- 版本号唯一来源是 `src/version.go` 的 `const Version`；发版时改它并重新 `just release`。
 
 ## 项目结构速览
 
 ```
-app.go / main.go / bindings_*.go   # Wails 入口 + 前端绑定方法
-internal/{db,parser,scanner,douban,models}  # 后端逻辑
-frontend/src/components/            # React 组件（书架/阅读器/弹窗）
-cmd/genlogo                         # logo 与图标生成
-cmd/verify                          # 扫描管线端到端验证
-justfile                            # 常用命令
+src/
+  app.go / main.go / bindings_*.go   # Wails 入口 + 前端绑定方法
+  internal/{db,parser,scanner,douban,models}  # 后端逻辑
+  frontend/src/components/            # React 组件（书架/阅读器/弹窗）
+  cmd/genlogo                         # logo 与图标生成
+  cmd/verify                          # 扫描管线端到端验证
+  wails.json                          # Wails 构建配置
+justfile                            # 常用命令（内部均 cd src 执行）
 ```
 
 ## 注意事项
 
-- 修改 `frontend/wailsjs/` 下的生成文件时需同步重新生成绑定（`wails dev/build` 会自动处理）。
-- 阅读器 JS 端有独立的 MOBI 解析逻辑（`frontend/src/components/ReaderMobi.tsx`），
-  修改后需跑 `just test-js` 验证（对应 `scripts/test-mobi-parser.js`）。
-- 豆瓣抓取逻辑改动需保持 `internal/douban` 测试通过（含离线 HTML 样例）。
+- 修改 `src/frontend/wailsjs/` 下的生成文件时需同步重新生成绑定（`wails dev/build` 会自动处理）。
+- 阅读器 JS 端有独立的 MOBI 解析逻辑（`src/frontend/src/components/ReaderMobi.tsx`），
+  修改后需跑 `just test-js` 验证（对应 `src/scripts/test-mobi-parser.js`）。
+- 豆瓣抓取逻辑改动需保持 `src/internal/douban` 测试通过（含离线 HTML 样例）。
 - 验证白屏修复：`just release` 后用真实 exe 启动并截屏检查（像素方差 > 0）。

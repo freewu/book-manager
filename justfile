@@ -9,27 +9,30 @@ go := "go.exe"
 node := "node.exe"
 npm := "npm.cmd"
 
+# Go 源码目录（main 包 + go.mod + wails.json 所在处）
+app := "src"
+
 # 默认: 显示可用命令
 default:
     @just --list
 
 # 安装前端依赖
 setup:
-    cd frontend && {{npm}} install
+    cd {{app}}/frontend && {{npm}} install
 
 # 开发模式（热重载）
 dev:
-    {{wails}} dev
+    cd {{app}} && {{wails}} dev
 
 # 生产构建（Windows exe）
 build:
-    {{wails}} build
+    cd {{app}} && {{wails}} build
 
 # 发布构建：产出 ./release/book-manager.exe
 release:
-    {{wails}} build
+    cd {{app}} && {{wails}} build
     mkdir -p release
-    cp build/bin/book-manager.exe release/book-manager.exe
+    cp {{app}}/build/bin/book-manager.exe release/book-manager.exe
     @echo "✔ 发布产物: release/book-manager.exe"
 
 # 运行全部测试（Go 后端 + JS 解析器 + UI 冒烟）
@@ -37,24 +40,24 @@ test: test-go test-js
 
 # Go 后端测试
 test-go:
-    {{go}} test ./internal/...
+    cd {{app}} && {{go}} test ./internal/...
 
 # JS 端 MOBI 解析器验证
 test-js:
-    {{node}} scripts/test-mobi-parser.js
+    cd {{app}} && {{node}} scripts/test-mobi-parser.js
 
 # 前端 UI 冒烟测试（需 Edge + playwright-core）
 ui-test:
-    cd frontend && {{node}} ui-smoke.cjs
+    cd {{app}}/frontend && {{node}} ui-smoke.cjs
 
 # 重新生成 logo 与各平台图标（logo.png → appicon.png / icon.ico）
 icon:
-    {{go}} run ./cmd/genlogo
+    cd {{app}} && {{go}} run ./cmd/genlogo
 
 # Go 格式化 + 静态检查
 fmt:
-    {{go}} fmt ./...
-    {{go}} vet ./...
+    cd {{app}} && {{go}} fmt ./...
+    cd {{app}} && {{go}} vet ./...
 
 # 提交并推送（message 参数: just push "feat: xxx"）
 push message="chore: update":
