@@ -25,11 +25,15 @@ dev:
     cd {{app}} && {{wails}} dev
 
 # 生产构建（Windows exe）
+# wails 的 bindings 生成阶段先于 frontend build，且 //go:embed all:frontend/dist
+# 需要目录内存在文件（embed 忽略空目录）——必须手动先构建前端
 build:
+    cd {{app}}/frontend && cmd.exe /c "npm run build"
     cd {{app}} && {{wails}} build
 
 # 发布构建：产出 ./release/book-manager.exe
 release:
+    cd {{app}}/frontend && cmd.exe /c "npm run build"
     cd {{app}} && {{wails}} build
     mkdir -p release
     cp {{app}}/build/bin/book-manager.exe release/book-manager.exe
