@@ -60,3 +60,7 @@ justfile                            # 常用命令（内部均 cd src 执行）
   修改后需跑 `just test-js` 验证（对应 `src/scripts/test-mobi-parser.js`）。
 - 豆瓣抓取逻辑改动需保持 `src/internal/douban` 测试通过（含离线 HTML 样例）。
 - 验证白屏修复：`just release` 后用真实 exe 启动并截屏检查（像素方差 > 0）。
+- 托盘图标是关窗后唯一入口，不能依赖第三方托盘库：实现见 `src/tray.go`（语言/文案）+ `src/tray_windows.go`
+  （自建 Win32 消息循环，`runtime.LockOSThread` 固定线程、`TaskbarCreated` 重注册、10s 看门狗）。
+  运行时事件写到数据目录 `tray.log`（图标注册/丢失重注册/菜单命令/退出），排查「托盘丢失」先看这个文件。
+  修改后必须在真实 exe 上验证：图标在通知区域、左右键可用、关窗后点图标能恢复窗口、托盘菜单「关闭」能退出。

@@ -54,6 +54,9 @@ func (a *App) startup(ctx context.Context) {
 }
 
 func (a *App) shutdown(ctx context.Context) {
+	// Remove the tray icon explicitly so Windows does not leave a dead
+	// (ghost) icon behind after the process exits.
+	removeTrayIcon()
 	if a.store != nil {
 		a.store.Close()
 	}

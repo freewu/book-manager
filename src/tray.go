@@ -2,14 +2,12 @@ package main
 
 import (
 	"context"
-	_ "embed"
 
-	"github.com/getlantern/systray"
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
-//go:embed build/windows/icon.ico
-var trayIcon []byte
+// Shared tray state / labels. The real Windows implementation lives in
+// tray_windows.go (own message loop, watchdog, native menu).
 
 var (
 	appCtx   context.Context
@@ -17,138 +15,51 @@ var (
 	trayApp  *App
 )
 
-// Tray menu labels per language.
+// Language order used by the tray language submenu.
+var (
+	trayLangCodes = [3]string{"zh-CN", "zh-TW", "en"}
+	trayLangNames = [3]string{"简体中文", "繁體中文", "English"}
+)
+
+// trayLabels are the localized tray menu labels.
 type trayLabels struct {
-	show    string
-	quit    string
-	lang    string
-	version string
-	langs   [3]string
+	show string
+	quit string
+	lang string
 }
 
 func labelsFor(lang string) trayLabels {
-	names := [3]string{"简体中文", "繁體中文", "English"}
-	// mark the active language
-	active := map[string]int{"zh-CN": 0, "zh-TW": 1, "en": 2}[lang]
-	for i := range names {
-		if i == active {
-			names[i] = "✓ " + names[i]
-		}
-	}
 	switch lang {
 	case "zh-TW":
-		return trayLabels{show: "顯示主界面", quit: "關閉", lang: "語言", version: "版本信息", langs: names}
+		return trayLabels{show: "顯示主界面", quit: "關閉", lang: "語言"}
 	case "en":
-		return trayLabels{show: "Show main window", quit: "Close", lang: "Language", version: "About", langs: names}
+		return trayLabels{show: "Show main window", quit: "Close", lang: "Language"}
 	default: // zh-CN
-		return trayLabels{show: "显示主界面", quit: "关闭", lang: "语言", version: "版本信息", langs: names}
+		return trayLabels{show: "显示主界面", quit: "关闭", lang: "语言"}
 	}
 }
 
-var (
-	trayShowItem    *systray.MenuItem
-	trayQuitItem    *systray.MenuItem
-	trayLangItem    *systray.MenuItem
-	trayVersionItem *systray.MenuItem
-	trayLangMenu    [3]*systray.MenuItem
-)
-
-// startTray launches the system tray icon + menu in a background goroutine.
-// The close button hides to tray, so the tray "退出" is the only way to quit.
-func startTray(a *App) {
-	appCtx = a.ctx
-	showMain = a.showMainWindow
-	trayApp = a
-	go systray.Run(onTrayReady, onTrayExit)
-}
-
-func onTrayReady() {
-	systray.SetIcon(trayIcon)
-	systray.SetTitle("book-manager")
-	systray.SetTooltip("book-manager")
-
-	lang := trayApp.config.Get("language")
-
-	trayVersionItem = systray.AddMenuItem("book-manager "+Version, "book-manager "+Version)
-	trayShowItem = systray.AddMenuItem("显示主界面", "显示主界面")
-	trayLangItem = systray.AddMenuItem("语言", "语言")
-	trayLangMenu[0] = trayLangItem.AddSubMenuItem("简体中文", "简体中文")
-	trayLangMenu[1] = trayLangItem.AddSubMenuItem("繁體中文", "繁體中文")
-	trayLangMenu[2] = trayLangItem.AddSubMenuItem("English", "English")
-	systray.AddSeparator()
-	trayQuitItem = systray.AddMenuItem("关闭", "关闭 book-manager")
-
-	updateTrayLanguage(lang)
-
-	go func() {
-		for {
-			select {
-			case <-trayShowItem.ClickedCh:
-				if showMain != nil {
-					showMain()
-				}
-			case <-trayLangMenu[0].ClickedCh:
-				switchTrayLanguage("zh-CN")
-			case <-trayLangMenu[1].ClickedCh:
-				switchTrayLanguage("zh-TW")
-			case <-trayLangMenu[2].ClickedCh:
-				switchTrayLanguage("en")
-			case <-trayVersionItem.ClickedCh:
-				if appCtx != nil {
-					// 点击跳转到 GitHub 项目页
-					runtime.BrowserOpenURL(appCtx, "https://github.com/freewu/book-manager")
-				}
-			case <-trayQuitItem.ClickedCh:
-				systray.Quit()
-			}
-		}
-	}()
-}
-
-// switchTrayLanguage persists the chosen language and notifies the frontend.
+// switchTrayLanguage persists the chosen language, updates the tray menu and
+// notifies the frontend so it re-renders with the new language.
 func switchTrayLanguage(lang string) {
 	if trayApp == nil {
 		return
 	}
 	_ = trayApp.config.Set("language", lang)
-	updateTrayLanguage(lang)
-	// Tell the frontend to reload settings (re-render with new language).
+	setTrayLang(lang)
 	if appCtx != nil {
 		runtime.EventsEmit(appCtx, "settings:changed", lang)
 	}
 }
 
-// updateTrayLanguage re-labels the tray menu for the given language.
+// updateTrayLanguage is called when the language setting changes from the UI.
 func updateTrayLanguage(lang string) {
-	l := labelsFor(lang)
-	if trayShowItem != nil {
-		trayShowItem.SetTitle(l.show)
-		trayShowItem.SetTooltip(l.show)
-	}
-	if trayLangItem != nil {
-		trayLangItem.SetTitle(l.lang)
-		trayLangItem.SetTooltip(l.lang)
-	}
-	for i, it := range trayLangMenu {
-		if it != nil {
-			it.SetTitle(l.langs[i])
-			it.SetTooltip(l.langs[i])
-		}
-	}
-	if trayQuitItem != nil {
-		trayQuitItem.SetTitle(l.quit)
-		trayQuitItem.SetTooltip(l.quit)
-	}
-	if trayVersionItem != nil {
-		trayVersionItem.SetTitle("book-manager " + Version)
-		trayVersionItem.SetTooltip("book-manager " + Version)
-	}
+	setTrayLang(lang)
 }
 
-// onTrayExit is invoked after systray.Quit(); it terminates the app.
-func onTrayExit() {
-	if appCtx != nil {
-		quitting.Store(true)
-		runtime.Quit(appCtx)
-	}
+// trayAvailable reports whether the tray icon is currently registered with the
+// shell. When it is not, closing the window must quit instead of hiding to a
+// tray icon that the user cannot reach.
+func trayAvailable() bool {
+	return trayIconRegistered()
 }

@@ -42,6 +42,12 @@ func main() {
 			if quitting.Load() {
 				return false // real quit from the tray 关闭 menu item
 			}
+			// Never hide into a tray icon that is not there: if the icon is not
+			// registered the window would be unreachable.
+			if !trayAvailable() {
+				quitting.Store(true)
+				return false
+			}
 			// close button → hide to tray; the tray 关闭 menu is the way to quit
 			app.hideToTray()
 			return true
