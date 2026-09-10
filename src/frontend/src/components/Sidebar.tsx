@@ -22,6 +22,7 @@ const NAV: {key: Page; icon: string; labelKey: string; hint?: (s: Stats | null) 
     hint: (s) => (s && s.reading_books > 0 ? String(s.reading_books) : null),
   },
   {key: 'stats', icon: '📊', labelKey: 'nav.stats'},
+  {key: 'tools', icon: '🧰', labelKey: 'nav.tools'},
   {key: 'settings', icon: '⚙️', labelKey: 'nav.settings'},
 ];
 

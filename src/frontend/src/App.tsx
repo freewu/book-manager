@@ -8,6 +8,7 @@ import Sidebar from './components/Sidebar';
 import Bookshelf from './components/Bookshelf';
 import ReadingPage from './components/ReadingPage';
 import StatsPage from './components/StatsPage';
+import ToolsPage from './components/ToolsPage';
 import SettingsPage from './components/SettingsPage';
 import ScanDialog from './components/ScanDialog';
 import BookDetail from './components/BookDetail';
@@ -16,7 +17,7 @@ import MisrecordManager from './components/MisrecordManager';
 import Reader from './components/Reader';
 import {useToast} from './components/Toast';
 
-export type Page = 'bookshelf' | 'reading' | 'stats' | 'settings';
+export type Page = 'bookshelf' | 'reading' | 'stats' | 'tools' | 'settings';
 
 interface AppState {
   page: Page;
@@ -257,6 +258,14 @@ export default function App() {
                 <StatsPage
                   stats={st.stats}
                   onOpen={openBook}
+                  onMisrecords={() => setSt((s) => ({...s, showMisrecords: true}))}
+                />
+              )}
+              {st.page === 'tools' && (
+                <ToolsPage
+                  misrecords={st.stats?.total_misrecords ?? 0}
+                  onScan={() => setSt((s) => ({...s, showScan: true}))}
+                  onTags={() => setSt((s) => ({...s, showTags: true}))}
                   onMisrecords={() => setSt((s) => ({...s, showMisrecords: true}))}
                 />
               )}

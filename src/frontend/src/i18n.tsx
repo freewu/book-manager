@@ -23,6 +23,7 @@ const DICT: Dict = {
   'nav.bookshelf': {'zh-CN': '书架', 'zh-TW': '書架', 'en': 'Bookshelf'},
   'nav.reading': {'zh-CN': '阅读', 'zh-TW': '閱讀', 'en': 'Reading'},
   'nav.stats': {'zh-CN': '统计', 'zh-TW': '統計', 'en': 'Stats'},
+  'nav.tools': {'zh-CN': '工具', 'zh-TW': '工具', 'en': 'Tools'},
   'nav.settings': {'zh-CN': '设置', 'zh-TW': '設定', 'en': 'Settings'},
   'sidebar.subtitle': {'zh-CN': '本地电子书管理', 'zh-TW': '本地電子書管理', 'en': 'Local e-book manager'},
   'sidebar.collapse': {'zh-CN': '收起侧栏', 'zh-TW': '收起側欄', 'en': 'Collapse sidebar'},
@@ -103,6 +104,23 @@ const DICT: Dict = {
   'stats.count': {'zh-CN': '{n} 本', 'zh-TW': '{n} 本', 'en': '{n}'},
   'stats.recent': {'zh-CN': '最近阅读', 'zh-TW': '最近閱讀', 'en': 'Recently read'},
   'stats.sessions': {'zh-CN': '阅读记录', 'zh-TW': '閱讀紀錄', 'en': 'Reading sessions'},
+
+  // ---- tools page ----
+  'tools.title': {'zh-CN': '工具', 'zh-TW': '工具', 'en': 'Tools'},
+  'tools.open': {'zh-CN': '打开', 'zh-TW': '開啟', 'en': 'Open'},
+  'tools.scan': {'zh-CN': '扫描书库', 'zh-TW': '掃描書庫', 'en': 'Scan library'},
+  'tools.scanDesc': {'zh-CN': '扫描本地目录，把新增的电子书加入书架', 'zh-TW': '掃描本機目錄，把新增的電子書加入書架', 'en': 'Scan local folders and add new e-books to the shelf'},
+  'tools.tags': {'zh-CN': '标签管理', 'zh-TW': '標籤管理', 'en': 'Tag manager'},
+  'tools.tagsDesc': {'zh-CN': '新建 / 重命名 / 删除标签，用于书架筛选', 'zh-TW': '新增 / 重新命名 / 刪除標籤，用於書架篩選', 'en': 'Create / rename / delete tags used for shelf filtering'},
+  'tools.misrecords': {'zh-CN': '误录管理', 'zh-TW': '誤錄管理', 'en': 'Misrecord manager'},
+  'tools.misrecordsDesc': {'zh-CN': '查看并恢复被标记为误录的文件', 'zh-TW': '檢視並還原被標記為誤錄的檔案', 'en': 'Review and restore files marked as misrecords'},
+  'tools.douban': {'zh-CN': '豆瓣补全', 'zh-TW': '豆瓣補全', 'en': 'Douban enrichment'},
+  'tools.doubanDesc': {'zh-CN': '为缺少评分 / 封面的书批量获取豆瓣信息', 'zh-TW': '為缺少評分 / 封面的書批次取得豆瓣資訊', 'en': 'Batch-fetch Douban info for books missing ratings / covers'},
+  'tools.doubanSync': {'zh-CN': '开始同步', 'zh-TW': '開始同步', 'en': 'Start sync'},
+  'tools.doubanSyncing': {'zh-CN': '同步中...', 'zh-TW': '同步中...', 'en': 'Syncing...'},
+  'tools.doubanProgress': {'zh-CN': '同步进度', 'zh-TW': '同步進度', 'en': 'Sync progress'},
+  'tools.dataDir': {'zh-CN': '数据目录', 'zh-TW': '資料目錄', 'en': 'Data directory'},
+  'tools.dataDirDesc': {'zh-CN': 'book.db 与封面缓存（./data/.image/）所在位置', 'zh-TW': 'book.db 與封面快取（./data/.image/）所在位置', 'en': 'Where book.db and the cover cache (./data/.image/) live'},
 
   // ---- settings page ----
   'settings.title': {'zh-CN': '设置', 'zh-TW': '設定', 'en': 'Settings'},
