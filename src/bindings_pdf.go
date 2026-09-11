@@ -11,12 +11,13 @@ import (
 	"bookmanager/internal/util"
 )
 
-// PDF 工具的后端绑定（前端 src/frontend/src/tools/pdf-password/）。
+// PDF 工具的后端绑定（前端 src/frontend/src/tools/pdf-password/、tools/pdf-unlock/）。
 //
 // 典型流程：
 //  1. PickPdfFile / 书架右键拿到文件路径
 //  2. PdfInspect 看是否已加密（已加密且密码不对 → needs_password=true）
-//  3. SetPdfPassword 写入新密码（已加密的文件需要先给出当前密码）
+//  3. SetPdfPassword 写入新密码 / RemovePdfPassword 清除密码
+//     （已加密的文件两者都需要先给出当前密码）
 
 // PickPdfFile opens a native file picker limited to PDF files.
 func (a *App) PickPdfFile() (string, error) {
@@ -54,21 +55,9 @@ func (a *App) PdfInspect(path, password string) (models.PdfFileInfo, error) {
 // SetPdfPassword protects a PDF with a user (open) password. The file is
 // replaced only when the new file has been written completely.
 func (a *App) SetPdfPassword(opts models.PdfProtectOptions) (models.PdfFileInfo, error) {
-	var book *models.Book
-	path := strings.TrimSpace(opts.Path)
-	if opts.BookID > 0 {
-		b, err := a.store.GetBook(opts.BookID)
-		if err != nil {
-			return models.PdfFileInfo{}, err
-		}
-		if !strings.EqualFold(b.Format, "pdf") {
-			return models.PdfFileInfo{}, errors.New("not a pdf book")
-		}
-		book = b
-		path = b.Path
-	}
-	if path == "" {
-		return models.PdfFileInfo{}, errors.New("no pdf file selected")
+	path, book, err := a.resolvePdfTarget(opts)
+	if err != nil {
+		return models.PdfFileInfo{}, err
 	}
 	if opts.UserPassword == "" {
 		return models.PdfFileInfo{}, errors.New("user password must not be empty")
@@ -92,13 +81,63 @@ func (a *App) SetPdfPassword(opts models.PdfProtectOptions) (models.PdfFileInfo,
 		return out, err
 	}
 
-	// 书架里的书被就地改写了，刷新 size / hash 以免后续扫描对不上。
-	if book != nil {
-		size, _ := util.FileSize(path)
-		hash, _ := util.HashFile(path)
-		_ = a.store.UpdateBookFileFacts(book.ID, size, hash)
-	}
+	a.refreshBookFileFacts(book, path)
 	return out, nil
+}
+
+// RemovePdfPassword strips the open password from a PDF, so that it can be
+// read without typing anything. Encrypted files need the current password.
+func (a *App) RemovePdfPassword(opts models.PdfProtectOptions) (models.PdfFileInfo, error) {
+	path, book, err := a.resolvePdfTarget(opts)
+	if err != nil {
+		return models.PdfFileInfo{}, err
+	}
+
+	info, err := pdfcrypt.Remove(path, opts.CurrentPassword)
+	out := pdfInfoToModel(info)
+	if err != nil {
+		if errors.Is(err, pdfcrypt.ErrPasswordRequired) {
+			out.NeedsPassword = true
+			return out, nil
+		}
+		return out, err
+	}
+
+	a.refreshBookFileFacts(book, path)
+	return out, nil
+}
+
+// resolvePdfTarget resolves the file a PDF tool works on: a book from the shelf
+// (BookID > 0 uses the path stored on the book, Path is ignored) or a plain
+// path. The returned book is non-nil only for the shelf case, where the caller
+// has to refresh the stored file facts after an in-place rewrite.
+func (a *App) resolvePdfTarget(opts models.PdfProtectOptions) (string, *models.Book, error) {
+	if opts.BookID > 0 {
+		b, err := a.store.GetBook(opts.BookID)
+		if err != nil {
+			return "", nil, err
+		}
+		if !strings.EqualFold(b.Format, "pdf") {
+			return "", nil, errors.New("not a pdf book")
+		}
+		return b.Path, b, nil
+	}
+	path := strings.TrimSpace(opts.Path)
+	if path == "" {
+		return "", nil, errors.New("no pdf file selected")
+	}
+	return path, nil, nil
+}
+
+// refreshBookFileFacts refreshes size / hash of a book whose file was rewritten
+// in place, so that later scans still recognise it.
+func (a *App) refreshBookFileFacts(book *models.Book, path string) {
+	if book == nil {
+		return
+	}
+	size, _ := util.FileSize(path)
+	hash, _ := util.HashFile(path)
+	_ = a.store.UpdateBookFileFacts(book.ID, size, hash)
 }
 
 // pdfInfoToModel converts the pdfcrypt result into the JSON shape the UI uses.

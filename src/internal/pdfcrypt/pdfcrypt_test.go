@@ -184,6 +184,96 @@ func TestProtectChangePasswordOfEncryptedFile(t *testing.T) {
 	}
 }
 
+func TestRemovePassword(t *testing.T) {
+	path := writeSample(t)
+	if _, err := Protect(path, Options{UserPassword: "pw", Strength: StrengthAES256}); err != nil {
+		t.Fatalf("protect: %v", err)
+	}
+
+	// wrong / missing current password: the file must stay encrypted
+	if _, err := Remove(path, "nope"); !errors.Is(err, ErrPasswordRequired) {
+		t.Fatalf("wrong password: err = %v, want ErrPasswordRequired", err)
+	}
+	if _, err := Remove(path, ""); !errors.Is(err, ErrPasswordRequired) {
+		t.Fatalf("empty password: err = %v, want ErrPasswordRequired", err)
+	}
+	if _, err := Inspect(path, "pw"); err != nil {
+		t.Fatalf("file was damaged by a failed remove: %v", err)
+	}
+
+	info, err := Remove(path, "pw")
+	if err != nil {
+		t.Fatalf("remove: %v", err)
+	}
+	if info.Encrypted {
+		t.Fatalf("info still reports the file as encrypted: %+v", info)
+	}
+	if info.Pages != 1 {
+		t.Fatalf("pages = %d, want 1", info.Pages)
+	}
+
+	// no password required anymore ...
+	got, err := Inspect(path, "")
+	if err != nil {
+		t.Fatalf("inspect after remove: %v", err)
+	}
+	if got.Encrypted {
+		t.Fatal("file is still encrypted after Remove")
+	}
+
+	// ... and pdfcpu agrees
+	f, err := os.Open(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer f.Close()
+	pdfInfo, err := api.PDFInfo(f, path, nil, false, model.NewDefaultConfiguration())
+	if err != nil {
+		t.Fatalf("pdfcpu inspect: %v", err)
+	}
+	if pdfInfo.Encrypted {
+		t.Fatal("pdfcpu says the file is still encrypted")
+	}
+
+	// a second Remove on a plain file is a no-op
+	if _, err := Remove(path, ""); err != nil {
+		t.Fatalf("remove on plain file: %v", err)
+	}
+
+	entries, err := os.ReadDir(filepath.Dir(path))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, e := range entries {
+		if strings.HasPrefix(e.Name(), ".") && strings.Contains(e.Name(), ".tmp-") {
+			t.Fatalf("leftover temp file %q", e.Name())
+		}
+	}
+}
+
+func TestRemoveOwnerPasswordOnly(t *testing.T) {
+	// 仅设置所有者密码的文件：用空密码就能打开，Remove 也不该要求密码。
+	path := writeSample(t)
+	if _, err := Protect(path, Options{OwnerPassword: "owner-pw"}); err != nil {
+		t.Skipf("pdfcpu 不接受空用户密码: %v", err)
+	}
+	before, err := Inspect(path, "")
+	if err != nil {
+		t.Fatalf("inspect: %v", err)
+	}
+	if !before.Encrypted {
+		t.Skip("pdfcpu 没有把它当作加密文件")
+	}
+
+	info, err := Remove(path, "")
+	if err != nil {
+		t.Fatalf("remove with owner password: %v", err)
+	}
+	if info.Encrypted {
+		t.Fatalf("still encrypted: %+v", info)
+	}
+}
+
 func TestProtectFailureKeepsOriginal(t *testing.T) {
 	// a broken file: protection must fail and the file stay untouched
 	path := filepath.Join(t.TempDir(), "broken.pdf")

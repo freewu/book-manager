@@ -191,6 +191,25 @@ const DICT: Dict = {
   'tools.pdfPwErrEmpty': {'zh-CN': '请输入新密码', 'zh-TW': '請輸入新密碼', 'en': 'Enter the new password'},
   'tools.pdfPwErrMismatch': {'zh-CN': '两次输入的新密码不一致', 'zh-TW': '兩次輸入的新密碼不一致', 'en': 'The two passwords do not match'},
   'tools.pdfPwErrCurrent': {'zh-CN': '当前密码不正确，请重新输入', 'zh-TW': '目前密碼不正確，請重新輸入', 'en': 'The current password is wrong — please try again'},
+  // ---- PDF：清除密码 ----
+  'tools.pdfUnlock': {'zh-CN': '清除密码', 'zh-TW': '清除密碼', 'en': 'Remove password'},
+  'tools.pdfUnlockDesc': {
+    'zh-CN': '去掉 PDF 的打开密码；书架里右键 PDF 也可进入',
+    'zh-TW': '移除 PDF 的開啟密碼；書架裡右鍵 PDF 也可進入',
+    'en': 'Strip the open password of a PDF; also available from the bookshelf right-click menu',
+  },
+  'tools.pdfUnlockSubmit': {'zh-CN': '清除密码', 'zh-TW': '清除密碼', 'en': 'Remove password'},
+  'tools.pdfUnlockDone': {
+    'zh-CN': '已清除密码，现在打开该文件不再需要密码',
+    'zh-TW': '已清除密碼，現在開啟該檔案不再需要密碼',
+    'en': 'Password removed — the file now opens without one',
+  },
+  'tools.pdfUnlockPlain': {'zh-CN': '该 PDF 未加密，无需清除密码', 'zh-TW': '該 PDF 未加密，無需清除密碼', 'en': 'This PDF is not encrypted — nothing to remove'},
+  'tools.pdfUnlockHint': {
+    'zh-CN': '清除后任何人都可以打开该文件，请确认已备份或不再需要保护。',
+    'zh-TW': '清除後任何人都可以開啟該檔案，請確認已備份或不再需要保護。',
+    'en': 'Afterwards anyone can open this file — make sure you have a backup or no longer need the protection.',
+  },
   // ---- 阅读器：加密 PDF ----
   'reader.pdfPassword': {'zh-CN': '该 PDF 已加密，请输入打开密码', 'zh-TW': '該 PDF 已加密，請輸入開啟密碼', 'en': 'This PDF is encrypted — enter the password'},
   'reader.pdfPasswordWrong': {'zh-CN': '密码不正确，请重试', 'zh-TW': '密碼不正確，請重試', 'en': 'Wrong password, please try again'},

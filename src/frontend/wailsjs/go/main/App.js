@@ -154,6 +154,10 @@ export function RemoveMisrecord(arg1) {
   return window['go']['main']['App']['RemoveMisrecord'](arg1);
 }
 
+export function RemovePdfPassword(arg1) {
+  return window['go']['main']['App']['RemovePdfPassword'](arg1);
+}
+
 export function RemoveScanDir(arg1) {
   return window['go']['main']['App']['RemoveScanDir'](arg1);
 }

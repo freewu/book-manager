@@ -73,8 +73,9 @@ src/frontend/src/tools/<tool-id>/
 - 文案统一放在 `src/frontend/src/i18n.tsx`（define.ts 里只存 key），分类名用 `tools.category.*`。
 - 后端绑定按领域放在 `src/bindings_*.go`（如 PDF 工具 = `bindings_pdf.go`）。
 - 新增/改绑定后需重新生成 `src/frontend/wailsjs/`（`wails generate module` 或 `wails dev/build` 自动处理）。
-- 后端 PDF 加密逻辑在 `src/internal/pdfcrypt`（基于 pdfcpu），有单测覆盖，改完跑 `just test`。
-- UI 改动后跑 `just ui-test`：它用 playwright-core 加载 `dist/` 并对 `window.go` 打桩，覆盖书架/统计/扫描/标签/设置/书籍详情/EPUB 与加密 PDF 阅读器/工具页与 PDF 密码弹窗。
+- 后端 PDF 加密逻辑在 `src/internal/pdfcrypt`（基于 pdfcpu）：`Inspect` / `Protect`（设置密码）/ `Remove`（清除密码），都有单测，改完跑 `just test`。
+  对应两个工具：`tools/pdf-password/`（设置密码）与 `tools/pdf-unlock/`（清除密码），后端绑定都在 `bindings_pdf.go`。
+- UI 改动后跑 `just ui-test`：它用 playwright-core 加载 `dist/` 并对 `window.go` 打桩，覆盖书架/统计/扫描/标签/设置/书籍详情/EPUB 与加密 PDF 阅读器/工具页与 PDF 设置·清除密码弹窗。
   mock 里没有的绑定会回退成空操作（Proxy），所以新增绑定不会直接弄坏冒烟。
 
 ## 注意事项

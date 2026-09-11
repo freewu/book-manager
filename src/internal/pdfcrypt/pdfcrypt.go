@@ -1,8 +1,8 @@
 // Package pdfcrypt sets, changes or inspects the password of a PDF file.
 //
 // It is a thin, testable wrapper around pdfcpu's encryption API so that the UI
-// only has to deal with three verbs: "is this file encrypted?", "protect it
-// with these options" and "which files can I pick".
+// only has to deal with four verbs: "is this file encrypted?", "protect it with
+// these options", "which files can I pick" and "strip its password".
 package pdfcrypt
 
 import (
@@ -157,6 +157,37 @@ func Protect(path string, opts Options) (Info, error) {
 		return after, err
 	}
 	after.Encrypted = true
+	return after, nil
+}
+
+// Remove strips the password protection from path and returns the resulting
+// (unencrypted) info. The current password must open the file; a plain file is
+// returned unchanged. The file is rewritten in place only after pdfcpu has
+// written the complete decrypted document to a sibling temp file, so a wrong
+// password or a broken PDF leaves the original untouched.
+func Remove(path, currentPassword string) (Info, error) {
+	silencePDFCPU()
+
+	before, err := Inspect(path, currentPassword)
+	if err != nil {
+		return before, err
+	}
+	if !before.Encrypted {
+		return before, nil
+	}
+
+	conf := model.NewDefaultConfiguration()
+	conf.UserPW = currentPassword
+	conf.OwnerPW = currentPassword
+	if err := api.DecryptFile(path, path, conf); err != nil {
+		return before, translate(err)
+	}
+
+	after, err := Inspect(path, "")
+	if err != nil {
+		return after, err
+	}
+	after.Encrypted = false
 	return after, nil
 }
 

@@ -38,9 +38,14 @@ window.go = { main: { App: {
   GetVersion: async () => 'v0.1.0-test', GetSystemDarkMode: async () => false, SetUiTheme: async () => {}, AutoEnrichBook: async () => {}, GetBookDataRange: async () => '',
   KKFileAddr: async () => '', SetKKFileAddr: async () => {}, OpenWithKKFileView: async () => {},
   DoubanSearch: async () => [], FetchDouban: async (id) => ${JSON.stringify(BOOKS)}[0], EnrichBookByTitle: async () => {}, EnrichAllMissing: async () => 0, ClearDoubanInfo: async () => {}, OpenBookFolder: async () => {}, DataDir: async () => 'E:\\\\AppData',
-  PickPdfFile: async () => 'E:\\\\Books\\\\huozhe.pdf',
-  PdfInspect: async (p, pw) => ({path: p, name: 'huozhe.pdf', size: 5242880, pages: 120, title: '活着', encrypted: pw === 'secret', needs_password: false}),
+  PickPdfFile: async () => (window.__pickTarget || 'E:\\\\Books\\\\huozhe.pdf'),
+  PdfInspect: async (p, pw) => {
+    const name = String(p).split(/[\\/]/).pop();
+    const locked = name.includes('locked');
+    return {path: p, name, size: 5242880, pages: 120, title: '活着', encrypted: locked || pw === 'secret', needs_password: locked && pw !== 'secret'};
+  },
   SetPdfPassword: async (o) => ({path: o.path, name: 'huozhe.pdf', size: 5242880, pages: 120, title: '活着', encrypted: true, needs_password: false}),
+  RemovePdfPassword: async (o) => ({path: o.path, name: 'locked.pdf', size: 5242880, pages: 120, title: '活着', encrypted: false, needs_password: false}),
   OpenPath: async () => {}, DoubanRunning: async () => false, StartEnrichAll: async () => 0,
 } } };
 // 未来新增的绑定如果忘了加 mock，回退成“什么都不做”而不是报 TypeError
@@ -138,7 +143,7 @@ async function main() {
   await page.waitForTimeout(500);
   const sections = await page.locator('.page-section-title').allTextContents();
   check('tool sections = 其他/PDF', JSON.stringify(sections) === JSON.stringify(['其他', 'PDF']), JSON.stringify(sections));
-  check('tool cards = 6', (await page.locator('.tool-card').count()) === 6, await page.locator('.tool-card').count());
+  check('tool cards = 7', (await page.locator('.tool-card').count()) === 7, await page.locator('.tool-card').count());
   const cardText = (await page.locator('.tool-card').first().textContent()) || '';
   check('工具卡片无「打开 ›」动作行', !cardText.includes('打开'), cardText);
   const sameRow = await page.evaluate(() => {
@@ -186,7 +191,7 @@ async function main() {
   await page.locator('.ctx-sub').first().hover();
   await page.waitForTimeout(300);
   const subItems = await page.locator('.ctx-submenu button').allTextContents();
-  check('ctx 子菜单 = [设置密码]', subItems.length === 1 && subItems[0].includes('设置密码'), JSON.stringify(subItems));
+  check('ctx 子菜单 = [设置密码, 清除密码]', subItems.length === 2 && subItems[0].includes('设置密码') && subItems[1].includes('清除密码'), JSON.stringify(subItems));
   await page.screenshot({path: 'screens/ctx-pdf.png'});
   await page.locator('.ctx-submenu button', {hasText: '设置密码'}).first().click();
   await page.waitForTimeout(600);
@@ -196,6 +201,56 @@ async function main() {
   await page.locator('.modal-close').click();
   await page.waitForTimeout(300);
 
+  // 书架右键 PDF → PDF 工具 → 清除密码（未加密的文件给出提示）
+  await page.locator('.book-card').nth(1).click({button: 'right'});
+  await page.waitForTimeout(400);
+  await page.locator('.ctx-sub').first().hover();
+  await page.waitForTimeout(300);
+  await page.locator('.ctx-submenu button', {hasText: '清除密码'}).first().click();
+  await page.waitForTimeout(600);
+  check('清除密码弹窗', (await page.locator('.modal .modal-head h2', {hasText: '清除密码'}).count()) > 0);
+  check('未加密文件提示', (await page.locator('.tool-note.ok', {hasText: '未加密'}).count()) > 0);
+  await page.screenshot({path: 'screens/pdf-unlock-plain.png'});
+  await page.locator('.modal-close').click();
+  await page.waitForTimeout(300);
+
+  // 工具页 → 清除密码：选加密文件 → 密码错误提示 → 正确密码 → 清除成功
+  await page.evaluate(() => {
+    document.querySelectorAll('.nav-item').forEach((b) => {
+      if (b.textContent.includes('工具')) b.click();
+    });
+  });
+  await page.waitForTimeout(400);
+  await page.locator('.tool-card', {hasText: '清除密码'}).first().click();
+  await page.waitForTimeout(400);
+  await page.evaluate(() => {
+    window.__pickTarget = 'E:\\Books\\locked.pdf';
+  });
+  await page.locator('.modal .btn-soft', {hasText: '选择文件'}).click();
+  await page.waitForTimeout(500);
+  const unlockBadge = (await page.locator('.pdf-badge').first().textContent()) || '';
+  check('加密文件被识别', unlockBadge.includes('已加密'), unlockBadge);
+  const unlockErr = (await page.locator('.tool-note.err').textContent().catch(() => '')) || '';
+  check('未填当前密码提示', unlockErr.includes('当前密码不正确'), unlockErr);
+  await page.locator('.modal input[type="password"]').fill('secret');
+  await page.locator('.modal .btn-soft', {hasText: '验证'}).click();
+  await page.waitForTimeout(400);
+  check('验证后错误消失', (await page.locator('.tool-note.err').count()) === 0);
+  await page.locator('.modal-foot .btn-primary').click();
+  await page.waitForTimeout(500);
+  const unlockDone = (await page.locator('.tool-note.ok').textContent().catch(() => '')) || '';
+  check('清除密码成功', unlockDone.includes('已清除密码'), unlockDone);
+  await page.screenshot({path: 'screens/pdf-unlock.png'});
+  await page.locator('.modal-close').click();
+  await page.waitForTimeout(300);
+
+  // 回到书架，继续阅读器测试
+  await page.evaluate(() => {
+    document.querySelectorAll('.nav-item').forEach((b) => {
+      if (b.textContent.includes('书架')) b.click();
+    });
+  });
+  await page.waitForTimeout(400);
   // PDF 阅读器：加密文件弹密码框 → 错误密码提示 → 正确密码渲染页面
   await page.locator('.book-card').nth(1).click();
   await page.waitForTimeout(1200);
