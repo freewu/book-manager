@@ -133,6 +133,37 @@ type DoubanProgress struct {
 	Skipped  int    `json:"skipped"`
 }
 
+// PdfFileInfo describes a PDF file for the 「设置密码」 tool.
+type PdfFileInfo struct {
+	Path      string `json:"path"`
+	Name      string `json:"name"`
+	Size      int64  `json:"size"`
+	Pages     int    `json:"pages"`
+	Title     string `json:"title"`
+	Encrypted bool   `json:"encrypted"`
+	// NeedsPassword is true when the file is encrypted and the supplied
+	// current password did not open it (the UI then asks for it).
+	NeedsPassword bool `json:"needs_password"`
+}
+
+// PdfProtectOptions is the input of the 「设置密码」 tool. BookID selects a
+// book from the shelf (its path is used instead of Path); Path is used for
+// files picked from disk directly.
+type PdfProtectOptions struct {
+	BookID int64  `json:"book_id"`
+	Path   string `json:"path"`
+	// UserPassword is required to open the file, OwnerPassword protects
+	// permission changes (defaults to UserPassword).
+	UserPassword  string `json:"user_password"`
+	OwnerPassword string `json:"owner_password"`
+	// CurrentPassword opens an already encrypted file.
+	CurrentPassword string `json:"current_password"`
+	// Strength is aes256 (default) / aes128 / rc4128.
+	Strength   string `json:"strength"`
+	AllowPrint bool   `json:"allow_print"`
+	AllowCopy  bool   `json:"allow_copy"`
+}
+
 // Settings is the key/value settings map exposed to the UI.
 type Settings map[string]string
 

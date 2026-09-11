@@ -1,13 +1,17 @@
+// 扫描书库 —— 工具弹窗。
 import React, {useEffect, useState} from 'react';
-import type {ScanProgress, Settings} from '../types';
-import {App, onScanProgress} from '../api';
-import {useI18n} from '../i18n';
-
-interface Props {
-  settings: Settings;
-  onClose: () => void;
-  onDone: (added: number) => void;
-}
+import type {ScanProgress} from '../../types';
+import {useI18n} from '../../i18n';
+import {useToast} from '../../components/Toast';
+import type {ToolDialogProps} from '../types';
+import {
+  listScanDirs,
+  pickScanDir,
+  removeScanDir,
+  saveScanOptions,
+  startScan,
+  watchScanProgress,
+} from './lib';
 
 const ALL_FORMATS = [
   {key: 'epub', label: 'EPUB'},
@@ -17,8 +21,9 @@ const ALL_FORMATS = [
   {key: 'kepub', label: 'KEPUB'},
 ];
 
-export default function ScanDialog({settings, onClose, onDone}: Props) {
+export default function ScanToolDialog({settings, onClose, onChanged}: ToolDialogProps) {
   const {t} = useI18n();
+  const toast = useToast();
   const [dirs, setDirs] = useState<string[]>([]);
   const [manual, setManual] = useState('');
   const [formats, setFormats] = useState<string[]>(() => {
@@ -31,11 +36,13 @@ export default function ScanDialog({settings, onClose, onDone}: Props) {
   const [log, setLog] = useState<ScanProgress[]>([]);
 
   useEffect(() => {
-    App.ListScanDirs().then(setDirs).catch(() => setDirs([]));
+    listScanDirs()
+      .then(setDirs)
+      .catch(() => setDirs([]));
   }, []);
 
   useEffect(() => {
-    const off = onScanProgress((p) => {
+    return watchScanProgress((p) => {
       setProgress(p);
       if (p.finished) {
         setRunning(false);
@@ -43,11 +50,10 @@ export default function ScanDialog({settings, onClose, onDone}: Props) {
         setLog((prev) => [...prev.slice(-200), p]);
       }
     });
-    return off;
   }, []);
 
   const pickDir = async () => {
-    const d = await App.PickScanDir();
+    const d = await pickScanDir();
     if (d) {
       setDirs((prev) => (prev.includes(d) ? prev : [...prev, d]));
       setManual('');
@@ -60,13 +66,25 @@ export default function ScanDialog({settings, onClose, onDone}: Props) {
     setManual('');
   };
 
+  const dropDir = (d: string) => {
+    setDirs((prev) => prev.filter((x) => x !== d));
+    removeScanDir(d).catch(() => {});
+  };
+
   const start = async () => {
     if (dirs.length === 0) return;
     setLog([]);
     setProgress(null);
     setRunning(true);
-    await App.SetSettings({formats: formats.join(','), douban_auto: doubanAuto ? '1' : '0'});
-    await App.ScanStart(dirs);
+    await saveScanOptions(formats, doubanAuto);
+    await startScan(dirs);
+  };
+
+  // 扫描结束后刷新书架，并把新增数量提示出来
+  const finish = (added: number) => {
+    if (added > 0) toast.ok(t('scan.addedToast', {n: added}));
+    onChanged();
+    onClose();
   };
 
   const pct = progress && progress.total > 0 ? Math.round((progress.current / progress.total) * 100) : 0;
@@ -119,7 +137,7 @@ export default function ScanDialog({settings, onClose, onDone}: Props) {
                     <span style={{flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap'}}>{d}</span>
                     <button
                       style={{color: 'var(--danger)', fontSize: 12}}
-                      onClick={() => setDirs((prev) => prev.filter((x) => x !== d))}
+                      onClick={() => dropDir(d)}
                       disabled={running}
                     >
                       {t('scan.remove')}
@@ -162,7 +180,9 @@ export default function ScanDialog({settings, onClose, onDone}: Props) {
           {running && (
             <div className="form-row">
               <label>
-                {progress ? t('scan.processing', {cur: progress.current, total: progress.total, file: progress.file || ''}) : t('scan.preparing')}
+                {progress
+                  ? t('scan.processing', {cur: progress.current, total: progress.total, file: progress.file || ''})
+                  : t('scan.preparing')}
               </label>
               <div className="progress-track">
                 <div className="fill" style={{width: `${pct}%`}} />
@@ -179,8 +199,9 @@ export default function ScanDialog({settings, onClose, onDone}: Props) {
 
           {progress?.finished && (
             <div className="form-row">
-              <div style={{background: 'var(--ok-soft)', color: 'var(--ok)', padding: '8px 12px', borderRadius: 8, fontSize: 13}}>
-                ✅ {t('scan.done', {
+              <div className="tool-note ok">
+                ✅{' '}
+                {t('scan.done', {
                   msg: progress.message || t('scan.doneDefault'),
                   a: progress.added,
                   s: progress.skipped,
@@ -211,10 +232,7 @@ export default function ScanDialog({settings, onClose, onDone}: Props) {
             {running ? t('scan.running') : t('scan.start')}
           </button>
           {!running && progress?.finished && (
-            <button
-              className="btn btn-ok"
-              onClick={() => onDone(progress?.added ?? 0)}
-            >
+            <button className="btn btn-ok" onClick={() => finish(progress?.added ?? 0)}>
               {t('scan.finish')}
             </button>
           )}

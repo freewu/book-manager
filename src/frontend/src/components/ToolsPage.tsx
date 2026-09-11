@@ -1,45 +1,18 @@
-import React, {useEffect, useState} from 'react';
-import type {DoubanProgress} from '../types';
-import {App, onDoubanDone, onDoubanProgress} from '../api';
+// 工具页：按分类展示 src/tools/<id>/ 里注册的工具。
+// 工具卡片由各工具的 define.ts（名称 / 分类 / 图标 / 排序）自动生成。
+import React from 'react';
 import {useI18n} from '../i18n';
+import {TOOL_CATEGORIES, toolsOf} from '../tools';
+import type {ToolDef} from '../tools/types';
 
 interface Props {
-  misrecords: number;
-  onScan: () => void;
-  onTags: () => void;
-  onMisrecords: () => void;
+  /** 卡片角标数量（键为 define.ts 的 badgeKey，如 misrecords） */
+  badges: Record<string, number>;
+  onOpenTool: (id: string) => void;
 }
 
-export default function ToolsPage({misrecords, onScan, onTags, onMisrecords}: Props) {
+export default function ToolsPage({badges, onOpenTool}: Props) {
   const {t} = useI18n();
-  const [dataDir, setDataDir] = useState('');
-  const [progress, setProgress] = useState<DoubanProgress | null>(null);
-  const [syncing, setSyncing] = useState(false);
-
-  useEffect(() => {
-    App.DataDir()
-      .then(setDataDir)
-      .catch(() => setDataDir(''));
-  }, []);
-
-  useEffect(() => {
-    const offP = onDoubanProgress((p) => setProgress(p));
-    const offD = onDoubanDone(() => setSyncing(false));
-    return () => {
-      offP();
-      offD();
-    };
-  }, []);
-
-  const syncDouban = async () => {
-    setSyncing(true);
-    setProgress(null);
-    try {
-      await App.StartEnrichAll();
-    } catch {
-      setSyncing(false);
-    }
-  };
 
   return (
     <div className="main">
@@ -48,100 +21,52 @@ export default function ToolsPage({misrecords, onScan, onTags, onMisrecords}: Pr
       </div>
 
       <div className="page-scroll">
-        <div className="tools-grid">
-          <ToolCard
-            icon="🔍"
-            title={t('tools.scan')}
-            desc={t('tools.scanDesc')}
-            action={t('tools.open')}
-            onClick={onScan}
-          />
-          <ToolCard
-            icon="🏷️"
-            title={t('tools.tags')}
-            desc={t('tools.tagsDesc')}
-            action={t('tools.open')}
-            onClick={onTags}
-          />
-          <ToolCard
-            icon="🚫"
-            title={t('tools.misrecords')}
-            desc={t('tools.misrecordsDesc')}
-            action={t('tools.open')}
-            badge={misrecords > 0 ? misrecords : undefined}
-            onClick={onMisrecords}
-          />
-          <ToolCard
-            icon="🌐"
-            title={t('tools.douban')}
-            desc={t('tools.doubanDesc')}
-            action={syncing ? t('tools.doubanSyncing') : t('tools.doubanSync')}
-            disabled={syncing}
-            onClick={syncDouban}
-          />
-          <div className="tool-card">
-            <span className="tool-icon">📂</span>
-            <span className="tool-title">{t('tools.dataDir')}</span>
-            <span className="tool-desc">{t('tools.dataDirDesc')}</span>
-            <span className="tool-path" title={dataDir}>
-              {dataDir || '—'}
-            </span>
-          </div>
-        </div>
-
-        {progress && (syncing || progress.finished) && (
-          <div className="page-section">
-            <h2 className="page-section-title">{t('tools.doubanProgress')}</h2>
-            {progress.total > 0 && (
-              <div className="progress-track" style={{maxWidth: 420}}>
-                <div
-                  className="progress-fill"
-                  style={{width: `${Math.round(((progress.current || 0) / progress.total) * 100)}%`}}
-                />
+        {TOOL_CATEGORIES.map((cat) => {
+          const items = toolsOf(cat);
+          if (items.length === 0) return null;
+          return (
+            <div className="page-section" key={cat}>
+              <h2 className="page-section-title">{t(`tools.category.${cat}`)}</h2>
+              <div className="tools-grid">
+                {items.map((tool) => (
+                  <ToolCard
+                    key={tool.id}
+                    tool={tool}
+                    action={t(tool.actionKey || 'tools.open')}
+                    badge={tool.badgeKey ? badges[tool.badgeKey] : undefined}
+                    onClick={() => onOpenTool(tool.id)}
+                  />
+                ))}
               </div>
-            )}
-            <p className="page-muted" style={{marginTop: 8}}>
-              {progress.finished
-                ? t('settings.doubanDone', {ok: progress.ok, errors: progress.errors, skipped: progress.skipped})
-                : t('settings.doubanSyncing', {
-                    cur: progress.current || 0,
-                    total: progress.total || 0,
-                    title: progress.title || '',
-                  })}
-            </p>
-          </div>
-        )}
+            </div>
+          );
+        })}
       </div>
     </div>
   );
 }
 
 function ToolCard({
-  icon,
-  title,
-  desc,
+  tool,
   action,
   badge,
-  disabled,
   onClick,
 }: {
-  icon: string;
-  title: string;
-  desc: string;
-  action?: string;
+  tool: ToolDef;
+  action: string;
   badge?: number;
-  disabled?: boolean;
-  onClick?: () => void;
+  onClick: () => void;
 }) {
+  const {t} = useI18n();
   return (
-    <div className={`tool-card${onClick ? ' clickable' : ''}${disabled ? ' disabled' : ''}`} onClick={disabled ? undefined : onClick}>
-      <span className="tool-icon">{icon}</span>
+    <div className="tool-card clickable" onClick={onClick}>
+      <span className="tool-icon">{tool.icon}</span>
       <span className="tool-title">
-        {title}
-        {badge !== undefined && <span className="nav-badge mis-badge">{badge}</span>}
+        {t(tool.nameKey)}
+        {badge !== undefined && badge > 0 && <span className="nav-badge mis-badge">{badge}</span>}
       </span>
-      <span className="tool-desc">{desc}</span>
-      {action && <span className="tool-action">{action} ›</span>}
+      <span className="tool-desc">{t(tool.descKey)}</span>
+      <span className="tool-action">{action} ›</span>
     </div>
   );
 }

@@ -39,8 +39,8 @@ release:
     cp {{app}}/build/bin/book-manager.exe release/book-manager.exe
     @echo "✔ 发布产物: release/book-manager.exe"
 
-# 运行全部测试（Go 后端 + JS 解析器 + UI 冒烟）
-test: test-go test-js
+# 运行全部测试（Go 后端 + JS 解析器 + i18n 静态检查）
+test: test-go test-js test-i18n
 
 # Go 后端测试
 test-go:
@@ -50,7 +50,11 @@ test-go:
 test-js:
     cd {{app}}/frontend && {{node}} scripts/test-mobi-parser.cjs
 
-# 前端 UI 冒烟测试（需 Edge + playwright-core）
+# i18n 字典 / 工具插件目录静态检查
+test-i18n:
+    cd {{app}}/frontend && {{node}} scripts/check-i18n.mjs
+
+# 前端 UI 冒烟测试（需 Edge + playwright-core；发版前必跑）
 ui-test:
     cd {{app}}/frontend && {{node}} ui-smoke.cjs
 

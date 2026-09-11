@@ -170,6 +170,12 @@ func parsePubInfoPublisher(pubInfo string) string {
 	return p
 }
 
+// DoubanRunning reports whether a batch enrichment is currently running, so
+// the UI can attach to it instead of starting a second one.
+func (a *App) DoubanRunning() bool {
+	return enrichBusy.Load()
+}
+
 // StartEnrichAll asynchronously fetches douban info for every book that has
 // no rating yet, emitting douban:progress / douban:done events to the UI.
 func (a *App) StartEnrichAll() (int, error) {

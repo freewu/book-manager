@@ -131,3 +131,28 @@ export interface DoubanProgress {
   errors: number;
   skipped: number;
 }
+
+/** PDF 设置密码工具（tools/pdf-password）。 */
+export interface PdfFileInfo {
+  path: string;
+  name: string;
+  size: number;
+  pages: number;
+  title: string;
+  encrypted: boolean;
+  /** 已加密且当前密码不对（或未提供）：需要用户先输入当前密码 */
+  needs_password: boolean;
+}
+
+export interface PdfProtectOptions {
+  /** >0 表示书架中的书（用书上的路径，path 被忽略），否则传 0 */
+  book_id: number;
+  path: string;
+  user_password: string;
+  owner_password: string;
+  current_password: string;
+  /** aes256（默认）/ aes128 / rc4128 */
+  strength: string;
+  allow_print: boolean;
+  allow_copy: boolean;
+}

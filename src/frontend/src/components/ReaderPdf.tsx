@@ -1,9 +1,11 @@
-import React, {forwardRef, useEffect, useImperativeHandle, useRef} from 'react';
+import React, {forwardRef, useEffect, useImperativeHandle, useRef, useState} from 'react';
 import * as pdfjsLib from 'pdfjs-dist';
+import {PasswordResponses} from 'pdfjs-dist';
 import type {PDFDocumentProxy} from 'pdfjs-dist';
 import type {Book} from '../types';
 import type {ReaderHandle} from './Reader';
 import {base64ToArrayBuffer} from '../api';
+import {useI18n} from '../i18n';
 
 // vite bundles the worker as an asset
 pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
@@ -30,6 +32,15 @@ const ReaderPdf = forwardRef<ReaderHandle, Props>(function ReaderPdf(
   const currentPageRef = useRef(book.current_page || 1);
   const reportRef = useRef(onProgress);
   const activityRef = useRef(onActivity);
+  // 加密 PDF：pdf.js 通过 onPassword 索要密码，回调暂存到这里等用户输入
+  const {t} = useI18n();
+  const [needPw, setNeedPw] = useState(false);
+  const [pwInput, setPwInput] = useState('');
+  const [pwError, setPwError] = useState('');
+  const [reloadKey, setReloadKey] = useState(0);
+  const passwordRef = useRef('');
+  const pwCbRef = useRef<((pw: string) => void) | null>(null);
+  const taskRef = useRef<pdfjsLib.PDFDocumentLoadingTask | null>(null);
 
   useEffect(() => {
     reportRef.current = onProgress;
@@ -41,11 +52,27 @@ const ReaderPdf = forwardRef<ReaderHandle, Props>(function ReaderPdf(
     (async () => {
       try {
         const buf = base64ToArrayBuffer(data);
-        const doc = await pdfjsLib.getDocument({data: buf}).promise;
+        // onPassword 挂在 loading task 上：pdf.js 在需要密码时会回调它，
+        // 把 callback 存起来等用户提交后再交回去。
+        const task = pdfjsLib.getDocument({data: buf, password: passwordRef.current || undefined});
+        taskRef.current = task;
+        task.onPassword = (cb: (pw: string) => void, reason: number) => {
+          pwCbRef.current = cb;
+          setNeedPw(true);
+          if (reason === PasswordResponses.INCORRECT_PASSWORD) {
+            setPwError(t('reader.pdfPasswordWrong'));
+          }
+        };
+        const doc = await task.promise;
         if (!alive) {
           doc.destroy();
           return;
         }
+        taskRef.current = null;
+        pwCbRef.current = null;
+        setNeedPw(false);
+        setPwInput('');
+        setPwError('');
         docRef.current = doc;
         pagesRef.current = doc.numPages;
         const container = scrollRef.current;
@@ -125,12 +152,28 @@ const ReaderPdf = forwardRef<ReaderHandle, Props>(function ReaderPdf(
     })();
     return () => {
       alive = false;
+      taskRef.current?.destroy();
+      taskRef.current = null;
       docRef.current?.destroy();
       docRef.current = null;
       if (scrollRef.current) scrollRef.current.innerHTML = '';
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [book.id, data]);
+  }, [book.id, data, reloadKey]);
+
+  const submitPassword = () => {
+    const pw = pwInput;
+    if (!pw) return;
+    passwordRef.current = pw;
+    setPwError('');
+    const cb = pwCbRef.current;
+    if (cb) {
+      cb(pw);
+    } else {
+      // 没有待处理的回调（例如重新打开同一文档）：重启加载流程
+      setReloadKey((k) => k + 1);
+    }
+  };
 
   useImperativeHandle(ref, () => ({
     goNext: () => {
@@ -169,7 +212,30 @@ const ReaderPdf = forwardRef<ReaderHandle, Props>(function ReaderPdf(
     },
   }));
 
-  return <div ref={scrollRef} className="pdf-container" />;
+  return (
+    <div className="pdf-reader">
+      <div ref={scrollRef} className="pdf-container" />
+      {needPw && (
+        <div className="pdf-pw-overlay">
+          <div className="pdf-pw-box">
+            <div className="pdf-pw-icon">🔒</div>
+            <div className="pdf-pw-title">{t('reader.pdfPassword')}</div>
+            <input
+              type="password"
+              autoFocus
+              value={pwInput}
+              onChange={(e) => setPwInput(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && submitPassword()}
+            />
+            {pwError && <div className="pdf-pw-error">{pwError}</div>}
+            <button className="btn btn-primary" onClick={submitPassword} disabled={!pwInput}>
+              {t('reader.pdfPasswordOpen')}
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
 });
 
 export default ReaderPdf;

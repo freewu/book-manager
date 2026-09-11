@@ -209,6 +209,56 @@ export namespace models {
 	        this.updated_at = source["updated_at"];
 	    }
 	}
+	export class PdfFileInfo {
+	    path: string;
+	    name: string;
+	    size: number;
+	    pages: number;
+	    title: string;
+	    encrypted: boolean;
+	    needs_password: boolean;
+	
+	    static createFrom(source: any = {}) {
+	        return new PdfFileInfo(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.path = source["path"];
+	        this.name = source["name"];
+	        this.size = source["size"];
+	        this.pages = source["pages"];
+	        this.title = source["title"];
+	        this.encrypted = source["encrypted"];
+	        this.needs_password = source["needs_password"];
+	    }
+	}
+	export class PdfProtectOptions {
+	    book_id: number;
+	    path: string;
+	    user_password: string;
+	    owner_password: string;
+	    current_password: string;
+	    strength: string;
+	    allow_print: boolean;
+	    allow_copy: boolean;
+	
+	    static createFrom(source: any = {}) {
+	        return new PdfProtectOptions(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.book_id = source["book_id"];
+	        this.path = source["path"];
+	        this.user_password = source["user_password"];
+	        this.owner_password = source["owner_password"];
+	        this.current_password = source["current_password"];
+	        this.strength = source["strength"];
+	        this.allow_print = source["allow_print"];
+	        this.allow_copy = source["allow_copy"];
+	    }
+	}
 	export class ReadingSession {
 	    id: number;
 	    book_id: number;

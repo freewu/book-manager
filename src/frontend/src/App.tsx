@@ -10,12 +10,10 @@ import ReadingPage from './components/ReadingPage';
 import StatsPage from './components/StatsPage';
 import ToolsPage from './components/ToolsPage';
 import SettingsPage from './components/SettingsPage';
-import ScanDialog from './components/ScanDialog';
 import BookDetail from './components/BookDetail';
-import TagManager from './components/TagManager';
-import MisrecordManager from './components/MisrecordManager';
 import Reader from './components/Reader';
 import {useToast} from './components/Toast';
+import ToolHost, {type ActiveTool} from './tools/ToolHost';
 
 export type Page = 'bookshelf' | 'reading' | 'stats' | 'tools' | 'settings';
 
@@ -31,9 +29,8 @@ interface AppState {
   tags: Tag[];
   settings: Settings;
   stats: Stats | null;
-  showScan: boolean;
-  showTags: boolean;
-  showMisrecords: boolean;
+  /** 当前打开的工具（来自 src/tools/ 注册表） */
+  tool: ActiveTool | null;
   detailBook: Book | null;
   reading: Book | null;
 }
@@ -52,9 +49,7 @@ export default function App() {
     tags: [],
     settings: {},
     stats: null,
-    showScan: false,
-    showTags: false,
-    showMisrecords: false,
+    tool: null,
     detailBook: null,
     reading: null,
   });
@@ -65,6 +60,9 @@ export default function App() {
     sort: 'created',
     desc: true,
   });
+  // 工具弹窗状态的最新值（给事件监听器读取，避免重新订阅）
+  const toolRef = useRef<ActiveTool | null>(null);
+  toolRef.current = st.tool;
 
   const loadBooks = useCallback(async () => {
     const q = queryRef.current;
@@ -118,7 +116,7 @@ export default function App() {
     loadTags();
     loadStats();
     loadSettings();
-    const onOpenScan = () => setSt((s) => ({...s, showScan: true}));
+    const onOpenScan = () => setSt((s) => ({...s, tool: {id: 'scan'}}));
     window.addEventListener('open-scan', onOpenScan);
     // The tray menu can switch language; reload settings to re-render.
     const offLang = EventsOn('settings:changed', () => loadSettings());
@@ -176,6 +174,16 @@ export default function App() {
   }, [loadBooks, loadTags, loadStats]);
 
   const lang = normalizeLang(st.settings.language);
+
+  // 豆瓣补全在后台继续跑：即使弹窗已关闭，完成后也要刷新书架并提示。
+  useEffect(() => {
+    const off = EventsOn('douban:done', () => {
+      loadBooks();
+      loadStats();
+      if (!toolRef.current) toast.ok(translate(lang, 'tools.doubanDoneToast'));
+    });
+    return () => off();
+  }, [loadBooks, loadStats, toast, lang]);
 
   // Async douban enrichment fired when a book is opened. On success the
   // editable metadata (title / author / publisher) is corrected to the douban
@@ -249,8 +257,9 @@ export default function App() {
                   onOpen={openBook}
                   onDetail={(b) => setSt((s) => ({...s, detailBook: b}))}
                   onRefresh={refreshAll}
-                  onScan={() => setSt((s) => ({...s, showScan: true}))}
-                  onTags={() => setSt((s) => ({...s, showTags: true}))}
+                  onScan={() => setSt((s) => ({...s, tool: {id: 'scan'}}))}
+                  onTags={() => setSt((s) => ({...s, tool: {id: 'tags'}}))}
+                  onOpenTool={(id, b) => setSt((s) => ({...s, tool: {id, book: b ?? null}}))}
                 />
               )}
               {st.page === 'reading' && <ReadingPage onOpen={openBook} />}
@@ -258,15 +267,13 @@ export default function App() {
                 <StatsPage
                   stats={st.stats}
                   onOpen={openBook}
-                  onMisrecords={() => setSt((s) => ({...s, showMisrecords: true}))}
+                  onMisrecords={() => setSt((s) => ({...s, tool: {id: 'misrecords'}}))}
                 />
               )}
               {st.page === 'tools' && (
                 <ToolsPage
-                  misrecords={st.stats?.total_misrecords ?? 0}
-                  onScan={() => setSt((s) => ({...s, showScan: true}))}
-                  onTags={() => setSt((s) => ({...s, showTags: true}))}
-                  onMisrecords={() => setSt((s) => ({...s, showMisrecords: true}))}
+                  badges={{misrecords: st.stats?.total_misrecords ?? 0}}
+                  onOpenTool={(id) => setSt((s) => ({...s, tool: {id}}))}
                 />
               )}
               {st.page === 'settings' && (
@@ -281,40 +288,13 @@ export default function App() {
 
         {st.reading && <Reader book={st.reading} settings={st.settings} onClose={closeReader} />}
 
-        {st.showScan && (
-          <ScanDialog
-            settings={st.settings}
-            onClose={() => setSt((s) => ({...s, showScan: false}))}
-            onDone={(added) => {
-              setSt((s) => ({...s, showScan: false}));
-              if (added > 0) {
-                toast.ok(translate(lang, 'scan.addedToast', {n: added}));
-              }
-              refreshAll();
-            }}
-          />
-        )}
-
-        {st.showTags && (
-          <TagManager
-            tags={st.tags}
-            onClose={() => setSt((s) => ({...s, showTags: false}))}
-            onChanged={() => {
-              loadTags();
-              refreshAll();
-            }}
-          />
-        )}
-
-        {st.showMisrecords && (
-          <MisrecordManager
-            onClose={() => setSt((s) => ({...s, showMisrecords: false}))}
-            onChanged={() => {
-              loadStats();
-              refreshAll();
-            }}
-          />
-        )}
+        <ToolHost
+          tool={st.tool}
+          settings={st.settings}
+          tags={st.tags}
+          onClose={() => setSt((s) => ({...s, tool: null}))}
+          onChanged={refreshAll}
+        />
 
         {st.detailBook && (
           <BookDetail
@@ -337,21 +317,7 @@ export default function App() {
             }}
           />
         )}
-
-        <ToastWrap toast={toast} />
       </div>
     </I18nProvider>
-  );
-}
-
-function ToastWrap({toast}: {toast: ReturnType<typeof useToast>}) {
-  return (
-    <div className="toast-wrap">
-      {toast.items.map((t) => (
-        <div key={t.id} className={`toast ${t.type}`}>
-          {t.text}
-        </div>
-      ))}
-    </div>
   );
 }

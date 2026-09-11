@@ -17,12 +17,13 @@
   - `fix: 修复 MOBI 阅读器解压越界`
   - `chore: 更新图标与构建脚本`
 - 若改动较多可多行描述（标题 + 要点列表）。
-- 提交前运行 `just test`（Go 后端测试 + JS 解析器 + 前端冒烟）。
+- 提交前运行 `just test`（Go 后端测试 + JS 解析器 + i18n 静态检查）；改了 UI 还要跑 `just ui-test`。
 
 ## 快捷命令
 
 ```bash
-just test          # 全部测试
+just test          # 全部测试（Go + JS 解析器 + i18n 静态检查）
+just ui-test       # 浏览器 UI 冒烟（playwright-core + Edge，发版前必跑）
 just build         # 生产构建（wails build）
 just release       # 发布构建 → release/book-manager.exe
 just dev           # 开发模式（热重载）
@@ -45,13 +46,36 @@ just push "feat: xxx"   # 提交并推送
 ```
 src/
   app.go / main.go / bindings_*.go   # Wails 入口 + 前端绑定方法
-  internal/{db,parser,scanner,douban,models}  # 后端逻辑
-  frontend/src/components/            # React 组件（书架/阅读器/弹窗）
+  internal/{db,parser,scanner,douban,models,pdfcrypt}  # 后端逻辑
+  frontend/src/components/            # React 组件（书架/阅读器/宿主弹窗）
+  frontend/src/tools/<id>/            # 工具插件（define.ts + lib.ts + tools.tsx）
   cmd/genlogo                         # logo 与图标生成
   cmd/verify                          # 扫描管线端到端验证
   wails.json                          # Wails 构建配置
 justfile                            # 常用命令（内部均 cd src 执行）
 ```
+
+## 工具（Tools）插件结构
+
+“工具”页的工具都在 `src/frontend/src/tools/<tool-id>/` 下，一个目录一个工具，**新增工具只需新建目录**
+（`src/tools/index.ts` 用 Vite `import.meta.glob` 自动发现，目录名即工具 id）：
+
+```
+src/frontend/src/tools/<tool-id>/
+  define.ts    # 工具元信息：分类 category（'other' | 'pdf'）、图标 icon、名称/描述 i18n 键、
+               # 排序 order、作用格式 bookFormats（书架右键「<分类>工具」子菜单据此显示）
+  lib.ts       # 该工具用到的后端调用封装（wails bindings），UI 不直接调 App.*
+  tools.tsx    # 工具弹窗组件（默认导出，props 见 tools/types.ts 的 ToolDialogProps）
+```
+
+- 宿主 `src/frontend/src/tools/ToolHost.tsx` 由 `App.tsx` 的 `tool: {id, book}` 状态驱动，
+  所有入口（工具页卡片、书架右键、统计页误录链接、侧栏 `open-scan` 事件）都走同一个 `openTool(id, book?)`。
+- 文案统一放在 `src/frontend/src/i18n.tsx`（define.ts 里只存 key），分类名用 `tools.category.*`。
+- 后端绑定按领域放在 `src/bindings_*.go`（如 PDF 工具 = `bindings_pdf.go`）。
+- 新增/改绑定后需重新生成 `src/frontend/wailsjs/`（`wails generate module` 或 `wails dev/build` 自动处理）。
+- 后端 PDF 加密逻辑在 `src/internal/pdfcrypt`（基于 pdfcpu），有单测覆盖，改完跑 `just test`。
+- UI 改动后跑 `just ui-test`：它用 playwright-core 加载 `dist/` 并对 `window.go` 打桩，覆盖书架/统计/扫描/标签/设置/书籍详情/EPUB 与加密 PDF 阅读器/工具页与 PDF 密码弹窗。
+  mock 里没有的绑定会回退成空操作（Proxy），所以新增绑定不会直接弄坏冒烟。
 
 ## 注意事项
 

@@ -1,14 +1,11 @@
+// 误录管理 —— 工具弹窗。
 import React, {useEffect, useState} from 'react';
-import type {Misrecord} from '../types';
-import {App, fmtDate} from '../api';
-import {useI18n} from '../i18n';
+import type {Misrecord} from '../../types';
+import {useI18n} from '../../i18n';
+import type {ToolDialogProps} from '../types';
+import {clearMisrecords, fmtDate, listMisrecords, restoreMisrecord} from './lib';
 
-interface Props {
-  onClose: () => void;
-  onChanged: () => void;
-}
-
-export default function MisrecordManager({onClose, onChanged}: Props) {
+export default function MisrecordToolDialog({onClose, onChanged}: ToolDialogProps) {
   const {t} = useI18n();
   const [items, setItems] = useState<Misrecord[]>([]);
   const [loading, setLoading] = useState(true);
@@ -16,7 +13,7 @@ export default function MisrecordManager({onClose, onChanged}: Props) {
   const load = async () => {
     setLoading(true);
     try {
-      setItems(await App.GetMisrecords());
+      setItems(await listMisrecords());
     } finally {
       setLoading(false);
     }
@@ -27,14 +24,14 @@ export default function MisrecordManager({onClose, onChanged}: Props) {
   }, []);
 
   const remove = async (m: Misrecord) => {
-    await App.RemoveMisrecord(m.id);
+    await restoreMisrecord(m.id);
     setItems((prev) => prev.filter((x) => x.id !== m.id));
     onChanged();
   };
 
   const clearAll = async () => {
     if (!confirm(t('mis.clearConfirm'))) return;
-    await App.ClearMisrecords();
+    await clearMisrecords();
     setItems([]);
     onChanged();
   };
@@ -73,10 +70,28 @@ export default function MisrecordManager({onClose, onChanged}: Props) {
                     <td style={{fontWeight: 600, maxWidth: 180, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap'}}>
                       {m.file_name || t('mis.unnamed')}
                     </td>
-                    <td style={{maxWidth: 260, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 12, color: 'var(--text-2)'}}>
+                    <td
+                      style={{
+                        maxWidth: 260,
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap',
+                        fontSize: 12,
+                        color: 'var(--text-2)',
+                      }}
+                    >
                       {m.path}
                     </td>
-                    <td style={{fontSize: 12, color: 'var(--text-2)', maxWidth: 120, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap'}}>
+                    <td
+                      style={{
+                        fontSize: 12,
+                        color: 'var(--text-2)',
+                        maxWidth: 120,
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap',
+                      }}
+                    >
                       {m.reason || '—'}
                     </td>
                     <td style={{fontSize: 12, color: 'var(--text-3)', whiteSpace: 'nowrap'}}>{fmtDate(m.created_at)}</td>

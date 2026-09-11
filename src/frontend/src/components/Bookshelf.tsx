@@ -4,6 +4,8 @@ import {App, getCoverDataUrl} from '../api';
 import {BrowserOpenURL} from '../../wailsjs/runtime/runtime';
 import {useI18n} from '../i18n';
 import {useToast} from './Toast';
+import {toolsForBook} from '../tools';
+import type {ToolCategory, ToolModule} from '../tools/types';
 
 interface Props {
   books: Book[];
@@ -24,6 +26,8 @@ interface Props {
   onRefresh: () => void;
   onScan: () => void;
   onTags: () => void;
+  /** 打开某个工具（书架右键「<分类>工具」子菜单） */
+  onOpenTool: (id: string, book?: Book | null) => void;
 }
 
 const FORMATS = [
@@ -62,6 +66,7 @@ export default function Bookshelf({
   onRefresh,
   onScan,
   onTags,
+  onOpenTool,
 }: Props) {
   const {t} = useI18n();
   const toast = useToast();
@@ -72,6 +77,8 @@ export default function Bookshelf({
   const [tagFor, setTagFor] = useState<Book | null>(null);
   // timeStamp of the right-click that opened the current menu
   const ctxOpenedAt = useRef(0);
+  // 「<分类>工具」子菜单（例如 PDF → 设置密码），只显示适用于该格式的工具
+  const ctxToolGroups = ctx ? groupByCategory(toolsForBook(ctx.book)) : [];
 
   useEffect(() => {
     const map: Record<number, string | null> = {};
@@ -340,6 +347,26 @@ export default function Bookshelf({
           >
             {t('ctx.tags')}
           </button>
+          {ctxToolGroups.map(([cat, items]) => (
+            <div className="ctx-sub" key={cat}>
+              <button>{t('ctx.toolsOf', {cat: t(`tools.category.${cat}`)})}</button>
+              <div className="ctx-submenu">
+                {items.map((tool) => (
+                  <button
+                    key={tool.id}
+                    onClick={() => {
+                      const b = ctx.book;
+                      setCtx(null);
+                      onOpenTool(tool.id, b);
+                    }}
+                  >
+                    <span>{tool.icon}</span>
+                    <span>{t(tool.nameKey)}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          ))}
         </div>
       )}
 
@@ -375,6 +402,15 @@ export default function Bookshelf({
       )}
     </div>
   );
+}
+
+/** 按分类分组（书架右键「<分类>工具」子菜单用） */
+function groupByCategory(tools: ToolModule[]): [ToolCategory, ToolModule[]][] {
+  const groups = new Map<ToolCategory, ToolModule[]>();
+  for (const tool of tools) {
+    groups.set(tool.category, [...(groups.get(tool.category) ?? []), tool]);
+  }
+  return [...groups.entries()];
 }
 
 function BookCard({

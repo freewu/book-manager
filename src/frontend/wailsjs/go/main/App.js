@@ -42,6 +42,10 @@ export function DeleteTag(arg1) {
   return window['go']['main']['App']['DeleteTag'](arg1);
 }
 
+export function DoubanRunning() {
+  return window['go']['main']['App']['DoubanRunning']();
+}
+
 export function DoubanSearch(arg1) {
   return window['go']['main']['App']['DoubanSearch'](arg1);
 }
@@ -126,8 +130,20 @@ export function OpenBookFolder(arg1) {
   return window['go']['main']['App']['OpenBookFolder'](arg1);
 }
 
+export function OpenPath(arg1) {
+  return window['go']['main']['App']['OpenPath'](arg1);
+}
+
 export function OpenWithKKFileView(arg1) {
   return window['go']['main']['App']['OpenWithKKFileView'](arg1);
+}
+
+export function PdfInspect(arg1, arg2) {
+  return window['go']['main']['App']['PdfInspect'](arg1, arg2);
+}
+
+export function PickPdfFile() {
+  return window['go']['main']['App']['PickPdfFile']();
 }
 
 export function PickScanDir() {
@@ -164,6 +180,10 @@ export function SetBookTags(arg1, arg2) {
 
 export function SetKKFileAddr(arg1) {
   return window['go']['main']['App']['SetKKFileAddr'](arg1);
+}
+
+export function SetPdfPassword(arg1) {
+  return window['go']['main']['App']['SetPdfPassword'](arg1);
 }
 
 export function SetSettings(arg1) {

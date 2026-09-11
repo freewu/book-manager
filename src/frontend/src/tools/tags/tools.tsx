@@ -1,15 +1,11 @@
+// 标签管理 —— 工具弹窗。
 import React, {useState} from 'react';
-import type {Tag} from '../types';
-import {App} from '../api';
-import {useI18n} from '../i18n';
+import type {Tag} from '../../types';
+import {useI18n} from '../../i18n';
+import type {ToolDialogProps} from '../types';
+import {createTag, deleteTag, updateTag} from './lib';
 
-interface Props {
-  tags: Tag[];
-  onClose: () => void;
-  onChanged: () => void;
-}
-
-export default function TagManager({tags, onClose, onChanged}: Props) {
+export default function TagToolDialog({tags, onClose, onChanged}: ToolDialogProps) {
   const {t} = useI18n();
   const [name, setName] = useState('');
   const [color, setColor] = useState('#5b7cfa');
@@ -19,31 +15,29 @@ export default function TagManager({tags, onClose, onChanged}: Props) {
 
   const create = async () => {
     if (!name.trim()) return;
-    await App.CreateTag(name.trim(), color);
+    await createTag(name.trim(), color);
     setName('');
     onChanged();
   };
 
-  const startEdit = (t: Tag) => {
-    setEditingId(t.id);
-    setEditName(t.name);
-    setEditColor(t.color);
+  const startEdit = (tg: Tag) => {
+    setEditingId(tg.id);
+    setEditName(tg.name);
+    setEditColor(tg.color);
   };
 
   const saveEdit = async () => {
     if (editingId == null) return;
-    await App.UpdateTag(editingId, editName.trim() || editName, editColor);
+    await updateTag(editingId, editName.trim() || editName, editColor);
     setEditingId(null);
     onChanged();
   };
 
   const del = async (tg: Tag) => {
     if (!confirm(t('tag.deleteConfirm', {name: tg.name, n: tg.book_count}))) return;
-    await App.DeleteTag(tg.id);
+    await deleteTag(tg.id);
     onChanged();
   };
-
-  const COLORS = ['#5b7cfa', '#f25f5c', '#2fa36b', '#d97706', '#9b5de5', '#00bbd4', '#e63946', '#6a994e', '#f4a261', '#457b9d'];
 
   return (
     <div className="modal-mask" onClick={onClose}>
@@ -58,7 +52,12 @@ export default function TagManager({tags, onClose, onChanged}: Props) {
           <div className="form-row">
             <label>{t('tag.new')}</label>
             <div style={{display: 'flex', gap: 8}}>
-              <input placeholder={t('tag.namePlaceholder')} value={name} onChange={(e) => setName(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && create()} />
+              <input
+                placeholder={t('tag.namePlaceholder')}
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && create()}
+              />
               <input type="color" value={color} onChange={(e) => setColor(e.target.value)} style={{width: 46, padding: 3}} />
               <button className="btn btn-primary" onClick={create}>
                 {t('tag.add')}
@@ -86,7 +85,12 @@ export default function TagManager({tags, onClose, onChanged}: Props) {
                   {editingId === tg.id ? (
                     <>
                       <input value={editName} onChange={(e) => setEditName(e.target.value)} style={{flex: 1}} />
-                      <input type="color" value={editColor} onChange={(e) => setEditColor(e.target.value)} style={{width: 40, padding: 2}} />
+                      <input
+                        type="color"
+                        value={editColor}
+                        onChange={(e) => setEditColor(e.target.value)}
+                        style={{width: 40, padding: 2}}
+                      />
                       <button className="btn btn-ok btn-sm" onClick={saveEdit}>
                         {t('tag.save')}
                       </button>

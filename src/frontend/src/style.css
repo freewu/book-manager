@@ -597,6 +597,32 @@ textarea:focus {
   opacity: 0.45;
   cursor: default;
 }
+/* 「<分类>工具」子菜单（hover 展开） */
+.ctx-menu .ctx-sub {
+  position: relative;
+}
+.ctx-menu .ctx-sub > button::after {
+  content: '▸';
+  margin-left: auto;
+  opacity: 0.6;
+}
+.ctx-menu .ctx-submenu {
+  display: none;
+  position: absolute;
+  left: calc(100% - 4px);
+  top: -7px;
+  min-width: 168px;
+  flex-direction: column;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  box-shadow: var(--shadow-lg);
+  padding: 6px;
+  z-index: 2002;
+}
+.ctx-menu .ctx-sub:hover > .ctx-submenu {
+  display: flex;
+}
 
 /* ============ Empty state ============ */
 .empty {
@@ -1609,6 +1635,120 @@ textarea:focus {
   font-family: ui-monospace, Consolas, monospace;
   color: var(--text-3);
   word-break: break-all;
+}
+
+/* 工具弹窗：提示条 / 只读路径框 / PDF 信息表 */
+.tool-note {
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-size: 13px;
+  line-height: 1.6;
+}
+.tool-note.ok {
+  background: var(--ok-soft);
+  color: var(--ok);
+}
+.tool-note.err {
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+.path-box {
+  flex: 1;
+  min-width: 0;
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-size: 12px;
+  font-family: ui-monospace, Consolas, monospace;
+  color: var(--text-2);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.pdf-info {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 6px 12px;
+  align-items: center;
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  padding: 10px 12px;
+  font-size: 12px;
+}
+.pdf-info-key {
+  color: var(--text-3);
+}
+.pdf-info-val {
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.pdf-badge {
+  display: inline-block;
+  padding: 1px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+}
+.pdf-badge.on {
+  background: var(--ok-soft);
+  color: var(--ok);
+}
+.pdf-badge.off {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  color: var(--text-3);
+}
+
+/* 加密 PDF：打开密码输入浮层 */
+.pdf-reader {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+.pdf-pw-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(20, 25, 45, 0.55);
+  backdrop-filter: blur(2px);
+}
+.pdf-pw-box {
+  width: 320px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 22px 20px;
+  background: var(--panel);
+  border-radius: 14px;
+  box-shadow: var(--shadow-lg);
+  text-align: center;
+}
+.pdf-pw-icon {
+  font-size: 26px;
+}
+.pdf-pw-title {
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--text-2);
+}
+.pdf-pw-box input {
+  width: 100%;
+}
+.pdf-pw-error {
+  font-size: 12px;
+  color: var(--danger);
+}
+.pdf-pw-box .btn {
+  width: 100%;
+  justify-content: center;
 }
 
 /* settings page */

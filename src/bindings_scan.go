@@ -5,6 +5,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"strings"
 
 	wailsRuntime "github.com/wailsapp/wails/v2/pkg/runtime"
 
@@ -200,6 +201,14 @@ func splitCSV(s string) []string {
 		out = append(out, cur)
 	}
 	return out
+}
+
+// OpenPath reveals a file or folder in the OS file manager.
+func (a *App) OpenPath(path string) error {
+	if strings.TrimSpace(path) == "" {
+		return errors.New("empty path")
+	}
+	return openInExplorer(path)
 }
 
 // openInExplorer reveals a file in the OS file manager.

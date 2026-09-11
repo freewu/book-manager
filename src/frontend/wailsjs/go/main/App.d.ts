@@ -23,6 +23,8 @@ export function DeleteNote(arg1:number):Promise<void>;
 
 export function DeleteTag(arg1:number):Promise<void>;
 
+export function DoubanRunning():Promise<boolean>;
+
 export function DoubanSearch(arg1:string):Promise<Array<models.DoubanBook>>;
 
 export function EnrichAllMissing():Promise<number>;
@@ -65,7 +67,13 @@ export function MarkMisrecord(arg1:number,arg2:string):Promise<void>;
 
 export function OpenBookFolder(arg1:number):Promise<void>;
 
+export function OpenPath(arg1:string):Promise<void>;
+
 export function OpenWithKKFileView(arg1:number):Promise<string>;
+
+export function PdfInspect(arg1:string,arg2:string):Promise<models.PdfFileInfo>;
+
+export function PickPdfFile():Promise<string>;
 
 export function PickScanDir():Promise<string>;
 
@@ -84,6 +92,8 @@ export function ScanStatus():Promise<boolean>;
 export function SetBookTags(arg1:number,arg2:Array<number>):Promise<void>;
 
 export function SetKKFileAddr(arg1:string):Promise<void>;
+
+export function SetPdfPassword(arg1:models.PdfProtectOptions):Promise<models.PdfFileInfo>;
 
 export function SetSettings(arg1:models.Settings):Promise<void>;
 

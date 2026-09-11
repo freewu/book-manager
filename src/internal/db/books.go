@@ -189,6 +189,14 @@ func (s *Store) UpsertScannedBook(b *models.Book) (int64, bool, error) {
 	return id, true, nil
 }
 
+// UpdateBookFileFacts refreshes the file facts (size / hash) of a book after
+// its file was rewritten in place, e.g. when a PDF got a password.
+func (s *Store) UpdateBookFileFacts(id int64, size int64, hash string) error {
+	_, err := s.db.Exec(`UPDATE books SET size=?, hash=?, updated_at=datetime('now','localtime') WHERE id=?`,
+		size, hash, id)
+	return err
+}
+
 // UpdateBookMeta edits editable book fields. A manual edit also resets the
 // douban auto-enrich failure counter (the user corrected the name).
 func (s *Store) UpdateBookMeta(id int64, title, author, publisher, description string) error {
