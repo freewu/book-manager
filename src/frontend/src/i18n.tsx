@@ -108,7 +108,6 @@ const DICT: Dict = {
 
   // ---- tools page ----
   'tools.title': {'zh-CN': '工具', 'zh-TW': '工具', 'en': 'Tools'},
-  'tools.open': {'zh-CN': '打开', 'zh-TW': '開啟', 'en': 'Open'},
   'tools.scan': {'zh-CN': '扫描书库', 'zh-TW': '掃描書庫', 'en': 'Scan library'},
   'tools.scanDesc': {'zh-CN': '扫描本地目录，把新增的电子书加入书架', 'zh-TW': '掃描本機目錄，把新增的電子書加入書架', 'en': 'Scan local folders and add new e-books to the shelf'},
   'tools.tags': {'zh-CN': '标签管理', 'zh-TW': '標籤管理', 'en': 'Tag manager'},

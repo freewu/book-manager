@@ -1605,8 +1605,14 @@ textarea:focus {
   opacity: 0.65;
   cursor: default;
 }
+.tool-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
 .tool-icon {
-  font-size: 22px;
+  font-size: 20px;
+  line-height: 1;
 }
 .tool-title {
   display: flex;
@@ -1619,16 +1625,13 @@ textarea:focus {
 .tool-title .nav-badge {
   margin-left: 0;
 }
+.tool-head .nav-badge {
+  margin-left: 0;
+}
 .tool-desc {
   font-size: 12px;
   line-height: 1.6;
   color: var(--text-2);
-}
-.tool-action {
-  margin-top: 6px;
-  font-size: 12px;
-  font-weight: 700;
-  color: var(--accent);
 }
 .tool-path {
   font-size: 11px;

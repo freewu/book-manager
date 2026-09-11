@@ -23,8 +23,6 @@ export interface ToolDef {
   nameKey: string;
   /** i18n 键：工具描述 */
   descKey: string;
-  /** i18n 键：卡片右下角动作文案，默认 tools.open */
-  actionKey?: string;
   /** 分类内排序，越小越靠前 */
   order?: number;
   /** 该工具作用于哪些书籍格式（书架右键子菜单据此显示） */

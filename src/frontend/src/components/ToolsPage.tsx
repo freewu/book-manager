@@ -32,7 +32,6 @@ export default function ToolsPage({badges, onOpenTool}: Props) {
                   <ToolCard
                     key={tool.id}
                     tool={tool}
-                    action={t(tool.actionKey || 'tools.open')}
                     badge={tool.badgeKey ? badges[tool.badgeKey] : undefined}
                     onClick={() => onOpenTool(tool.id)}
                   />
@@ -48,25 +47,22 @@ export default function ToolsPage({badges, onOpenTool}: Props) {
 
 function ToolCard({
   tool,
-  action,
   badge,
   onClick,
 }: {
   tool: ToolDef;
-  action: string;
   badge?: number;
   onClick: () => void;
 }) {
   const {t} = useI18n();
   return (
     <div className="tool-card clickable" onClick={onClick}>
-      <span className="tool-icon">{tool.icon}</span>
-      <span className="tool-title">
-        {t(tool.nameKey)}
+      <span className="tool-head">
+        <span className="tool-icon">{tool.icon}</span>
+        <span className="tool-title">{t(tool.nameKey)}</span>
         {badge !== undefined && badge > 0 && <span className="nav-badge mis-badge">{badge}</span>}
       </span>
       <span className="tool-desc">{t(tool.descKey)}</span>
-      <span className="tool-action">{action} ›</span>
     </div>
   );
 }

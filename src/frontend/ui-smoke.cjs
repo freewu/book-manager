@@ -139,6 +139,17 @@ async function main() {
   const sections = await page.locator('.page-section-title').allTextContents();
   check('tool sections = 其他/PDF', JSON.stringify(sections) === JSON.stringify(['其他', 'PDF']), JSON.stringify(sections));
   check('tool cards = 6', (await page.locator('.tool-card').count()) === 6, await page.locator('.tool-card').count());
+  const cardText = (await page.locator('.tool-card').first().textContent()) || '';
+  check('工具卡片无「打开 ›」动作行', !cardText.includes('打开'), cardText);
+  const sameRow = await page.evaluate(() => {
+    const card = document.querySelector('.tool-card');
+    if (!card) return false;
+    const icon = card.querySelector('.tool-icon').getBoundingClientRect();
+    const title = card.querySelector('.tool-title').getBoundingClientRect();
+    const overlap = Math.min(icon.bottom, title.bottom) - Math.max(icon.top, title.top);
+    return overlap > 0 && title.left > icon.left;
+  });
+  check('图标与名字在同一行', sameRow);
   await page.screenshot({path: 'screens/tools.png'});
 
   // PDF 工具：选文件 → 识别信息 → 设置密码
