@@ -279,6 +279,57 @@ type EpubToPdfProgress struct {
 	Chars   int `json:"chars"`
 }
 
+// PdfMergeFile describes one input of the 「合并 PDF」 tool. Error carries a
+// per-file problem (not a PDF, missing password, …) so the list can still be
+// rendered while a single entry is bad.
+type PdfMergeFile struct {
+	Path  string `json:"path"`
+	Name  string `json:"name"`
+	Size  int64  `json:"size"`
+	Pages int    `json:"pages"`
+	// Encrypted marks a password protected file.
+	Encrypted bool `json:"encrypted"`
+	// NeedsPassword asks the UI for a password (encrypted, none supplied yet).
+	NeedsPassword bool   `json:"needs_password"`
+	Error         string `json:"error"`
+}
+
+// PdfMergeOptions is the input of the 「合并 PDF」 tool. Files are merged in
+// the given order; Passwords only has to cover the encrypted files.
+type PdfMergeOptions struct {
+	Files []string `json:"files"`
+	// Passwords maps a file path onto its open password.
+	Passwords map[string]string `json:"passwords"`
+	// OutPath is the merged file (a file name, not a directory).
+	OutPath string `json:"out_path"`
+	// Bookmarks writes one top level bookmark per merged file.
+	Bookmarks bool `json:"bookmarks"`
+	// AddToShelf imports the result into the library when it is done.
+	AddToShelf bool `json:"add_to_shelf"`
+}
+
+// PdfMergeResult reports what the merge produced.
+type PdfMergeResult struct {
+	Path  string `json:"path"`
+	Files int    `json:"files"`
+	Pages int    `json:"pages"`
+	Bytes int64  `json:"bytes"`
+	// Added is true when the merged file was imported into the library,
+	// BookID is its id then; ShelfError explains why the import was skipped.
+	Added      bool   `json:"added"`
+	BookID     int64  `json:"book_id"`
+	ShelfError string `json:"shelf_error"`
+}
+
+// PdfMergeProgress is emitted on the pdfmerge:progress event while the inputs
+// are checked/decrypted (phase "prepare") and when the merge starts.
+type PdfMergeProgress struct {
+	Current int    `json:"current"`
+	Total   int    `json:"total"`
+	Name    string `json:"name"`
+	Phase   string `json:"phase"`
+}
+
 // Settings is the key/value settings map exposed to the UI.
 type Settings map[string]string
 

@@ -71,6 +71,8 @@ export function ListTags():Promise<Array<models.Tag>>;
 
 export function MarkMisrecord(arg1:number,arg2:string):Promise<void>;
 
+export function MergePdfs(arg1:models.PdfMergeOptions):Promise<models.PdfMergeResult>;
+
 export function OpenBookFolder(arg1:number):Promise<void>;
 
 export function OpenPath(arg1:string):Promise<void>;
@@ -79,11 +81,17 @@ export function OpenWithKKFileView(arg1:number):Promise<string>;
 
 export function PdfInspect(arg1:string,arg2:string):Promise<models.PdfFileInfo>;
 
+export function PdfMergeInspect(arg1:Array<string>,arg2:Record<string, string>):Promise<Array<models.PdfMergeFile>>;
+
 export function PickEpubFile():Promise<string>;
 
 export function PickOutDir(arg1:string):Promise<string>;
 
+export function PickOutPdfFile(arg1:string,arg2:string):Promise<string>;
+
 export function PickPdfFile():Promise<string>;
+
+export function PickPdfFiles():Promise<Array<string>>;
 
 export function PickScanDir():Promise<string>;
 

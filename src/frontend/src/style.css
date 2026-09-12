@@ -1706,6 +1706,92 @@ textarea:focus {
   color: var(--text-3);
 }
 
+/* 合并 PDF：待合并文件列表（顺序可调、可填密码） */
+.merge-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 260px;
+  overflow-y: auto;
+}
+.merge-empty {
+  padding: 14px;
+  text-align: center;
+  color: var(--text-3);
+  font-size: 12px;
+  background: var(--panel-2);
+  border: 1px dashed var(--border);
+  border-radius: 9px;
+}
+.merge-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  padding: 8px 10px;
+}
+.merge-idx {
+  flex: none;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  color: var(--text-3);
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 18px;
+  text-align: center;
+}
+.merge-main {
+  flex: 1;
+  min-width: 0;
+}
+.merge-name {
+  font-size: 13px;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.merge-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 3px;
+  font-size: 11px;
+  color: var(--text-3);
+}
+.merge-err {
+  color: var(--danger);
+}
+.merge-warn {
+  color: var(--warn, #d98b00);
+}
+.merge-pw {
+  display: flex;
+  gap: 6px;
+  margin-top: 6px;
+}
+.merge-pw input {
+  flex: 1;
+  min-width: 0;
+  font-size: 12px;
+  padding: 5px 8px;
+}
+.merge-actions {
+  display: flex;
+  flex: none;
+  gap: 4px;
+}
+.btn-icon {
+  padding: 3px 8px;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
 /* 加密 PDF：打开密码输入浮层 */
 .pdf-reader {
   position: relative;

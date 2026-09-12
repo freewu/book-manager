@@ -213,6 +213,64 @@ const DICT: Dict = {
     'zh-TW': '清除後任何人都可以開啟該檔案，請確認已備份或不再需要保護。',
     'en': 'Afterwards anyone can open this file — make sure you have a backup or no longer need the protection.',
   },
+  // ---- PDF：合并 PDF ----
+  'tools.pdfMerge': {'zh-CN': '合并 PDF', 'zh-TW': '合併 PDF', 'en': 'Merge PDF'},
+  'tools.pdfMergeDesc': {
+    'zh-CN': '把多个 PDF 按顺序合并成一个新文件',
+    'zh-TW': '把多個 PDF 依序合併成一個新檔案',
+    'en': 'Join several PDFs into one new file, in the order you choose',
+  },
+  'tools.pdfMergeFiles': {'zh-CN': '待合并文件（{n}）', 'zh-TW': '待合併檔案（{n}）', 'en': 'Files to merge ({n})'},
+  'tools.pdfMergeTotal': {'zh-CN': '共 {pages} 页 · {size}', 'zh-TW': '共 {pages} 頁 · {size}', 'en': '{pages} pages · {size}'},
+  'tools.pdfMergeNoFile': {'zh-CN': '还没有选择文件，点下面的「添加 PDF」', 'zh-TW': '還沒有選擇檔案，點下面的「新增 PDF」', 'en': 'No files yet — use “Add PDFs” below'},
+  'tools.pdfMergeAdd': {'zh-CN': '添加 PDF', 'zh-TW': '新增 PDF', 'en': 'Add PDFs'},
+  'tools.pdfMergeClear': {'zh-CN': '清空', 'zh-TW': '清空', 'en': 'Clear'},
+  'tools.pdfMergeUp': {'zh-CN': '上移', 'zh-TW': '上移', 'en': 'Move up'},
+  'tools.pdfMergeDown': {'zh-CN': '下移', 'zh-TW': '下移', 'en': 'Move down'},
+  'tools.pdfMergeRemove': {'zh-CN': '移除', 'zh-TW': '移除', 'en': 'Remove'},
+  'tools.pdfMergeFromShelf': {'zh-CN': '已带入书架中的《{title}》，可以继续添加其他 PDF', 'zh-TW': '已帶入書架中的《{title}》，可以繼續新增其他 PDF', 'en': '“{title}” from the shelf is already in the list — add more PDFs if you like'},
+  'tools.pdfMergeNeedPw': {'zh-CN': '需要打开密码', 'zh-TW': '需要開啟密碼', 'en': 'Password required'},
+  'tools.pdfMergePwPlaceholder': {'zh-CN': '打开该文件所需的密码', 'zh-TW': '開啟該檔案所需的密碼', 'en': 'Password needed to open this file'},
+  'tools.pdfMergeOut': {'zh-CN': '保存为', 'zh-TW': '儲存為', 'en': 'Save as'},
+  'tools.pdfMergeOutHint': {'zh-CN': '未选择保存位置', 'zh-TW': '未選擇儲存位置', 'en': 'No target chosen yet'},
+  'tools.pdfMergePickOut': {'zh-CN': '选择位置…', 'zh-TW': '選擇位置…', 'en': 'Choose…'},
+  'tools.pdfMergeOutDefault': {
+    'zh-CN': '点「开始合并」后选择保存位置，默认放在第一个文件旁边',
+    'zh-TW': '點「開始合併」後選擇儲存位置，預設放在第一個檔案旁邊',
+    'en': 'Start merging to pick a target — the default is next to the first file',
+  },
+  'tools.pdfMergeSuffix': {
+    'zh-CN': '合并',
+    'zh-TW': '合併',
+    'en': 'merged',
+  },
+  'tools.pdfMergeBookmarks': {'zh-CN': '按文件名生成书签目录', 'zh-TW': '依檔名產生書籤目錄', 'en': 'Create one bookmark per file name'},
+  'tools.pdfMergeAddToShelf': {'zh-CN': '合并完成后加入书架', 'zh-TW': '合併完成後加入書架', 'en': 'Add the result to the shelf'},
+  'tools.pdfMergeSubmit': {'zh-CN': '开始合并', 'zh-TW': '開始合併', 'en': 'Merge'},
+  'tools.pdfMergeWorking': {'zh-CN': '合并中…', 'zh-TW': '合併中…', 'en': 'Merging…'},
+  'tools.pdfMergePreparing': {
+    'zh-CN': '正在准备 {cur}/{total}：{name}',
+    'zh-TW': '正在準備 {cur}/{total}：{name}',
+    'en': 'Preparing {cur}/{total}: {name}',
+  },
+  'tools.pdfMergeMerging': {'zh-CN': '正在合并 {n} 个文件…', 'zh-TW': '正在合併 {n} 個檔案…', 'en': 'Merging {n} files…'},
+  'tools.pdfMergeDone': {'zh-CN': '合并完成', 'zh-TW': '合併完成', 'en': 'Merge finished'},
+  'tools.pdfMergeStats': {
+    'zh-CN': '{files} 个文件 · {pages} 页 · {size}',
+    'zh-TW': '{files} 個檔案 · {pages} 頁 · {size}',
+    'en': '{files} files · {pages} pages · {size}',
+  },
+  'tools.pdfMergeHint': {
+    'zh-CN': '列表顺序就是合并顺序；加密的 PDF 需要先填打开密码，合并后的文件不带密码。',
+    'zh-TW': '清單順序就是合併順序；加密的 PDF 需要先填開啟密碼，合併後的檔案不帶密碼。',
+    'en': 'The list order is the merge order. Encrypted PDFs need their password first; the merged file itself is not encrypted.',
+  },
+  'tools.pdfMergeErrNoFile': {'zh-CN': '请先选择要合并的 PDF 文件', 'zh-TW': '請先選擇要合併的 PDF 檔案', 'en': 'Choose the PDFs to merge first'},
+  'tools.pdfMergeErrBlocked': {
+    'zh-CN': '还有文件没准备好（见上方提示），请先处理',
+    'zh-TW': '還有檔案沒準備好（見上方提示），請先處理',
+    'en': 'Some files are not ready yet — see the notes above',
+  },
   'tools.pdfEpub': {'zh-CN': '转存 EPUB', 'zh-TW': '轉存 EPUB', 'en': 'Convert to EPUB'},
   'tools.pdfEpubDesc': {
     'zh-CN': '把 PDF 的文字排版成 epub 电子书，可选择保存目录',
@@ -522,6 +580,8 @@ export function I18nProvider({lang, children}: {lang: Lang; children: React.Reac
   const value = useMemo<I18nCtx>(() => ({lang, t: (key, vars) => translate(lang, key, vars)}), [lang]);
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }
+
+export type TFunc = I18nCtx['t'];
 
 export function useI18n(): I18nCtx {
   return useContext(Ctx);

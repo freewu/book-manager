@@ -321,6 +321,74 @@ export namespace models {
 	        this.needs_password = source["needs_password"];
 	    }
 	}
+	export class PdfMergeFile {
+	    path: string;
+	    name: string;
+	    size: number;
+	    pages: number;
+	    encrypted: boolean;
+	    needs_password: boolean;
+	    error: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new PdfMergeFile(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.path = source["path"];
+	        this.name = source["name"];
+	        this.size = source["size"];
+	        this.pages = source["pages"];
+	        this.encrypted = source["encrypted"];
+	        this.needs_password = source["needs_password"];
+	        this.error = source["error"];
+	    }
+	}
+	export class PdfMergeOptions {
+	    files: string[];
+	    passwords: Record<string, string>;
+	    out_path: string;
+	    bookmarks: boolean;
+	    add_to_shelf: boolean;
+	
+	    static createFrom(source: any = {}) {
+	        return new PdfMergeOptions(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.files = source["files"];
+	        this.passwords = source["passwords"];
+	        this.out_path = source["out_path"];
+	        this.bookmarks = source["bookmarks"];
+	        this.add_to_shelf = source["add_to_shelf"];
+	    }
+	}
+	export class PdfMergeResult {
+	    path: string;
+	    files: number;
+	    pages: number;
+	    bytes: number;
+	    added: boolean;
+	    book_id: number;
+	    shelf_error: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new PdfMergeResult(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.path = source["path"];
+	        this.files = source["files"];
+	        this.pages = source["pages"];
+	        this.bytes = source["bytes"];
+	        this.added = source["added"];
+	        this.book_id = source["book_id"];
+	        this.shelf_error = source["shelf_error"];
+	    }
+	}
 	export class PdfProtectOptions {
 	    book_id: number;
 	    path: string;

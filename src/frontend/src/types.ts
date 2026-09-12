@@ -258,3 +258,50 @@ export interface EpubToPdfProgress {
   total: number;
   chars: number;
 }
+
+/** 合并 PDF 工具里的一个输入文件 */
+export interface PdfMergeFile {
+  path: string;
+  name: string;
+  size: number;
+  pages: number;
+  /** 文件带打开密码 */
+  encrypted: boolean;
+  /** 需要用户先填打开密码 */
+  needs_password: boolean;
+  /** 这个文件本身的问题（不是 PDF、读不出来…），空串表示没问题 */
+  error: string;
+}
+
+export interface PdfMergeOptions {
+  /** 按数组顺序合并 */
+  files: string[];
+  /** 文件路径 → 打开密码（只有加密文件需要） */
+  passwords: Record<string, string>;
+  /** 合并后的文件（含文件名的完整路径） */
+  out_path: string;
+  /** 按文件名生成一份顶层书签目录 */
+  bookmarks: boolean;
+  /** 合并成功后自动入库 */
+  add_to_shelf: boolean;
+}
+
+export interface PdfMergeResult {
+  path: string;
+  /** 参与合并的文件数 */
+  files: number;
+  /** 合并后的总页数 */
+  pages: number;
+  bytes: number;
+  added: boolean;
+  book_id: number;
+  shelf_error: string;
+}
+
+/** pdfmerge:progress 事件；phase = prepare（逐个检查/解密）| merge（开始合并） */
+export interface PdfMergeProgress {
+  current: number;
+  total: number;
+  name: string;
+  phase: string;
+}

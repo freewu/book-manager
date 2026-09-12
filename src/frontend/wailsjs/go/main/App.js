@@ -138,6 +138,10 @@ export function MarkMisrecord(arg1, arg2) {
   return window['go']['main']['App']['MarkMisrecord'](arg1, arg2);
 }
 
+export function MergePdfs(arg1) {
+  return window['go']['main']['App']['MergePdfs'](arg1);
+}
+
 export function OpenBookFolder(arg1) {
   return window['go']['main']['App']['OpenBookFolder'](arg1);
 }
@@ -154,6 +158,10 @@ export function PdfInspect(arg1, arg2) {
   return window['go']['main']['App']['PdfInspect'](arg1, arg2);
 }
 
+export function PdfMergeInspect(arg1, arg2) {
+  return window['go']['main']['App']['PdfMergeInspect'](arg1, arg2);
+}
+
 export function PickEpubFile() {
   return window['go']['main']['App']['PickEpubFile']();
 }
@@ -162,8 +170,16 @@ export function PickOutDir(arg1) {
   return window['go']['main']['App']['PickOutDir'](arg1);
 }
 
+export function PickOutPdfFile(arg1, arg2) {
+  return window['go']['main']['App']['PickOutPdfFile'](arg1, arg2);
+}
+
 export function PickPdfFile() {
   return window['go']['main']['App']['PickPdfFile']();
+}
+
+export function PickPdfFiles() {
+  return window['go']['main']['App']['PickPdfFiles']();
 }
 
 export function PickScanDir() {

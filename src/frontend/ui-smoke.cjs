@@ -57,6 +57,30 @@ window.go = { main: { App: {
   },
   SetPdfPassword: async (o) => ({path: o.path, name: 'huozhe.pdf', size: 5242880, pages: 120, title: '活着', encrypted: true, needs_password: false}),
   RemovePdfPassword: async (o) => ({path: o.path, name: 'locked.pdf', size: 5242880, pages: 120, title: '活着', encrypted: false, needs_password: false}),
+  // ---- 合并 PDF：多选 + 顺序 + 加密文件密码 ----
+  PickPdfFiles: async () => (window.__pickMerge || ['E:\\\\Books\\\\a.pdf', 'E:\\\\Books\\\\b.pdf']),
+  PdfMergeInspect: async (paths, passwords) => (paths || []).map((p) => {
+    const name = String(p).split(/[\\\\/]/).pop();
+    const locked = name.includes('locked');
+    const pw = (passwords || {})[p] || '';
+    return {path: p, name, size: 1048576, pages: 10, encrypted: locked, needs_password: locked && pw !== 'secret', error: name.includes('bad') ? '不是有效的 PDF 文件' : ''};
+  }),
+  PickOutPdfFile: async (name, dir) => (window.__mergeOut === undefined ? (dir || 'E:\\\\Books') + '\\\\' + (name || 'merged.pdf') : window.__mergeOut),
+  MergePdfs: async (o) => {
+    // 模拟后端逐个准备文件 + 开始合并（真实运行时是 pdfmerge:progress 事件）
+    const fire = (p) => (window.__events['pdfmerge:progress'] || []).forEach((cb) => cb(p));
+    window.__lastMerge = o;
+    const files = o.files || [];
+    for (let i = 0; i < files.length; i++) {
+      fire({current: i, total: files.length, name: String(files[i]).split(/[\\\\/]/).pop(), phase: 'prepare'});
+      await new Promise((r) => setTimeout(r, 60));
+    }
+    fire({current: files.length, total: files.length, name: '', phase: 'merge'});
+    await new Promise((r) => setTimeout(r, 700));
+    const blocked = files.some((f) => String(f).includes('locked') && !((o.passwords || {})[f]));
+    if (blocked) throw new Error('《locked.pdf》已加密，需要先输入打开密码');
+    return {path: o.out_path, files: files.length, pages: files.length * 10, bytes: 2097152, added: o.add_to_shelf, book_id: o.add_to_shelf ? 5 : 0, shelf_error: ''};
+  },
   OpenPath: async () => {}, DoubanRunning: async () => false, StartEnrichAll: async () => 0,
   PickOutDir: async () => (window.__outDir === undefined ? 'E:\\\\Books\\\\out' : window.__outDir),
   PickEpubFile: async () => (window.__pickEpub || 'E:\\\\Books\\\\santi.epub'),
@@ -211,7 +235,7 @@ async function main() {
   await page.waitForTimeout(500);
   const sections = await page.locator('.page-section-title').allTextContents();
   check('tool sections = 其他/PDF/EPUB', JSON.stringify(sections) === JSON.stringify(['其他', 'PDF', 'EPUB']), JSON.stringify(sections));
-  check('tool cards = 9', (await page.locator('.tool-card').count()) === 9, await page.locator('.tool-card').count());
+  check('tool cards = 10', (await page.locator('.tool-card').count()) === 10, await page.locator('.tool-card').count());
   const cardText = (await page.locator('.tool-card').first().textContent()) || '';
   check('工具卡片无「打开 ›」动作行', !cardText.includes('打开'), cardText);
   const sameRow = await page.evaluate(() => {
@@ -261,7 +285,12 @@ async function main() {
     JSON.stringify(await page.locator('.page-section-title').allTextContents()) === JSON.stringify(['PDF']),
     JSON.stringify(await page.locator('.page-section-title').allTextContents()),
   );
-  check('筛选 PDF：3 张卡片', (await page.locator('.tool-card').count()) === 3, await page.locator('.tool-card').count());
+  check('筛选 PDF：4 张卡片', (await page.locator('.tool-card').count()) === 4, await page.locator('.tool-card').count());
+  check(
+    '筛选 PDF：包含「合并 PDF」卡片',
+    (await page.locator('.tool-card').allTextContents()).some((c) => c.includes('合并 PDF') && c.includes('🧷')),
+    JSON.stringify(await page.locator('.tool-card').allTextContents()),
+  );
   check(
     '工具描述不再带「书架里右键」说明',
     !(await page.locator('.tool-desc').allTextContents()).some((d) => d.includes('右键')),
@@ -275,7 +304,7 @@ async function main() {
   );
   await page.screenshot({path: 'screens/tools-filter.png'});
   await clickChip('全部');
-  check('筛选「全部」：恢复 9 张卡片', (await page.locator('.tool-card').count()) === 9, await page.locator('.tool-card').count());
+  check('筛选「全部」：恢复 10 张卡片', (await page.locator('.tool-card').count()) === 10, await page.locator('.tool-card').count());
   await page.screenshot({path: 'screens/tools.png'});
 
   // PDF 工具：选文件 → 识别信息 → 设置密码
@@ -312,7 +341,15 @@ async function main() {
   await page.locator('.ctx-sub').first().hover();
   await page.waitForTimeout(300);
   const subItems = await page.locator('.ctx-submenu button').allTextContents();
-  check('ctx 子菜单 = [设置密码, 清除密码, 转存 EPUB]', subItems.length === 3 && subItems[0].includes('设置密码') && subItems[1].includes('清除密码') && subItems[2].includes('转存 EPUB'), JSON.stringify(subItems));
+  check(
+    'ctx 子菜单 = [设置密码, 清除密码, 转存 EPUB, 合并 PDF]',
+    subItems.length === 4 &&
+      subItems[0].includes('设置密码') &&
+      subItems[1].includes('清除密码') &&
+      subItems[2].includes('转存 EPUB') &&
+      subItems[3].includes('合并 PDF'),
+    JSON.stringify(subItems),
+  );
   await page.screenshot({path: 'screens/ctx-pdf.png'});
   await page.locator('.ctx-submenu button', {hasText: '设置密码'}).first().click();
   await page.waitForTimeout(600);
@@ -438,6 +475,99 @@ async function main() {
   await page.locator('.modal-close').click();
   await page.waitForTimeout(300);
 
+  // 工具页 → 合并 PDF：多选 → 调顺序 → 移除 → 加密文件密码 → 合并（进度） → 完成统计
+  await page.locator('.tool-card', {hasText: '合并 PDF'}).first().click();
+  await page.waitForTimeout(400);
+  check('合并 PDF 弹窗', (await page.locator('.modal .modal-head h2', {hasText: '合并 PDF'}).count()) > 0);
+  check('合并 PDF 空列表提示', (await page.locator('.merge-empty').count()) === 1);
+  check('合并 PDF 未选文件时不能合并', await page.locator('.modal-foot .btn-primary').isDisabled());
+  await page.locator('.modal .btn-soft', {hasText: '添加 PDF'}).click();
+  await page.waitForTimeout(500);
+  const mergeNames = () => page.locator('.merge-name').allTextContents();
+  check('合并 PDF 添加了 2 个文件', (await page.locator('.merge-item').count()) === 2, await page.locator('.merge-item').count());
+  check('合并 PDF 列表 = [a.pdf, b.pdf]', JSON.stringify(await mergeNames()) === JSON.stringify(['a.pdf', 'b.pdf']), JSON.stringify(await mergeNames()));
+  const mergeHead = (await page.locator('.modal .form-row label').first().textContent()) || '';
+  check('合并 PDF 显示总页数与大小', mergeHead.includes('2') && mergeHead.includes('20 页'), mergeHead);
+  check('合并 PDF 第一个不能上移', await page.locator('.merge-item').first().locator('.btn-icon').nth(0).isDisabled());
+  await page.locator('.merge-item').first().locator('.btn-icon').nth(1).click(); // ↓ 下移
+  await page.waitForTimeout(200);
+  check('合并 PDF 顺序可调整', JSON.stringify(await mergeNames()) === JSON.stringify(['b.pdf', 'a.pdf']), JSON.stringify(await mergeNames()));
+  await page.locator('.merge-item').nth(1).locator('.btn-icon').nth(2).click(); // ✕ 移除 a.pdf
+  await page.waitForTimeout(200);
+  check('合并 PDF 可移除文件', JSON.stringify(await mergeNames()) === JSON.stringify(['b.pdf']), JSON.stringify(await mergeNames()));
+  await page.locator('.modal .btn-soft', {hasText: '添加 PDF'}).click(); // 再加回 a.pdf
+  await page.waitForTimeout(400);
+  check('合并 PDF 不重复添加已选文件', JSON.stringify(await mergeNames()) === JSON.stringify(['b.pdf', 'a.pdf']), JSON.stringify(await mergeNames()));
+  const mergeLayout = await page.evaluate(() => {
+    const modal = document.querySelector('.modal');
+    if (!modal) return null;
+    const r = modal.getBoundingClientRect();
+    const items = [...document.querySelectorAll('.merge-item')];
+    const actions = [...document.querySelectorAll('.merge-actions')].map((a) => a.getBoundingClientRect().right);
+    return {
+      right: Math.round(r.right),
+      inner: window.innerWidth,
+      itemOverflow: items.some((it) => it.scrollWidth > it.clientWidth + 1),
+      maxActionRight: actions.length ? Math.round(Math.max(...actions)) : 0,
+      pageOverflow: document.documentElement.scrollWidth > window.innerWidth,
+    };
+  });
+  check(
+    '合并 PDF 弹窗不溢出、操作按钮在框内',
+    !!mergeLayout &&
+      mergeLayout.right <= mergeLayout.inner &&
+      !mergeLayout.itemOverflow &&
+      !mergeLayout.pageOverflow &&
+      mergeLayout.maxActionRight <= mergeLayout.right,
+    JSON.stringify(mergeLayout),
+  );
+  await page.screenshot({path: 'screens/pdf-merge.png'});
+
+  // 加密文件：默认不能合并，需要先验证密码
+  await page.evaluate(() => {
+    window.__pickMerge = ['E:\\Books\\locked.pdf'];
+  });
+  await page.locator('.modal .btn-soft', {hasText: '添加 PDF'}).click();
+  await page.waitForTimeout(500);
+  check('合并 PDF 加密文件带徽标', (await page.locator('.merge-item').nth(2).locator('.pdf-badge.on').count()) === 1);
+  check(
+    '合并 PDF 提示需要打开密码',
+    ((await page.locator('.merge-item').nth(2).textContent()) || '').includes('需要打开密码'),
+  );
+  check('合并 PDF 有密码未验证时不能合并', await page.locator('.modal-foot .btn-primary').isDisabled());
+  await page.locator('.merge-item').nth(2).locator('input[type="password"]').fill('secret');
+  await page.locator('.merge-item').nth(2).locator('.btn-soft', {hasText: '验证'}).click();
+  await page.waitForTimeout(400);
+  check(
+    '合并 PDF 验证密码后可以合并',
+    !(await page.locator('.modal-foot .btn-primary').isDisabled()) &&
+      !((await page.locator('.merge-item').nth(2).textContent()) || '').includes('需要打开密码'),
+  );
+
+  await page.locator('.modal-foot .btn-primary').click(); // 未选保存位置 → 走保存对话框（mock）
+  await page.waitForTimeout(300);
+  check('合并 PDF 进度条可见', (await page.locator('.progress-track .fill').count()) > 0);
+  const mergeProgText = (await page.locator('.progress-track + .hint').textContent().catch(() => '')) || '';
+  check('合并 PDF 进度文案', /正在准备|正在合并/.test(mergeProgText), mergeProgText);
+  await page.waitForTimeout(1100);
+  const mergeDone = (await page.locator('.tool-note.ok').textContent().catch(() => '')) || '';
+  check('合并 PDF 完成统计', mergeDone.includes('合并完成') && mergeDone.includes('3 个文件') && mergeDone.includes('30 页'), mergeDone);
+  check('合并 PDF 结果已入库提示', mergeDone.includes('-合并.pdf') && mergeDone.includes('已加入书架'), mergeDone);
+  const mergeOpts = await page.evaluate(() => window.__lastMerge);
+  check(
+    '合并 PDF 参数（顺序/密码/书签/入库）',
+    mergeOpts &&
+      JSON.stringify((mergeOpts.files || []).map((f) => String(f).split(/[\\/]/).pop())) === JSON.stringify(['b.pdf', 'a.pdf', 'locked.pdf']) &&
+      mergeOpts.passwords['E:\\Books\\locked.pdf'] === 'secret' &&
+      mergeOpts.bookmarks === true &&
+      mergeOpts.add_to_shelf === true &&
+      /-合并\.pdf$/.test(mergeOpts.out_path),
+    JSON.stringify(mergeOpts),
+  );
+  await page.screenshot({path: 'screens/pdf-merge-done.png'});
+  await page.locator('.modal-close').click();
+  await page.waitForTimeout(300);
+
   // 书架右键 PDF → PDF 工具 → 转存 EPUB（预填书名/作者）
   await page.evaluate(() => {
     document.querySelectorAll('.nav-item').forEach((b) => {
@@ -456,6 +586,25 @@ async function main() {
   const shelfAuthor = await page.locator('.modal .form-row input').nth(2).inputValue();
   check('预填书名/作者', shelfTitle === '活着' && shelfAuthor === '余华', shelfTitle + ' / ' + shelfAuthor);
   await page.screenshot({path: 'screens/pdf-epub-shelf.png'});
+  await page.locator('.modal-close').click();
+  await page.waitForTimeout(300);
+
+  // 书架右键 PDF → PDF 工具 → 合并 PDF（把这本书作为第一个文件）
+  await page.locator('.book-card').nth(1).click({button: 'right'});
+  await page.waitForTimeout(400);
+  await page.locator('.ctx-sub').first().hover();
+  await page.waitForTimeout(300);
+  await page.locator('.ctx-submenu button', {hasText: '合并 PDF'}).first().click();
+  await page.waitForTimeout(700);
+  check('书架入口进入合并 PDF', (await page.locator('.modal .modal-head h2', {hasText: '合并 PDF'}).count()) > 0);
+  const shelfMergeNames = await page.locator('.merge-name').allTextContents();
+  check('书架入口已带入这本书', JSON.stringify(shelfMergeNames) === JSON.stringify(['huozhe.pdf']), JSON.stringify(shelfMergeNames));
+  check(
+    '合并 PDF 书架入口提示',
+    (await page.locator('.modal .hint').allTextContents()).some((h) => h.includes('活着')),
+    JSON.stringify(await page.locator('.modal .hint').allTextContents()),
+  );
+  await page.screenshot({path: 'screens/pdf-merge-shelf.png'});
   await page.locator('.modal-close').click();
   await page.waitForTimeout(300);
 

@@ -46,7 +46,7 @@ just push "feat: xxx"   # 提交并推送
 ```
 src/
   app.go / main.go / bindings_*.go   # Wails 入口 + 前端绑定方法
-  internal/{db,parser,scanner,douban,models,pdfcrypt,pdf2epub,epub2pdf}  # 后端逻辑
+  internal/{db,parser,scanner,douban,models,pdfcrypt,pdf2epub,epub2pdf,pdfmerge}  # 后端逻辑
   frontend/src/components/            # React 组件（书架/阅读器/宿主弹窗）
   frontend/src/tools/<id>/            # 工具插件（define.ts + lib.ts + tools.tsx）
   cmd/genlogo                         # logo 与图标生成
@@ -96,14 +96,26 @@ src/frontend/src/tools/<tool-id>/
      **`github.com/ledongthuc/pdf` 读不了我们生成的 CJK PDF**（忽略 ToUnicode → 乱码），pdf.js / Acrobat / pypdf 正常。
   对应工具 `tools/epub-pdf/`，绑定在 `bindings_epub2pdf.go`（`PickEpubFile` + `EpubInspect` + `EpubToPdf`，
   进度走 `epub2pdf:progress` 事件，可选自动入库）。
+- PDF 合并（多选 → 合并成一个新文件）在 `src/internal/pdfmerge`（基于 pdfcpu 的 `api.MergeCreateFile`）：
+  `Inspect(path, password)` 返回单文件信息（页数 / 是否加密 / 是否需要密码，永不返回 error，读不了就把原因放进 `Error`）；
+  `Merge(Options)` 按传入顺序合并，`Options.Bookmarks` 打开时每个源文件生成一级书签（书名即原文件名），
+  单文件合并不生成书签。三个约定：
+  1. **加密输入先解到临时副本再合并**（复用 `pdfcrypt.DecryptTo`），临时副本放在按序号命名的子目录里并**保留原文件名**，
+     这样 pdfcpu 用文件名生成的书签才是用户看到的书名；不同输入可以有不同密码，所以不用 `conf.UserPW`。
+  2. `NeedsPassword = 加密 && 没填密码`——用户验证过密码后就不再提示，但合并时仍按 `Encrypted` 走解密。
+  3. 输出路径不能是输入之一（`ErrSameFile`）；pdfcpu 是「临时文件写完再替换」，失败不会留下半个文件。
+  进度没有逐文件回调，所以分两阶段：先 `prepare`（每个输入一次，解密/校验）再 `merge`，
+  绑定转成 `pdfmerge:progress` 事件，UI 不假装逐文件合并进度。
+  对应工具 `tools/pdf-merge/`，绑定在 `bindings_pdfmerge.go`
+  （`PickPdfFiles` 多选 + `PdfMergeInspect` + `PickOutPdfFile` + `MergePdfs`，可选自动入库）。
 - 书架（`components/Bookshelf.tsx`）的滚动位置在会话内记住：打开阅读器时整个书架会被卸载，
   重新挂载后用 `useLayoutEffect` 把 `.shelf` 的 `scrollTop` 放回去（搜索/筛选/排序变化则回到顶部）。
   改这块注意两点：① 保存位置用 `scroll` 监听 + 卸载清理，且清理里只在 `el.isConnected` 时读
   `scrollTop`（passive effect 的清理可能晚于 DOM 摘除，此时读到的是 0）；② 卡片封面用
   `aspect-ratio` 固定高度，网格高度不依赖图片加载，所以挂载即可恢复、不会跳。
-- UI 改动后跑 `just ui-test`：它用 playwright-core 加载 `dist/` 并对 `window.go` 打桩，覆盖书架（含滚动位置恢复）/统计/扫描/标签/设置/书籍详情/EPUB 与加密 PDF 阅读器/工具页（分类分组 + 类型筛选）与 PDF 设置·清除密码·转存 EPUB·转存 PDF 弹窗（含书架右键 EPUB 工具子菜单）。
+- UI 改动后跑 `just ui-test`：它用 playwright-core 加载 `dist/` 并对 `window.go` 打桩，覆盖书架（含滚动位置恢复）/统计/扫描/标签/设置/书籍详情/EPUB 与加密 PDF 阅读器/工具页（分类分组 + 类型筛选）与 PDF 设置·清除密码·转存 EPUB·转存 PDF·合并 PDF 弹窗（含书架右键 EPUB 工具子菜单、合并列表顺序调整与加密文件密码）。
   mock 里没有的绑定会回退成空操作（Proxy），所以新增绑定不会直接弄坏冒烟；
-  `pdf2epub:progress` / `epub2pdf:progress` 这类事件由 mock 自己塞进 `window.__events` 触发（`EventsOn` 实际调的是 `window.runtime.EventsOnMultiple`）。
+  `pdf2epub:progress` / `epub2pdf:progress` / `pdfmerge:progress` 这类事件由 mock 自己塞进 `window.__events` 触发（`EventsOn` 实际调的是 `window.runtime.EventsOnMultiple`）。
 
 ## 注意事项
 
