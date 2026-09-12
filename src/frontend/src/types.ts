@@ -416,3 +416,76 @@ export interface PdfMetaResult {
   book_id: number;
   shelf_error: string;
 }
+
+// ---- 压缩文档（tools/pdf-compress）----
+
+/** 压缩档位：对应 Ghostscript 的 PDFSETTINGS 预设 */
+export type PdfCompressPreset = 'screen' | 'ebook' | 'printer' | 'prepress';
+
+/** 压缩引擎：auto 有 Ghostscript 就用，否则退回 pdfcpu 无损优化 */
+export type PdfCompressEngine = 'auto' | 'ghostscript' | 'pdfcpu';
+
+/** 本机 Ghostscript 检测结果 */
+export interface PdfCompressGhostscript {
+  found: boolean;
+  path: string;
+  version: string;
+  /** manual=设置里指定的路径，registry=注册表，env=BOOKMANAGER_GS，path=PATH，common=常见安装目录 */
+  source: string;
+}
+
+export interface PdfCompressInfo {
+  path: string;
+  name: string;
+  size: number;
+  /** 加密且没给对密码时为 0 */
+  pages: number;
+  version: string;
+  encrypted: boolean;
+  needs_password: boolean;
+  error: string;
+  ghostscript: PdfCompressGhostscript;
+}
+
+export interface PdfCompressOptions {
+  path: string;
+  password: string;
+  /** 与 path 相同就是覆盖原文件 */
+  out_path: string;
+  preset: PdfCompressPreset;
+  /** 0 = 用档位默认分辨率 */
+  dpi: number;
+  grayscale: boolean;
+  engine: PdfCompressEngine;
+  /** 另存成功后自动入库（覆盖原文件时不入库） */
+  add_to_shelf: boolean;
+}
+
+export interface PdfCompressResult {
+  path: string;
+  in_path: string;
+  in_bytes: number;
+  out_bytes: number;
+  /** 负数表示压缩后反而变大 */
+  saved_bytes: number;
+  saved_percent: number;
+  pages: number;
+  /** 实际使用的引擎：ghostscript / pdfcpu */
+  engine: string;
+  gs_version: string;
+  preset: string;
+  dpi: number;
+  in_place: boolean;
+  seconds: number;
+  added: boolean;
+  book_id: number;
+  shelf_error: string;
+}
+
+/** 压缩进度：Ghostscript 不提供逐页进度，只有阶段 */
+export interface PdfCompressProgress {
+  /** prep / compress / verify / done */
+  phase: string;
+  percent: number;
+  elapsed: number;
+}

@@ -50,7 +50,7 @@ const walk = (dir) => {
 };
 walk(srcDir);
 
-const keyRef = /(?:\bt\(|\btranslate\([^,)]+,\s*|(?:name|desc|label|title|action)Key:\s*)'([A-Za-z0-9_.\-@]+)'/g;
+const keyRef = /(?:\bt\(|\btranslate\([^,)]+,\s*|(?:name|desc|label|title|action|hint)Key:\s*)'([A-Za-z0-9_.\-@]+)'/g;
 const unknown = [];
 const used = new Set();
 for (const f of files) {

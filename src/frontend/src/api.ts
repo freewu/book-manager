@@ -1,7 +1,7 @@
 // Thin wrappers over the generated wails bindings + shared helpers.
 import * as App from '../wailsjs/go/main/App';
 import {EventsOn, EventsOff} from '../wailsjs/runtime/runtime';
-import type {DoubanProgress, EpubToPdfProgress, PdfMergeProgress, PdfToEpubProgress, ScanProgress} from './types';
+import type {DoubanProgress, EpubToPdfProgress, PdfCompressProgress, PdfMergeProgress, PdfToEpubProgress, ScanProgress} from './types';
 
 export {App};
 
@@ -96,6 +96,12 @@ export function onEpub2PdfProgress(cb: (p: EpubToPdfProgress) => void): () => vo
 export function onPdfMergeProgress(cb: (p: PdfMergeProgress) => void): () => void {
   EventsOn('pdfmerge:progress', (p: PdfMergeProgress) => cb(p));
   return () => EventsOff('pdfmerge:progress');
+}
+
+// ---- 压缩文档进度（tools/pdf-compress）----
+export function onPdfCompressProgress(cb: (p: PdfCompressProgress) => void): () => void {
+  EventsOn('pdfcompress:progress', (p: PdfCompressProgress) => cb(p));
+  return () => EventsOff('pdfcompress:progress');
 }
 
 export function fmtDate(s: string): string {

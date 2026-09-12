@@ -196,6 +196,53 @@ window.go = { main: { App: {
     const inPlace = o.out_path === o.path;
     return {path: o.out_path, bytes: 5240000, changed, in_place: inPlace, added: !inPlace && o.add_to_shelf, book_id: o.add_to_shelf ? 7 : 0, shelf_error: ''};
   },
+  // ---- 压缩文档：读源文件信息 / 检测 Ghostscript / 压缩 ----
+  PdfCompressInspect: async (p, pw) => {
+    const name = String(p).split(/[\\/]/).pop();
+    const locked = name.includes('locked');
+    const gs = window.__gs || {found: false, path: '', version: '', source: ''};
+    window.__lastCompressInspect = {path: p, pw};
+    if (locked && pw !== 'secret') {
+      return {path: p, name, size: 5242880, pages: 0, version: '', encrypted: true, needs_password: true, error: 'PDF 已加密，需要先输入打开密码', ghostscript: gs};
+    }
+    return {path: p, name, size: 5242880, pages: 23, version: '1.7', encrypted: locked, needs_password: false, error: '', ghostscript: gs};
+  },
+  DetectGhostscript: async () => window.__gs || {found: false, path: '', version: '', source: ''},
+  PickGhostscriptExe: async () => {
+    window.__gs = {found: true, path: 'C:\\\\Program Files\\\\gs\\\\gs10.05.1\\\\bin\\\\gswin64c.exe', version: '10.05.1', source: 'manual'};
+    return window.__gs.path;
+  },
+  CompressPdf: async (o) => {
+    window.__lastCompress = o;
+    // 模拟后端阶段式上报（真实运行时是 pdfcompress:progress 事件）
+    const fire = (p) => (window.__events['pdfcompress:progress'] || []).forEach((cb) => cb(p));
+    fire({phase: 'prep', percent: 5, elapsed: 0.1});
+    await new Promise((r) => setTimeout(r, 150));
+    fire({phase: 'compress', percent: 20, elapsed: 0.3});
+    await new Promise((r) => setTimeout(r, 400));
+    fire({phase: 'verify', percent: 92, elapsed: 0.8});
+    const gs = o.engine !== 'pdfcpu' && (window.__gs || {}).found;
+    const inBytes = 5242880;
+    const outBytes = o.grayscale ? 1310720 : 1835008;
+    return {
+      path: o.out_path || o.path,
+      in_path: o.path,
+      in_bytes: inBytes,
+      out_bytes: outBytes,
+      saved_bytes: inBytes - outBytes,
+      saved_percent: Math.round(((inBytes - outBytes) / inBytes) * 1000) / 10,
+      pages: 23,
+      engine: gs ? 'ghostscript' : 'pdfcpu',
+      gs_version: gs ? '10.05.1' : '',
+      preset: o.preset,
+      dpi: o.dpi > 0 ? o.dpi : gs ? 150 : 0,
+      in_place: o.out_path === o.path,
+      seconds: 12.4,
+      added: o.add_to_shelf && o.out_path !== o.path,
+      book_id: o.add_to_shelf ? 9 : 0,
+      shelf_error: '',
+    };
+  },
   OpenPath: async () => {}, DoubanRunning: async () => false, StartEnrichAll: async () => 0,
   PickOutDir: async () => (window.__outDir === undefined ? 'E:\\\\Books\\\\out' : window.__outDir),
   PickEpubFile: async () => (window.__pickEpub || 'E:\\\\Books\\\\santi.epub'),
@@ -350,7 +397,7 @@ async function main() {
   await page.waitForTimeout(500);
   const sections = await page.locator('.page-section-title').allTextContents();
   check('tool sections = 其他/PDF/EPUB', JSON.stringify(sections) === JSON.stringify(['其他', 'PDF', 'EPUB']), JSON.stringify(sections));
-  check('tool cards = 13', (await page.locator('.tool-card').count()) === 13, await page.locator('.tool-card').count());
+  check('tool cards = 14', (await page.locator('.tool-card').count()) === 14, await page.locator('.tool-card').count());
   const cardText = (await page.locator('.tool-card').first().textContent()) || '';
   check('工具卡片无「打开 ›」动作行', !cardText.includes('打开'), cardText);
   const sameRow = await page.evaluate(() => {
@@ -400,7 +447,12 @@ async function main() {
     JSON.stringify(await page.locator('.page-section-title').allTextContents()) === JSON.stringify(['PDF']),
     JSON.stringify(await page.locator('.page-section-title').allTextContents()),
   );
-  check('筛选 PDF：7 张卡片', (await page.locator('.tool-card').count()) === 7, await page.locator('.tool-card').count());
+  check('筛选 PDF：8 张卡片', (await page.locator('.tool-card').count()) === 8, await page.locator('.tool-card').count());
+  check(
+    '筛选 PDF：包含「压缩文档」卡片',
+    (await page.locator('.tool-card').allTextContents()).some((c) => c.includes('压缩文档') && c.includes('🗜️')),
+    JSON.stringify(await page.locator('.tool-card').allTextContents()),
+  );
   check(
     '筛选 PDF：包含「修改文档」卡片',
     (await page.locator('.tool-card').allTextContents()).some((c) => c.includes('修改文档') && c.includes('📝')),
@@ -434,7 +486,7 @@ async function main() {
   );
   await page.screenshot({path: 'screens/tools-filter.png'});
   await clickChip('全部');
-  check('筛选「全部」：恢复 13 张卡片', (await page.locator('.tool-card').count()) === 13, await page.locator('.tool-card').count());
+  check('筛选「全部」：恢复 14 张卡片', (await page.locator('.tool-card').count()) === 14, await page.locator('.tool-card').count());
   await page.screenshot({path: 'screens/tools.png'});
 
   // PDF 工具：选文件 → 识别信息 → 设置密码
@@ -472,15 +524,16 @@ async function main() {
   await page.waitForTimeout(300);
   const subItems = await page.locator('.ctx-submenu button').allTextContents();
   check(
-    'ctx 子菜单 = [设置密码, 清除密码, 转存 EPUB, 合并 PDF, 提取页面, 转存图片, 修改文档]',
-    subItems.length === 7 &&
+    'ctx 子菜单 = [设置密码, 清除密码, 转存 EPUB, 合并 PDF, 提取页面, 转存图片, 修改文档, 压缩文档]',
+    subItems.length === 8 &&
       subItems[0].includes('设置密码') &&
       subItems[1].includes('清除密码') &&
       subItems[2].includes('转存 EPUB') &&
       subItems[3].includes('合并 PDF') &&
       subItems[4].includes('提取页面') &&
       subItems[5].includes('转存图片') &&
-      subItems[6].includes('修改文档'),
+      subItems[6].includes('修改文档') &&
+      subItems[7].includes('压缩文档'),
     JSON.stringify(subItems),
   );
   await page.screenshot({path: 'screens/ctx-pdf.png'});
@@ -1393,6 +1446,151 @@ async function main() {
   await page.screenshot({path: 'screens/pdf-meta-shelf.png'});
   await page.locator('.modal-close').click();
   await page.waitForTimeout(300);
+
+  // 工具页 → PDF → 压缩文档（没装 Ghostscript：自动退回 pdfcpu 无损）
+  await page.evaluate(() => {
+    document.querySelectorAll('.nav-item').forEach((b) => {
+      if (b.textContent.includes('工具')) b.click();
+    });
+  });
+  await page.waitForTimeout(400);
+  await page.evaluate(() => { window.__gs = undefined; window.__pickTarget = 'E:\\Books\\huozhe.pdf'; });
+  await page.locator('.tool-card', {hasText: '压缩文档'}).first().click();
+  await page.waitForTimeout(500);
+  check('压缩文档弹窗打开', (await page.locator('.modal .modal-head h2', {hasText: '压缩文档'}).count()) > 0);
+  check('压缩文档：未选文件时不显示档位', (await page.locator('.modal .form-row[data-field="preset"]').count()) === 0);
+  await page.locator('.modal .btn-soft', {hasText: '选择 PDF 文件'}).click();
+  await page.waitForTimeout(500);
+  const czSrc = (await page.locator('.modal .path-box').first().textContent()) || '';
+  check('压缩文档：读出源文件信息', czSrc.includes('huozhe.pdf') && czSrc.includes('23'), czSrc);
+  check(
+    '压缩文档：没装 Ghostscript 时提示会用 pdfcpu',
+    (await page.locator('.modal .form-row[data-field="gs"]').getAttribute('data-gs-found')) === '0' &&
+      ((await page.locator('.pdf-compress-gs-note').textContent()) || '').includes('pdfcpu'),
+    await page.locator('.pdf-compress-gs-note').textContent(),
+  );
+  const czChips = await page.locator('.modal .form-row[data-field="preset"] .chip').allTextContents();
+  check(
+    '压缩档位 = 4 档，默认电子书 150dpi',
+    czChips.length === 4 &&
+      czChips[0].includes('72') &&
+      czChips[1].includes('150') &&
+      czChips[2].includes('300') &&
+      czChips[3].includes('印前') &&
+      (await page.locator('.modal .form-row[data-field="preset"] .chip.active').textContent()) === czChips[1],
+    JSON.stringify(czChips),
+  );
+  check(
+    '压缩文档：pdfcpu 模式下图像参数置灰',
+    (await page.locator('.modal .form-row[data-field="dpi"] input[type="number"]').isDisabled()) &&
+      ((await page.locator('.modal .form-row[data-field="dpi"] .hint').textContent()) || '').includes('pdfcpu'),
+    await page.locator('.modal .form-row[data-field="dpi"] .hint').textContent(),
+  );
+  const czLayout = await page.evaluate(() => {
+    const modal = document.querySelector('.modal');
+    const r = modal.getBoundingClientRect();
+    const body = document.querySelector('.modal-body');
+    return {
+      right: Math.round(r.right),
+      inner: window.innerWidth,
+      pageOverflow: document.documentElement.scrollWidth > window.innerWidth,
+      bodyOverflow: body.scrollWidth > body.clientWidth + 1,
+    };
+  });
+  check(
+    '压缩文档：弹窗不溢出',
+    czLayout.right <= czLayout.inner && !czLayout.pageOverflow && !czLayout.bodyOverflow,
+    JSON.stringify(czLayout),
+  );
+  await page.screenshot({path: 'screens/pdf-compress.png'});
+  await page.locator('.modal-foot .btn-primary').click();
+  await page.waitForTimeout(1400);
+  const czDone = (await page.locator('[data-testid="compress-done"]').textContent()) || '';
+  check(
+    '压缩完成：显示节省比例 / 体积 / 引擎',
+    czDone.includes('+65%') && czDone.includes('5.0 MB') && czDone.includes('pdfcpu') && czDone.includes('150dpi'),
+    czDone,
+  );
+  const czReq = await page.evaluate(() => window.__lastCompress);
+  check(
+    '压缩请求参数正确（preset/dpi/engine/入库）',
+    czReq.preset === 'ebook' &&
+      czReq.dpi === 0 &&
+      czReq.grayscale === false &&
+      czReq.engine === 'auto' &&
+      czReq.add_to_shelf === true &&
+      czReq.out_path.endsWith('-压缩.pdf'),
+    JSON.stringify(czReq),
+  );
+  await page.screenshot({path: 'screens/pdf-compress-done.png'});
+
+  // 手动指定 Ghostscript → 档位 + 自定义 dpi + 灰度 + 强制 gs 引擎
+  await page.locator('.modal .form-row[data-field="preset"] .chip', {hasText: '打印'}).click();
+  await page.waitForTimeout(200);
+  await page.locator('.modal .btn-soft', {hasText: '指定 gswin64c.exe'}).click();
+  await page.waitForTimeout(500);
+  check(
+    '指定 Ghostscript 后状态翻转',
+    (await page.locator('.modal .form-row[data-field="gs"]').getAttribute('data-gs-found')) === '1' &&
+      ((await page.locator('.pdf-compress-gs-ver').textContent()) || '').includes('10.05.1') &&
+      ((await page.locator('.pdf-compress-gs-path').textContent()) || '').includes('gswin64c.exe'),
+    await page.locator('.pdf-compress-gs').first().textContent(),
+  );
+  check(
+    '检出 Ghostscript 后图像参数可用',
+    !(await page.locator('.modal .form-row[data-field="dpi"] input[type="number"]').isDisabled()),
+  );
+  await page.locator('.modal .form-row[data-field="dpi"] input[type="number"]').fill('200');
+  await page.locator('.modal .form-row[data-field="dpi"] input[type="checkbox"]').check();
+  await page.locator('.modal .form-row[data-field="engine"] .chip', {hasText: 'Ghostscript'}).click();
+  await page.waitForTimeout(200);
+  await page.locator('.modal-foot .btn-primary').click();
+  await page.waitForTimeout(1400);
+  const czDone2 = (await page.locator('[data-testid="compress-done"]').textContent()) || '';
+  check('压缩完成：用 Ghostscript 200dpi', czDone2.includes('Ghostscript') && czDone2.includes('200dpi'), czDone2);
+  const czReq2 = await page.evaluate(() => window.__lastCompress);
+  check(
+    '压缩请求：preset=printer / dpi=200 / 灰度 / 强制 gs',
+    czReq2.preset === 'printer' && czReq2.dpi === 200 && czReq2.grayscale === true && czReq2.engine === 'ghostscript',
+    JSON.stringify(czReq2),
+  );
+  await page.screenshot({path: 'screens/pdf-compress-gs.png'});
+  await page.locator('.modal-close').click();
+  await page.waitForTimeout(300);
+
+  // 压缩文档：加密文件要先输密码
+  await page.evaluate(() => { window.__pickTarget = 'E:\\Books\\locked.pdf'; });
+  await page.locator('.tool-card', {hasText: '压缩文档'}).first().click();
+  await page.waitForTimeout(400);
+  await page.locator('.modal .btn-soft', {hasText: '选择 PDF 文件'}).click();
+  await page.waitForTimeout(500);
+  check(
+    '压缩文档：加密文件要求密码',
+    (await page.locator('.modal .form-row[data-field="preset"]').count()) === 0 &&
+      ((await page.locator('.modal .merge-warn').textContent()) || '').includes('打开密码'),
+    await page.locator('.modal .merge-warn').textContent(),
+  );
+  await page.locator('.modal .merge-pw input').fill('secret');
+  await page.locator('.modal .merge-pw .btn').click();
+  await page.waitForTimeout(500);
+  check(
+    '压缩文档：密码正确后可以压（只能另存）',
+    (await page.locator('.modal .form-row[data-field="preset"]').count()) === 1 &&
+      (await page.locator('.modal .chip-row .chip', {hasText: '覆盖原文件'}).count()) === 0 &&
+      ((await page.locator('.modal .merge-warn').textContent()) || '').includes('不再需要密码'),
+    await page.locator('.modal .merge-warn').textContent(),
+  );
+  await page.screenshot({path: 'screens/pdf-compress-locked.png'});
+  await page.locator('.modal-close').click();
+  await page.waitForTimeout(300);
+  await page.evaluate(() => { window.__pickTarget = undefined; });
+  // 回到书架，后面的右键子菜单测试要在书架页
+  await page.evaluate(() => {
+    document.querySelectorAll('.nav-item').forEach((b) => {
+      if (b.textContent.includes('书架')) b.click();
+    });
+  });
+  await page.waitForTimeout(400);
 
   // 书架右键 EPUB → EPUB 工具 → 转存 PDF（只给 epub 类工具，不应出现 PDF 工具）
   await page.locator('.book-card').nth(0).click({button: 'right'});

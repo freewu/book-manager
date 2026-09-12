@@ -455,6 +455,82 @@ type PdfMetaResult struct {
 	ShelfError string `json:"shelf_error"`
 }
 
+// PdfCompressGhostscript describes the Ghostscript installation the 「压缩文档」
+// tool found on this machine.
+type PdfCompressGhostscript struct {
+	Found   bool   `json:"found"`
+	Path    string `json:"path"`
+	Version string `json:"version"`
+	// Source is where the path came from: manual / env / registry / path / common.
+	Source string `json:"source"`
+}
+
+// PdfCompressInfo describes a source PDF of the 「压缩文档」 tool.
+type PdfCompressInfo struct {
+	Path string `json:"path"`
+	Name string `json:"name"`
+	Size int64  `json:"size"`
+	// Pages is 0 while the file is encrypted and no valid password was given.
+	Pages         int    `json:"pages"`
+	Version       string `json:"version"`
+	Encrypted     bool   `json:"encrypted"`
+	NeedsPassword bool   `json:"needs_password"`
+	Error         string `json:"error"`
+
+	Ghostscript PdfCompressGhostscript `json:"ghostscript"`
+}
+
+// PdfCompressOptions is the input of the 「压缩文档」 tool. OutPath equal to Path
+// overwrites the source file.
+type PdfCompressOptions struct {
+	Path     string `json:"path"`
+	Password string `json:"password"`
+	OutPath  string `json:"out_path"`
+
+	// Preset is the compression level: screen / ebook / printer / prepress.
+	Preset string `json:"preset"`
+	// DPI overrides the preset image resolution when it is greater than 0.
+	DPI int `json:"dpi"`
+	// Grayscale converts colour pages to grayscale.
+	Grayscale bool `json:"grayscale"`
+	// Engine is auto / ghostscript / pdfcpu.
+	Engine string `json:"engine"`
+
+	// AddToShelf imports the result into the library when it is done.
+	AddToShelf bool `json:"add_to_shelf"`
+}
+
+// PdfCompressResult reports what the 「压缩文档」 tool wrote.
+type PdfCompressResult struct {
+	Path       string `json:"path"`
+	InPath     string `json:"in_path"`
+	InBytes    int64  `json:"in_bytes"`
+	OutBytes   int64  `json:"out_bytes"`
+	SavedBytes int64  `json:"saved_bytes"`
+	// SavedPercent is the saved share in percent, one decimal. A negative
+	// value means the output grew.
+	SavedPercent float64 `json:"saved_percent"`
+	Pages        int     `json:"pages"`
+	Engine       string  `json:"engine"`
+	GSVersion    string  `json:"gs_version"`
+	Preset       string  `json:"preset"`
+	DPI          int     `json:"dpi"`
+	InPlace      bool    `json:"in_place"`
+	Seconds      float64 `json:"seconds"`
+
+	Added      bool   `json:"added"`
+	BookID     int64  `json:"book_id"`
+	ShelfError string `json:"shelf_error"`
+}
+
+// PdfCompressProgress is emitted on the pdfcompress:progress event.
+type PdfCompressProgress struct {
+	// Phase is prep / compress / verify / done.
+	Phase   string  `json:"phase"`
+	Percent int     `json:"percent"`
+	Elapsed float64 `json:"elapsed"`
+}
+
 // Settings is the key/value settings map exposed to the UI.
 type Settings map[string]string
 

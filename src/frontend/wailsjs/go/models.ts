@@ -297,6 +297,138 @@ export namespace models {
 	        this.updated_at = source["updated_at"];
 	    }
 	}
+	export class PdfCompressGhostscript {
+	    found: boolean;
+	    path: string;
+	    version: string;
+	    source: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new PdfCompressGhostscript(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.found = source["found"];
+	        this.path = source["path"];
+	        this.version = source["version"];
+	        this.source = source["source"];
+	    }
+	}
+	export class PdfCompressInfo {
+	    path: string;
+	    name: string;
+	    size: number;
+	    pages: number;
+	    version: string;
+	    encrypted: boolean;
+	    needs_password: boolean;
+	    error: string;
+	    ghostscript: PdfCompressGhostscript;
+	
+	    static createFrom(source: any = {}) {
+	        return new PdfCompressInfo(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.path = source["path"];
+	        this.name = source["name"];
+	        this.size = source["size"];
+	        this.pages = source["pages"];
+	        this.version = source["version"];
+	        this.encrypted = source["encrypted"];
+	        this.needs_password = source["needs_password"];
+	        this.error = source["error"];
+	        this.ghostscript = this.convertValues(source["ghostscript"], PdfCompressGhostscript);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class PdfCompressOptions {
+	    path: string;
+	    password: string;
+	    out_path: string;
+	    preset: string;
+	    dpi: number;
+	    grayscale: boolean;
+	    engine: string;
+	    add_to_shelf: boolean;
+	
+	    static createFrom(source: any = {}) {
+	        return new PdfCompressOptions(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.path = source["path"];
+	        this.password = source["password"];
+	        this.out_path = source["out_path"];
+	        this.preset = source["preset"];
+	        this.dpi = source["dpi"];
+	        this.grayscale = source["grayscale"];
+	        this.engine = source["engine"];
+	        this.add_to_shelf = source["add_to_shelf"];
+	    }
+	}
+	export class PdfCompressResult {
+	    path: string;
+	    in_path: string;
+	    in_bytes: number;
+	    out_bytes: number;
+	    saved_bytes: number;
+	    saved_percent: number;
+	    pages: number;
+	    engine: string;
+	    gs_version: string;
+	    preset: string;
+	    dpi: number;
+	    in_place: boolean;
+	    seconds: number;
+	    added: boolean;
+	    book_id: number;
+	    shelf_error: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new PdfCompressResult(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.path = source["path"];
+	        this.in_path = source["in_path"];
+	        this.in_bytes = source["in_bytes"];
+	        this.out_bytes = source["out_bytes"];
+	        this.saved_bytes = source["saved_bytes"];
+	        this.saved_percent = source["saved_percent"];
+	        this.pages = source["pages"];
+	        this.engine = source["engine"];
+	        this.gs_version = source["gs_version"];
+	        this.preset = source["preset"];
+	        this.dpi = source["dpi"];
+	        this.in_place = source["in_place"];
+	        this.seconds = source["seconds"];
+	        this.added = source["added"];
+	        this.book_id = source["book_id"];
+	        this.shelf_error = source["shelf_error"];
+	    }
+	}
 	export class PdfExtractInfo {
 	    path: string;
 	    name: string;

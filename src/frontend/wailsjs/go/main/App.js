@@ -18,6 +18,10 @@ export function ClearMisrecords() {
   return window['go']['main']['App']['ClearMisrecords']();
 }
 
+export function CompressPdf(arg1) {
+  return window['go']['main']['App']['CompressPdf'](arg1);
+}
+
 export function ConvertPdfToEpub(arg1) {
   return window['go']['main']['App']['ConvertPdfToEpub'](arg1);
 }
@@ -44,6 +48,10 @@ export function DeleteNote(arg1) {
 
 export function DeleteTag(arg1) {
   return window['go']['main']['App']['DeleteTag'](arg1);
+}
+
+export function DetectGhostscript() {
+  return window['go']['main']['App']['DetectGhostscript']();
 }
 
 export function DoubanRunning() {
@@ -158,6 +166,10 @@ export function OpenWithKKFileView(arg1) {
   return window['go']['main']['App']['OpenWithKKFileView'](arg1);
 }
 
+export function PdfCompressInspect(arg1, arg2) {
+  return window['go']['main']['App']['PdfCompressInspect'](arg1, arg2);
+}
+
 export function PdfExtractInspect(arg1, arg2) {
   return window['go']['main']['App']['PdfExtractInspect'](arg1, arg2);
 }
@@ -176,6 +188,10 @@ export function PdfMetaInspect(arg1, arg2) {
 
 export function PickEpubFile() {
   return window['go']['main']['App']['PickEpubFile']();
+}
+
+export function PickGhostscriptExe() {
+  return window['go']['main']['App']['PickGhostscriptExe']();
 }
 
 export function PickOutDir(arg1) {

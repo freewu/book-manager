@@ -11,6 +11,8 @@ export function ClearDoubanInfo(arg1:number):Promise<void>;
 
 export function ClearMisrecords():Promise<void>;
 
+export function CompressPdf(arg1:models.PdfCompressOptions):Promise<models.PdfCompressResult>;
+
 export function ConvertPdfToEpub(arg1:models.PdfToEpubOptions):Promise<models.PdfToEpubResult>;
 
 export function CreateNote(arg1:number,arg2:string,arg3:string,arg4:string,arg5:string):Promise<number>;
@@ -24,6 +26,8 @@ export function DeleteBook(arg1:number):Promise<void>;
 export function DeleteNote(arg1:number):Promise<void>;
 
 export function DeleteTag(arg1:number):Promise<void>;
+
+export function DetectGhostscript():Promise<models.PdfCompressGhostscript>;
 
 export function DoubanRunning():Promise<boolean>;
 
@@ -81,6 +85,8 @@ export function OpenPath(arg1:string):Promise<void>;
 
 export function OpenWithKKFileView(arg1:number):Promise<string>;
 
+export function PdfCompressInspect(arg1:string,arg2:string):Promise<models.PdfCompressInfo>;
+
 export function PdfExtractInspect(arg1:string,arg2:string):Promise<models.PdfExtractInfo>;
 
 export function PdfInspect(arg1:string,arg2:string):Promise<models.PdfFileInfo>;
@@ -90,6 +96,8 @@ export function PdfMergeInspect(arg1:Array<string>,arg2:Record<string, string>):
 export function PdfMetaInspect(arg1:string,arg2:string):Promise<models.PdfMetaInfo>;
 
 export function PickEpubFile():Promise<string>;
+
+export function PickGhostscriptExe():Promise<string>;
 
 export function PickOutDir(arg1:string):Promise<string>;
 
