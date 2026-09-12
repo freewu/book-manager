@@ -1,7 +1,7 @@
 // Thin wrappers over the generated wails bindings + shared helpers.
 import * as App from '../wailsjs/go/main/App';
 import {EventsOn, EventsOff} from '../wailsjs/runtime/runtime';
-import type {DoubanProgress, ScanProgress} from './types';
+import type {DoubanProgress, PdfToEpubProgress, ScanProgress} from './types';
 
 export {App};
 
@@ -78,6 +78,12 @@ export function onDoubanProgress(cb: (p: DoubanProgress) => void): () => void {
 export function onDoubanDone(cb: () => void): () => void {
   EventsOn('douban:done', () => cb());
   return () => EventsOff('douban:done');
+}
+
+// ---- PDF 转 EPUB 进度（tools/pdf-epub）----
+export function onPdf2EpubProgress(cb: (p: PdfToEpubProgress) => void): () => void {
+  EventsOn('pdf2epub:progress', (p: PdfToEpubProgress) => cb(p));
+  return () => EventsOff('pdf2epub:progress');
 }
 
 export function fmtDate(s: string): string {

@@ -46,7 +46,7 @@ just push "feat: xxx"   # 提交并推送
 ```
 src/
   app.go / main.go / bindings_*.go   # Wails 入口 + 前端绑定方法
-  internal/{db,parser,scanner,douban,models,pdfcrypt}  # 后端逻辑
+  internal/{db,parser,scanner,douban,models,pdfcrypt,pdf2epub}  # 后端逻辑
   frontend/src/components/            # React 组件（书架/阅读器/宿主弹窗）
   frontend/src/tools/<id>/            # 工具插件（define.ts + lib.ts + tools.tsx）
   cmd/genlogo                         # logo 与图标生成
@@ -73,10 +73,17 @@ src/frontend/src/tools/<tool-id>/
 - 文案统一放在 `src/frontend/src/i18n.tsx`（define.ts 里只存 key），分类名用 `tools.category.*`。
 - 后端绑定按领域放在 `src/bindings_*.go`（如 PDF 工具 = `bindings_pdf.go`）。
 - 新增/改绑定后需重新生成 `src/frontend/wailsjs/`（`wails generate module` 或 `wails dev/build` 自动处理）。
-- 后端 PDF 加密逻辑在 `src/internal/pdfcrypt`（基于 pdfcpu）：`Inspect` / `Protect`（设置密码）/ `Remove`（清除密码），都有单测，改完跑 `just test`。
+- 后端 PDF 加密逻辑在 `src/internal/pdfcrypt`（基于 pdfcpu）：`Inspect` / `Protect`（设置密码）/ `Remove`（清除密码）/ `DecryptTo`（解密副本，给转换用），都有单测，改完跑 `just test`。
   对应两个工具：`tools/pdf-password/`（设置密码）与 `tools/pdf-unlock/`（清除密码），后端绑定都在 `bindings_pdf.go`。
-- UI 改动后跑 `just ui-test`：它用 playwright-core 加载 `dist/` 并对 `window.go` 打桩，覆盖书架/统计/扫描/标签/设置/书籍详情/EPUB 与加密 PDF 阅读器/工具页与 PDF 设置·清除密码弹窗。
-  mock 里没有的绑定会回退成空操作（Proxy），所以新增绑定不会直接弄坏冒烟。
+- PDF → EPUB 转换在 `src/internal/pdf2epub`（文字抽取用 `github.com/ledongthuc/pdf`，写 epub 用标准库 `archive/zip`）：
+  `Convert(Options)` 把每页的文字片段还原成行 / 段落 / 标题，一页一个 XHTML，再从标题生成目录（标题太少或太多则按页分组）。
+  扫描版 PDF 返回 `ErrNoText`（绑定转成 `no_text=true` 数据，不当错误）。
+  排版细节：片段按内容流顺序拼接（很多 PDF 的 X 坐标不是真实笔位）、空白/未映射字形当空格、按中位行距判断新段落、
+  faux-bold 重绘去重、页眉页脚剔除（见 `layout.go` 顶部常量）。对应工具 `tools/pdf-epub/`，绑定在 `bindings_pdf2epub.go`
+  （`PickOutDir` + `ConvertPdfToEpub`，进度走 `pdf2epub:progress` 事件，可选自动入库）。
+- UI 改动后跑 `just ui-test`：它用 playwright-core 加载 `dist/` 并对 `window.go` 打桩，覆盖书架/统计/扫描/标签/设置/书籍详情/EPUB 与加密 PDF 阅读器/工具页与 PDF 设置·清除密码·转存 EPUB 弹窗。
+  mock 里没有的绑定会回退成空操作（Proxy），所以新增绑定不会直接弄坏冒烟；
+  `pdf2epub:progress` 这类事件由 mock 自己塞进 `window.__events` 触发（`EventsOn` 实际调的是 `window.runtime.EventsOnMultiple`）。
 
 ## 注意事项
 

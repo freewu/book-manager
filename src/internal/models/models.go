@@ -164,6 +164,58 @@ type PdfProtectOptions struct {
 	AllowCopy  bool   `json:"allow_copy"`
 }
 
+// PdfToEpubOptions is the input of the 「转存 EPUB」 tool: it converts a PDF
+// into an EPUB in OutDir/FileName. BookID selects a book from the shelf (its
+// path is used instead of Path); Path is used for files picked from disk.
+type PdfToEpubOptions struct {
+	BookID int64  `json:"book_id"`
+	Path   string `json:"path"`
+	// Password opens an already encrypted PDF.
+	Password string `json:"password"`
+	// OutDir is the target directory; empty means the directory of the PDF.
+	OutDir string `json:"out_dir"`
+	// FileName is the target file name (without extension); empty means the
+	// name of the PDF.
+	FileName string `json:"file_name"`
+	// Title / Author override the metadata written into the EPUB.
+	Title  string `json:"title"`
+	Author string `json:"author"`
+	// Language is the EPUB language code; empty means zh.
+	Language string `json:"language"`
+	// UseCover embeds the first page as the cover image.
+	UseCover bool `json:"use_cover"`
+	// AddToShelf imports the result into the library when it is done.
+	AddToShelf bool `json:"add_to_shelf"`
+}
+
+// PdfToEpubResult reports what the conversion produced. NeedsPassword and
+// NoText are data, not errors: the UI asks for the password / explains that
+// the PDF has no text layer.
+type PdfToEpubResult struct {
+	Path          string `json:"path"`
+	FileName      string `json:"file_name"`
+	Pages         int    `json:"pages"`
+	Chars         int    `json:"chars"`
+	Bytes         int64  `json:"bytes"`
+	NeedsPassword bool   `json:"needs_password"`
+	NoText        bool   `json:"no_text"`
+	// Dropped counts header/footer lines that were removed.
+	Dropped int `json:"dropped"`
+	// Added is true when the EPUB was imported into the library, BookID is
+	// its id then; ShelfError explains why the import was skipped.
+	Added      bool   `json:"added"`
+	BookID     int64  `json:"book_id"`
+	ShelfError string `json:"shelf_error"`
+}
+
+// PdfToEpubProgress is emitted on the pdf2epub:progress event while a PDF is
+// converted page by page.
+type PdfToEpubProgress struct {
+	Current int `json:"current"`
+	Total   int `json:"total"`
+	Chars   int `json:"chars"`
+}
+
 // Settings is the key/value settings map exposed to the UI.
 type Settings map[string]string
 

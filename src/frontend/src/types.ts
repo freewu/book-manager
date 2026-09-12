@@ -156,3 +156,50 @@ export interface PdfProtectOptions {
   allow_print: boolean;
   allow_copy: boolean;
 }
+
+/** PDF 转存 EPUB 工具（tools/pdf-epub）。 */
+export interface PdfToEpubOptions {
+  /** >0 表示书架中的书（用书上的路径，path 被忽略），否则传 0 */
+  book_id: number;
+  path: string;
+  /** 已加密 PDF 的打开密码 */
+  password: string;
+  /** 保存目录（留空 = PDF 所在目录） */
+  out_dir: string;
+  /** 输出文件名（不含扩展名，留空 = 用书名 / 原文件名） */
+  file_name: string;
+  title: string;
+  author: string;
+  /** EPUB 语言代码，留空按 zh 处理 */
+  language: string;
+  /** 把 PDF 内嵌封面作为 EPUB 封面 */
+  use_cover: boolean;
+  /** 转换成功后自动入库 */
+  add_to_shelf: boolean;
+}
+
+export interface PdfToEpubResult {
+  /** 源 PDF 路径（需要密码 / 无文字层时用它提示） */
+  path: string;
+  /** 生成的 EPUB 路径（成功时） */
+  file_name: string;
+  pages: number;
+  chars: number;
+  bytes: number;
+  /** 已加密且密码不对：需要用户输入密码 */
+  needs_password: boolean;
+  /** 扫描版 PDF，没有可提取的文字 */
+  no_text: boolean;
+  /** 被当作页眉页脚丢弃的行数 */
+  dropped: number;
+  added: boolean;
+  book_id: number;
+  shelf_error: string;
+}
+
+/** pdf2epub:progress 事件 */
+export interface PdfToEpubProgress {
+  current: number;
+  total: number;
+  chars: number;
+}

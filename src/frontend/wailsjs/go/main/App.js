@@ -18,6 +18,10 @@ export function ClearMisrecords() {
   return window['go']['main']['App']['ClearMisrecords']();
 }
 
+export function ConvertPdfToEpub(arg1) {
+  return window['go']['main']['App']['ConvertPdfToEpub'](arg1);
+}
+
 export function CreateNote(arg1, arg2, arg3, arg4, arg5) {
   return window['go']['main']['App']['CreateNote'](arg1, arg2, arg3, arg4, arg5);
 }
@@ -140,6 +144,10 @@ export function OpenWithKKFileView(arg1) {
 
 export function PdfInspect(arg1, arg2) {
   return window['go']['main']['App']['PdfInspect'](arg1, arg2);
+}
+
+export function PickOutDir(arg1) {
+  return window['go']['main']['App']['PickOutDir'](arg1);
 }
 
 export function PickPdfFile() {

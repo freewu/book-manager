@@ -259,6 +259,68 @@ export namespace models {
 	        this.allow_copy = source["allow_copy"];
 	    }
 	}
+	export class PdfToEpubOptions {
+	    book_id: number;
+	    path: string;
+	    password: string;
+	    out_dir: string;
+	    file_name: string;
+	    title: string;
+	    author: string;
+	    language: string;
+	    use_cover: boolean;
+	    add_to_shelf: boolean;
+	
+	    static createFrom(source: any = {}) {
+	        return new PdfToEpubOptions(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.book_id = source["book_id"];
+	        this.path = source["path"];
+	        this.password = source["password"];
+	        this.out_dir = source["out_dir"];
+	        this.file_name = source["file_name"];
+	        this.title = source["title"];
+	        this.author = source["author"];
+	        this.language = source["language"];
+	        this.use_cover = source["use_cover"];
+	        this.add_to_shelf = source["add_to_shelf"];
+	    }
+	}
+	export class PdfToEpubResult {
+	    path: string;
+	    file_name: string;
+	    pages: number;
+	    chars: number;
+	    bytes: number;
+	    needs_password: boolean;
+	    no_text: boolean;
+	    dropped: number;
+	    added: boolean;
+	    book_id: number;
+	    shelf_error: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new PdfToEpubResult(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.path = source["path"];
+	        this.file_name = source["file_name"];
+	        this.pages = source["pages"];
+	        this.chars = source["chars"];
+	        this.bytes = source["bytes"];
+	        this.needs_password = source["needs_password"];
+	        this.no_text = source["no_text"];
+	        this.dropped = source["dropped"];
+	        this.added = source["added"];
+	        this.book_id = source["book_id"];
+	        this.shelf_error = source["shelf_error"];
+	    }
+	}
 	export class ReadingSession {
 	    id: number;
 	    book_id: number;

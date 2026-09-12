@@ -11,6 +11,8 @@ export function ClearDoubanInfo(arg1:number):Promise<void>;
 
 export function ClearMisrecords():Promise<void>;
 
+export function ConvertPdfToEpub(arg1:models.PdfToEpubOptions):Promise<models.PdfToEpubResult>;
+
 export function CreateNote(arg1:number,arg2:string,arg3:string,arg4:string,arg5:string):Promise<number>;
 
 export function CreateTag(arg1:string,arg2:string):Promise<number>;
@@ -72,6 +74,8 @@ export function OpenPath(arg1:string):Promise<void>;
 export function OpenWithKKFileView(arg1:number):Promise<string>;
 
 export function PdfInspect(arg1:string,arg2:string):Promise<models.PdfFileInfo>;
+
+export function PickOutDir(arg1:string):Promise<string>;
 
 export function PickPdfFile():Promise<string>;
 

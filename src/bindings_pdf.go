@@ -55,7 +55,7 @@ func (a *App) PdfInspect(path, password string) (models.PdfFileInfo, error) {
 // SetPdfPassword protects a PDF with a user (open) password. The file is
 // replaced only when the new file has been written completely.
 func (a *App) SetPdfPassword(opts models.PdfProtectOptions) (models.PdfFileInfo, error) {
-	path, book, err := a.resolvePdfTarget(opts)
+	path, book, err := a.resolvePdfTarget(opts.BookID, opts.Path)
 	if err != nil {
 		return models.PdfFileInfo{}, err
 	}
@@ -88,7 +88,7 @@ func (a *App) SetPdfPassword(opts models.PdfProtectOptions) (models.PdfFileInfo,
 // RemovePdfPassword strips the open password from a PDF, so that it can be
 // read without typing anything. Encrypted files need the current password.
 func (a *App) RemovePdfPassword(opts models.PdfProtectOptions) (models.PdfFileInfo, error) {
-	path, book, err := a.resolvePdfTarget(opts)
+	path, book, err := a.resolvePdfTarget(opts.BookID, opts.Path)
 	if err != nil {
 		return models.PdfFileInfo{}, err
 	}
@@ -108,12 +108,12 @@ func (a *App) RemovePdfPassword(opts models.PdfProtectOptions) (models.PdfFileIn
 }
 
 // resolvePdfTarget resolves the file a PDF tool works on: a book from the shelf
-// (BookID > 0 uses the path stored on the book, Path is ignored) or a plain
+// (bookID > 0 uses the path stored on the book, path is ignored) or a plain
 // path. The returned book is non-nil only for the shelf case, where the caller
 // has to refresh the stored file facts after an in-place rewrite.
-func (a *App) resolvePdfTarget(opts models.PdfProtectOptions) (string, *models.Book, error) {
-	if opts.BookID > 0 {
-		b, err := a.store.GetBook(opts.BookID)
+func (a *App) resolvePdfTarget(bookID int64, path string) (string, *models.Book, error) {
+	if bookID > 0 {
+		b, err := a.store.GetBook(bookID)
 		if err != nil {
 			return "", nil, err
 		}
@@ -122,7 +122,7 @@ func (a *App) resolvePdfTarget(opts models.PdfProtectOptions) (string, *models.B
 		}
 		return b.Path, b, nil
 	}
-	path := strings.TrimSpace(opts.Path)
+	path = strings.TrimSpace(path)
 	if path == "" {
 		return "", nil, errors.New("no pdf file selected")
 	}

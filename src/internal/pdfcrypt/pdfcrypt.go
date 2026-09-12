@@ -191,6 +191,21 @@ func Remove(path, currentPassword string) (Info, error) {
 	return after, nil
 }
 
+// DecryptTo writes an unencrypted copy of an encrypted file to dst (src and
+// dst must differ). The current password must open the file. It is used by the
+// PDF → EPUB converter, which needs a readable input for the text extractor.
+func DecryptTo(src, dst, currentPassword string) error {
+	silencePDFCPU()
+
+	conf := model.NewDefaultConfiguration()
+	conf.UserPW = currentPassword
+	conf.OwnerPW = currentPassword
+	if err := api.DecryptFile(src, dst, conf); err != nil {
+		return translate(err)
+	}
+	return nil
+}
+
 // encryptConfig builds the pdfcpu configuration for the requested options.
 func encryptConfig(opts Options) *model.Configuration {
 	conf := model.NewDefaultConfiguration()

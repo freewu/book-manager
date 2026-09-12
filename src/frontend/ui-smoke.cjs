@@ -47,12 +47,48 @@ window.go = { main: { App: {
   SetPdfPassword: async (o) => ({path: o.path, name: 'huozhe.pdf', size: 5242880, pages: 120, title: '活着', encrypted: true, needs_password: false}),
   RemovePdfPassword: async (o) => ({path: o.path, name: 'locked.pdf', size: 5242880, pages: 120, title: '活着', encrypted: false, needs_password: false}),
   OpenPath: async () => {}, DoubanRunning: async () => false, StartEnrichAll: async () => 0,
+  PickOutDir: async () => (window.__outDir === undefined ? 'E:\\\\Books\\\\out' : window.__outDir),
+  ConvertPdfToEpub: async (o) => {
+    const name = String(o.path).split(/[\\/]/).pop();
+    if (name.includes('locked') && o.password !== 'secret') {
+      return {path: o.path, file_name: '', pages: 0, chars: 0, bytes: 0, needs_password: true, no_text: false, dropped: 0, added: false, book_id: 0, shelf_error: ''};
+    }
+    // 模拟后端逐页上报进度（真实运行时是 pdf2epub:progress 事件）
+    const fire = (p) => (window.__events['pdf2epub:progress'] || []).forEach((cb) => cb(p));
+    window.__lastConvert = o;
+    await new Promise((r) => setTimeout(r, 150));
+    fire({current: 60, total: 120, chars: 12345});
+    await new Promise((r) => setTimeout(r, 600));
+    fire({current: 120, total: 120, chars: 45678});
+    const base = (o.file_name || o.title || name.replace(/\.[^.]+$/, '')) + '.epub';
+    const dir = o.out_dir || String(o.path).replace(/[\\/][^\\/]*$/, '');
+    return {path: dir + '\\\\' + base, file_name: base, pages: 120, chars: 45678, bytes: 87654, needs_password: false, no_text: false, dropped: 4, added: o.add_to_shelf, book_id: o.add_to_shelf ? 3 : 0, shelf_error: ''};
+  },
 } } };
 // 未来新增的绑定如果忘了加 mock，回退成“什么都不做”而不是报 TypeError
 window.go.main.App = new Proxy(window.go.main.App, {
   get: (target, prop) => (prop in target ? target[prop] : async () => null),
 });
-window.runtime = { EventsOn: () => {}, EventsOff: () => {}, EventsOnMultiple: () => {}, EventsOnce: () => {}, EventsEmit: () => {}, LogPrint: () => {} };
+// 极简事件总线：让 pdf2epub:progress 这类事件能被 mock 主动触发
+window.__events = {};
+window.runtime = {
+  EventsOn: (name, cb) => {
+    (window.__events[name] = window.__events[name] || []).push(cb);
+  },
+  // generated runtime.js 的 EventsOn 实际走的是 EventsOnMultiple
+  EventsOnMultiple: (name, cb) => {
+    (window.__events[name] = window.__events[name] || []).push(cb);
+  },
+  EventsOff: (name) => {
+    delete window.__events[name];
+  },
+  EventsOffAll: () => {
+    window.__events = {};
+  },
+  EventsOnce: () => {},
+  EventsEmit: () => {},
+  LogPrint: () => {},
+};
 `;
 
 async function main() {
@@ -143,7 +179,7 @@ async function main() {
   await page.waitForTimeout(500);
   const sections = await page.locator('.page-section-title').allTextContents();
   check('tool sections = 其他/PDF', JSON.stringify(sections) === JSON.stringify(['其他', 'PDF']), JSON.stringify(sections));
-  check('tool cards = 7', (await page.locator('.tool-card').count()) === 7, await page.locator('.tool-card').count());
+  check('tool cards = 8', (await page.locator('.tool-card').count()) === 8, await page.locator('.tool-card').count());
   const cardText = (await page.locator('.tool-card').first().textContent()) || '';
   check('工具卡片无「打开 ›」动作行', !cardText.includes('打开'), cardText);
   const sameRow = await page.evaluate(() => {
@@ -191,7 +227,7 @@ async function main() {
   await page.locator('.ctx-sub').first().hover();
   await page.waitForTimeout(300);
   const subItems = await page.locator('.ctx-submenu button').allTextContents();
-  check('ctx 子菜单 = [设置密码, 清除密码]', subItems.length === 2 && subItems[0].includes('设置密码') && subItems[1].includes('清除密码'), JSON.stringify(subItems));
+  check('ctx 子菜单 = [设置密码, 清除密码, 转存 EPUB]', subItems.length === 3 && subItems[0].includes('设置密码') && subItems[1].includes('清除密码') && subItems[2].includes('转存 EPUB'), JSON.stringify(subItems));
   await page.screenshot({path: 'screens/ctx-pdf.png'});
   await page.locator('.ctx-submenu button', {hasText: '设置密码'}).first().click();
   await page.waitForTimeout(600);
@@ -241,6 +277,62 @@ async function main() {
   const unlockDone = (await page.locator('.tool-note.ok').textContent().catch(() => '')) || '';
   check('清除密码成功', unlockDone.includes('已清除密码'), unlockDone);
   await page.screenshot({path: 'screens/pdf-unlock.png'});
+  await page.locator('.modal-close').click();
+  await page.waitForTimeout(300);
+
+  // 工具页 → 转存 EPUB：选文件 → 默认保存目录 / 文件名 → 转换（进度条） → 完成统计
+  await page.locator('.tool-card', {hasText: '转存 EPUB'}).first().click();
+  await page.waitForTimeout(400);
+  check('转存 EPUB 弹窗', (await page.locator('.modal .modal-head h2', {hasText: '转存 EPUB'}).count()) > 0);
+  await page.evaluate(() => {
+    window.__pickTarget = 'E:\\Books\\kaifa.pdf';
+  });
+  await page.locator('.modal .btn-soft', {hasText: '选择文件'}).click();
+  await page.waitForTimeout(500);
+  check('转存 EPUB 识别 PDF 信息', (await page.locator('.pdf-info-val').count()) === 3);
+  const outBox = (await page.locator('.path-box').nth(1).textContent()) || '';
+  check('默认保存目录 = PDF 目录', outBox.includes('E:\\Books'), outBox);
+  const nameInput = page.locator('.modal .form-row input').nth(0);
+  check('默认文件名 = 原文件名', (await nameInput.inputValue()) === 'kaifa', await nameInput.inputValue());
+  await page.screenshot({path: 'screens/pdf-epub.png'});
+  await page.locator('.modal-foot .btn-primary').click();
+  await page.waitForTimeout(450);
+  check('转换进度条可见', (await page.locator('.progress-track .fill').count()) > 0);
+  const progText = (await page.locator('.progress-track + .hint').textContent().catch(() => '')) || '';
+  check('进度文案含页数与字数', progText.includes('60/120') && progText.includes('12345'), progText);
+  await page.waitForTimeout(900);
+  const epubDone = (await page.locator('.tool-note.ok').textContent().catch(() => '')) || '';
+  check('转存完成统计', epubDone.includes('转换完成') && epubDone.includes('120 页') && epubDone.includes('45678'), epubDone);
+  check('转存结果已入库提示', epubDone.includes('kaifa.epub') && epubDone.includes('已加入书架'), epubDone);
+  const convertOpts = await page.evaluate(() => window.__lastConvert);
+  check(
+    '转换参数（目录/文件名/封面/入库）',
+    convertOpts && convertOpts.out_dir === '' && convertOpts.file_name === 'kaifa' && convertOpts.use_cover === true && convertOpts.add_to_shelf === true && !!convertOpts.language,
+    JSON.stringify(convertOpts),
+  );
+  check('完成后可打开所在目录', (await page.locator('.modal-foot .btn-primary', {hasText: '打开所在目录'}).count()) > 0);
+  await page.screenshot({path: 'screens/pdf-epub-done.png'});
+  await page.locator('.modal-close').click();
+  await page.waitForTimeout(300);
+
+  // 书架右键 PDF → PDF 工具 → 转存 EPUB（预填书名/作者）
+  await page.evaluate(() => {
+    document.querySelectorAll('.nav-item').forEach((b) => {
+      if (b.textContent.includes('书架')) b.click();
+    });
+  });
+  await page.waitForTimeout(400);
+  await page.locator('.book-card').nth(1).click({button: 'right'});
+  await page.waitForTimeout(400);
+  await page.locator('.ctx-sub').first().hover();
+  await page.waitForTimeout(300);
+  await page.locator('.ctx-submenu button', {hasText: '转存 EPUB'}).first().click();
+  await page.waitForTimeout(700);
+  check('书架入口进入转存 EPUB', (await page.locator('.modal .modal-head h2', {hasText: '转存 EPUB'}).count()) > 0);
+  const shelfTitle = await page.locator('.modal .form-row input').nth(1).inputValue();
+  const shelfAuthor = await page.locator('.modal .form-row input').nth(2).inputValue();
+  check('预填书名/作者', shelfTitle === '活着' && shelfAuthor === '余华', shelfTitle + ' / ' + shelfAuthor);
+  await page.screenshot({path: 'screens/pdf-epub-shelf.png'});
   await page.locator('.modal-close').click();
   await page.waitForTimeout(300);
 

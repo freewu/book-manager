@@ -251,6 +251,36 @@ func TestRemovePassword(t *testing.T) {
 	}
 }
 
+func TestDecryptTo(t *testing.T) {
+	path := writeSample(t)
+	if _, err := Protect(path, Options{UserPassword: "pw", Strength: StrengthAES256}); err != nil {
+		t.Fatalf("protect: %v", err)
+	}
+
+	out := filepath.Join(t.TempDir(), "plain.pdf")
+	if err := DecryptTo(path, out, "nope"); !errors.Is(err, ErrPasswordRequired) {
+		t.Fatalf("wrong password: err = %v, want ErrPasswordRequired", err)
+	}
+	if _, err := os.Stat(out); !os.IsNotExist(err) {
+		t.Fatalf("failed decrypt left a file behind: %v", err)
+	}
+
+	if err := DecryptTo(path, out, "pw"); err != nil {
+		t.Fatalf("decrypt: %v", err)
+	}
+	got, err := Inspect(out, "")
+	if err != nil {
+		t.Fatalf("inspect copy: %v", err)
+	}
+	if got.Encrypted || got.Pages != 1 {
+		t.Fatalf("copy = %+v, want a plain one page pdf", got)
+	}
+	// the source is untouched
+	if src, err := Inspect(path, "pw"); err != nil || !src.Encrypted {
+		t.Fatalf("source = %+v, %v", src, err)
+	}
+}
+
 func TestRemoveOwnerPasswordOnly(t *testing.T) {
 	// 仅设置所有者密码的文件：用空密码就能打开，Remove 也不该要求密码。
 	path := writeSample(t)
