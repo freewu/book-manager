@@ -2,8 +2,10 @@ package main
 
 import (
 	"encoding/base64"
+	"encoding/json"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -55,6 +57,43 @@ func TestSavePdfImageBinding(t *testing.T) {
 	})
 	if err != nil || !strings.HasSuffix(jpg.Name, ".jpg") {
 		t.Fatalf("jpg: %+v %v", jpg, err)
+	}
+}
+
+// 前端传来的 JSON 字段名必须和 Go 结构体 tag 对得上——上面的用例直接构造结构体，
+// 漏掉 json tag 回归时不会报错，所以这里按 Wails 真实链路走一遍 JSON。
+func TestSavePdfImageJSONContract(t *testing.T) {
+	a := &App{}
+	dir := filepath.Join(t.TempDir(), "out")
+
+	payload := `{"dir":` + strconv.Quote(dir) + `,"prefix":"huozhe","format":"png","page":7,"total":23,"data":"` + tinyPNG + `"}`
+	var opts models.PdfImageOptions
+	if err := json.Unmarshal([]byte(payload), &opts); err != nil {
+		t.Fatalf("解析前端 JSON: %v", err)
+	}
+	if opts.Dir != dir || opts.Prefix != "huozhe" || opts.Format != "png" || opts.Page != 7 || opts.Total != 23 || opts.Data != tinyPNG {
+		t.Fatalf("字段没对上: %+v", opts)
+	}
+
+	res, err := a.SavePdfImage(opts)
+	if err != nil {
+		t.Fatalf("SavePdfImage: %v", err)
+	}
+	out, err := json.Marshal(res)
+	if err != nil {
+		t.Fatalf("序列化结果: %v", err)
+	}
+	var got map[string]any
+	if err := json.Unmarshal(out, &got); err != nil {
+		t.Fatalf("结果不是合法 JSON: %v", err)
+	}
+	for _, k := range []string{"path", "name", "bytes", "page", "existed"} {
+		if _, ok := got[k]; !ok {
+			t.Errorf("结果缺少字段 %q: %s", k, out)
+		}
+	}
+	if got["name"] != "huozhe-007.png" {
+		t.Errorf("name = %v", got["name"])
 	}
 }
 
