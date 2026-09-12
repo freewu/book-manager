@@ -129,6 +129,8 @@ src/frontend/src/tools/<tool-id>/
   弹窗交互：范围输入支持 `1-3,5,8-10` 与开区间写法（留空 = 全部页面），越界/写错就地报错并禁用导出；
   格式 PNG / JPEG（选 JPEG 才出现质量滑块）、DPI 三档 96/150/300；导出中可以「停止」，已导出的页保留；
   单页像素按 4000 万上限钳制，避免高 DPI 大页把内存打爆。
+  冒烟会把真实导出的第 1 张 PNG/JPEG 落到 `src/frontend/screens/`（`pdf-image-page1.*`），
+  用 Pillow 解码复核「尺寸对得上 + 有深色像素」，证明 pdf.js 渲染出来的不是空画布。
 - 书架（`components/Bookshelf.tsx`）的滚动位置在会话内记住：打开阅读器时整个书架会被卸载，
   重新挂载后用 `useLayoutEffect` 把 `.shelf` 的 `scrollTop` 放回去（搜索/筛选/排序变化则回到顶部）。
   改这块注意两点：① 保存位置用 `scroll` 监听 + 卸载清理，且清理里只在 `el.isConnected` 时读

@@ -145,7 +145,7 @@ window.go = { main: { App: {
         }
       }
     }
-    (window.__savedImages = window.__savedImages || []).push({
+    const rec = {
       dir: o.dir,
       prefix: o.prefix,
       format: o.format,
@@ -156,7 +156,10 @@ window.go = { main: { App: {
       jpg: isJpg,
       w,
       h,
-    });
+    };
+    // 头几张把原始 base64 也带上，Node 侧落盘后用真图片解码器复核
+    if ((window.__savedImages || []).length < 3) rec.b64 = o.data;
+    (window.__savedImages = window.__savedImages || []).push(rec);
     await new Promise((r) => setTimeout(r, 20));
     const name = o.prefix + '-' + String(o.page).padStart(3, '0') + '.' + (o.format === 'png' ? 'png' : 'jpg');
     return {path: o.dir + '\\\\' + name, name, bytes: bin.length, page: o.page, existed: o.page === 2};
@@ -897,9 +900,13 @@ async function main() {
   check(
     '转存图片：目录/前缀/格式/总页数参数',
     imSaved.every((r) => r.dir.endsWith('huozhe-images') && r.prefix === 'huozhe' && r.format === 'png' && r.total === 23),
-    JSON.stringify(imSaved[0]),
+    JSON.stringify({...imSaved[0], b64: undefined}),
   );
   check('转存图片：图片真的有内容（不是空画布）', imSaved.every((r) => r.len > 500), JSON.stringify(imSaved.slice(0, 4).map((r) => r.len)));
+  if (imSaved[0] && imSaved[0].b64) {
+    fs.mkdirSync('screens', {recursive: true});
+    fs.writeFileSync('screens/pdf-image-page1.png', Buffer.from(imSaved[0].b64, 'base64'));
+  }
   await page.screenshot({path: 'screens/pdf-image-done.png'});
   await page.locator('.modal-close').click();
   await page.waitForTimeout(300);
@@ -1040,9 +1047,13 @@ async function main() {
   check(
     '转存图片：自定义目录/前缀传到后端',
     im2.every((r) => r.dir.endsWith('img-out') && r.prefix === '三体' && r.total === 23),
-    JSON.stringify(im2[0]),
+    JSON.stringify({...im2[0], b64: undefined}),
   );
   const q60len = im2[0] ? im2[0].len : 0;
+  if (im2[0] && im2[0].b64) {
+    fs.mkdirSync('screens', {recursive: true});
+    fs.writeFileSync('screens/pdf-image-page1.jpg', Buffer.from(im2[0].b64, 'base64'));
+  }
   await page.screenshot({path: 'screens/pdf-image-jpg.png'});
   await page.locator('.modal-close').click();
   await page.waitForTimeout(300);
