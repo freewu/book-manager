@@ -39,6 +39,13 @@ just push "feat: xxx"   # 提交并推送
 - 数据存储在应用目录 `src/build/bin/data/book.db`（基于 exe 路径，可用环境变量 `BOOKMANAGER_DATA_DIR` 覆盖）。
 - **白屏规避**：`main.go` 中 `Windows.WebviewGpuIsDisabled: true` 必须保留。
   移除后本机新版 WebView2 + GPU 会不重绘（窗口只剩背景色）。测试过真实 exe 才能确认渲染正常。
+- **`wails dev` 的 WebView2 缓存必须放在项目外面**（`main.go` 的 `resolveWebviewUserDataPath`）：
+  `wails dev` 会递归监听整个 `src/`，运行时新建的**目录**一律 `watcher.Add()`，而 WebView2 启动时会反复
+  创建/删除自己的缓存目录（`build/bin/data/webview2/EBWebView/…`），Add 一旦落在刚被删掉的目录上，
+  dev 进程会被 `FATAL: GetFileAttributes: The system cannot find the file specified.` 直接带走
+  （wails 的 Create 分支只挡 `node_modules`，`.gitignore`/`build/*` 只作用于初始扫描）。
+  所以开发版（exe 名带 `-dev`）的 WebView2 数据放到 `%LocalAppData%\book-manager\webview2-dev`，
+  正式版仍留在 exe 旁的 `data/webview2`（绿色版可整体拷走）。dev 的 `book.db` / `covers` 不受影响。
 - 版本号唯一来源是 `src/version.go` 的 `const Version`；发版时改它并重新 `just release`。
 
 ## 项目结构速览
