@@ -46,7 +46,7 @@ just push "feat: xxx"   # 提交并推送
 ```
 src/
   app.go / main.go / bindings_*.go   # Wails 入口 + 前端绑定方法
-  internal/{db,parser,scanner,douban,models,pdfcrypt,pdf2epub,epub2pdf,pdfmerge,pdfextract}  # 后端逻辑
+  internal/{db,parser,scanner,douban,models,pdfcrypt,pdf2epub,epub2pdf,pdfmerge,pdfextract,pdfimage}  # 后端逻辑
   frontend/src/components/            # React 组件（书架/阅读器/宿主弹窗）
   frontend/src/tools/<id>/            # 工具插件（define.ts + lib.ts + tools.tsx）
   cmd/genlogo                         # logo 与图标生成
@@ -119,16 +119,27 @@ src/frontend/src/tools/<tool-id>/
   它现在带第三个参数当对话框标题，旧的合并调用点也要一起传）。
   弹窗交互：一次一组 20 页缩略图，翻组（上一组 / 下一组 / 跳到第 N 页）**不会丢已经勾选的页码**，缩略图三档大小，
   点 🔍 放大单页细看（放大时也能选中/翻页），确认后按页码升序写新文件。
+- PDF 转存图片（把页面导成 PNG / JPEG）在 `src/internal/pdfimage` —— 后端**只负责落盘**：
+  没有光栅化能力（纯 Go、无 CGO），页面由前端 pdf.js 逐页渲染成 canvas，再由 `SavePdfImage` 一页一次写文件。
+  `Save(Options{Dir,Prefix,Format,Page,Total,Data})` 里 `FileName` 按总页数位数补零（3 位起，如 `huozhe-001.png`），
+  `SanitizePrefix` 去掉 `\/:*?"<>|` 与控制字符并拦掉空/纯点前缀，写盘走「临时文件 + rename」，
+  已存在同名文件时照写但在 `Result.Existed` 里报出来（UI 汇总成「覆盖了 N 张同名图片」）。
+  对应工具 `tools/pdf-image/`，绑定在 `bindings_pdfimage.go`（只有 `SavePdfImage`；
+  选文件 / 读原文件 / 看页数复用 `PickPdfFile` + `ReadPdfData` + `PdfExtractInspect`，选目录复用 `PickOutDir`）。
+  弹窗交互：范围输入支持 `1-3,5,8-10` 与开区间写法（留空 = 全部页面），越界/写错就地报错并禁用导出；
+  格式 PNG / JPEG（选 JPEG 才出现质量滑块）、DPI 三档 96/150/300；导出中可以「停止」，已导出的页保留；
+  单页像素按 4000 万上限钳制，避免高 DPI 大页把内存打爆。
 - 书架（`components/Bookshelf.tsx`）的滚动位置在会话内记住：打开阅读器时整个书架会被卸载，
   重新挂载后用 `useLayoutEffect` 把 `.shelf` 的 `scrollTop` 放回去（搜索/筛选/排序变化则回到顶部）。
   改这块注意两点：① 保存位置用 `scroll` 监听 + 卸载清理，且清理里只在 `el.isConnected` 时读
   `scrollTop`（passive effect 的清理可能晚于 DOM 摘除，此时读到的是 0）；② 卡片封面用
   `aspect-ratio` 固定高度，网格高度不依赖图片加载，所以挂载即可恢复、不会跳。
-- UI 改动后跑 `just ui-test`：它用 playwright-core 加载 `dist/` 并对 `window.go` 打桩，覆盖书架（含滚动位置恢复）/统计/扫描/标签/设置/书籍详情/EPUB 与加密 PDF 阅读器/工具页（分类分组 + 类型筛选）与 PDF 设置·清除密码·转存 EPUB·转存 PDF·合并 PDF·提取页面 弹窗（含书架右键 EPUB 工具子菜单、合并列表顺序调整与加密文件密码、提取页面的 20 页分组/跨组选择/放大查看）。
+- UI 改动后跑 `just ui-test`：它用 playwright-core 加载 `dist/` 并对 `window.go` 打桩，覆盖书架（含滚动位置恢复）/统计/扫描/标签/设置/书籍详情/EPUB 与加密 PDF 阅读器/工具页（分类分组 + 类型筛选）与 PDF 设置·清除密码·转存 EPUB·转存 PDF·合并 PDF·提取页面·转存图片 弹窗（含书架右键 EPUB 工具子菜单、合并列表顺序调整与加密文件密码、提取页面的 20 页分组/跨组选择/放大查看、转存图片的页码范围解析/DPI 像素数/JPEG 质量与中途停止）。
   mock 里没有的绑定会回退成空操作（Proxy），所以新增绑定不会直接弄坏冒烟；
   `pdf2epub:progress` / `epub2pdf:progress` / `pdfmerge:progress` 这类事件由 mock 自己塞进 `window.__events` 触发（`EventsOn` 实际调的是 `window.runtime.EventsOnMultiple`）。
   mock 的 `ReadPdfData` 用文件里的 `window.__mkPdf(23)` 现场造一份 23 页的最小 PDF（够真实渲染缩略图，也够测「翻到第二组只剩 3 页」）。
   写 mock 里的反斜杠要按模板字符串规则翻倍：正则里想要 1 个真反斜杠得写 4 个（`\\\\`），字符串里想要 1 个换行得写 2 个反斜杠加 n（`\\n`），否则会被模板字符串提前转义。
+  另外十六进制**数值**字面量不能转义：文件里要写 `0xff` 而不是 `0\\xff`（后者会被模板字符串变成 `0` + 裸字符，直接语法错误）。
 
 ## 注意事项
 

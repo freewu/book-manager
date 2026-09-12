@@ -109,6 +109,8 @@ export function RemoveScanDir(arg1:string):Promise<void>;
 
 export function ReportReading(arg1:number,arg2:number,arg3:number):Promise<number>;
 
+export function SavePdfImage(arg1:models.PdfImageOptions):Promise<models.PdfImageResult>;
+
 export function SaveProgress(arg1:number,arg2:string,arg3:number,arg4:number,arg5:number):Promise<void>;
 
 export function ScanStart(arg1:Array<string>):Promise<void>;

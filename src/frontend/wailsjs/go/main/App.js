@@ -214,6 +214,10 @@ export function ReportReading(arg1, arg2, arg3) {
   return window['go']['main']['App']['ReportReading'](arg1, arg2, arg3);
 }
 
+export function SavePdfImage(arg1) {
+  return window['go']['main']['App']['SavePdfImage'](arg1);
+}
+
 export function SaveProgress(arg1, arg2, arg3, arg4, arg5) {
   return window['go']['main']['App']['SaveProgress'](arg1, arg2, arg3, arg4, arg5);
 }

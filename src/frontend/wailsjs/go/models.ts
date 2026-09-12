@@ -387,6 +387,48 @@ export namespace models {
 	        this.needs_password = source["needs_password"];
 	    }
 	}
+	export class PdfImageOptions {
+	    dir: string;
+	    prefix: string;
+	    format: string;
+	    page: number;
+	    total: number;
+	    data: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new PdfImageOptions(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.dir = source["dir"];
+	        this.prefix = source["prefix"];
+	        this.format = source["format"];
+	        this.page = source["page"];
+	        this.total = source["total"];
+	        this.data = source["data"];
+	    }
+	}
+	export class PdfImageResult {
+	    path: string;
+	    name: string;
+	    bytes: number;
+	    page: number;
+	    existed: boolean;
+	
+	    static createFrom(source: any = {}) {
+	        return new PdfImageResult(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.path = source["path"];
+	        this.name = source["name"];
+	        this.bytes = source["bytes"];
+	        this.page = source["page"];
+	        this.existed = source["existed"];
+	    }
+	}
 	export class PdfMergeFile {
 	    path: string;
 	    name: string;

@@ -369,6 +369,33 @@ type PdfExtractInfo struct {
 	Error         string `json:"error"`
 }
 
+// PdfImageOptions is the input of one page of the 「转存图片」 tool: the frontend
+// renders the page with pdf.js and hands the encoded image over as base64.
+type PdfImageOptions struct {
+	// Dir is the output folder, created on demand.
+	Dir string `json:"dir"`
+	// Prefix is the file name prefix (illegal characters are replaced).
+	Prefix string `json:"prefix"`
+	// Format is "png" or "jpg"/"jpeg".
+	Format string `json:"format"`
+	// Page is the 1 based page number, Total is the page count of the source
+	// (it decides how wide the page number is zero padded).
+	Page  int `json:"page"`
+	Total int `json:"total"`
+	// Data is the image file as base64 (no data URL prefix).
+	Data string `json:"data"`
+}
+
+// PdfImageResult reports one written image.
+type PdfImageResult struct {
+	Path  string `json:"path"`
+	Name  string `json:"name"`
+	Bytes int64  `json:"bytes"`
+	Page  int    `json:"page"`
+	// Existed is true when an equally named file was overwritten.
+	Existed bool `json:"existed"`
+}
+
 // Settings is the key/value settings map exposed to the UI.
 type Settings map[string]string
 

@@ -341,3 +341,28 @@ export interface PdfExtractResult {
   book_id: number;
   shelf_error: string;
 }
+
+/** 转存图片工具：写一页图片的入参（位图由前端 pdf.js 渲染后给 base64） */
+export interface PdfImageOptions {
+  /** 输出目录，不存在时后端会创建 */
+  dir: string;
+  /** 文件名前缀（非法字符会被替换） */
+  prefix: string;
+  /** png / jpg */
+  format: string;
+  /** 1 起的页码 */
+  page: number;
+  /** 源文件总页数，决定页码补零位数 */
+  total: number;
+  /** 图片文件内容（base64，不带 data URL 前缀） */
+  data: string;
+}
+
+export interface PdfImageResult {
+  path: string;
+  name: string;
+  bytes: number;
+  page: number;
+  /** 写之前同名文件已存在（这次覆盖了它） */
+  existed: boolean;
+}

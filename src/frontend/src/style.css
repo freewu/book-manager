@@ -2077,3 +2077,31 @@ textarea:focus {
   background: #fff;
   box-shadow: 0 4px 18px rgba(0, 0, 0, 0.35);
 }
+
+/* 转存图片：页码范围输入 / 说明文字 / JPEG 质量 */
+.img-range {
+  width: 100%;
+  max-width: 320px;
+  font-family: ui-monospace, Consolas, monospace;
+}
+.img-summary {
+  font-size: 12px;
+  color: var(--text-2);
+  margin-top: 6px;
+  word-break: break-all;
+}
+.img-quality {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+}
+.img-quality input[type='range'] {
+  flex: 1;
+  max-width: 240px;
+}
+.img-quality-val {
+  font-size: 12px;
+  color: var(--text-2);
+  min-width: 28px;
+}

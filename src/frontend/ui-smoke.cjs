@@ -123,6 +123,44 @@ window.go = { main: { App: {
     await new Promise((r) => setTimeout(r, 400));
     return {path: o.out_path, pages: (o.pages || []).slice().sort((a, b) => a - b), bytes: 3145728, added: o.add_to_shelf, book_id: o.add_to_shelf ? 6 : 0, shelf_error: ''};
   },
+  // ---- 转存图片：pdf.js 逐页渲染 → 一页一次落盘 ----
+  SavePdfImage: async (o) => {
+    const bin = atob(o.data || '');
+    const u32 = (i) => ((bin.charCodeAt(i) << 24) | (bin.charCodeAt(i + 1) << 16) | (bin.charCodeAt(i + 2) << 8) | bin.charCodeAt(i + 3)) >>> 0;
+    const isPng = bin.slice(0, 4) === '\\x89PNG';
+    const isJpg = bin.slice(0, 2) === '\\xff\\xd8';
+    let w = 0;
+    let h = 0;
+    if (isPng) {
+      w = u32(16);
+      h = u32(20);
+    } else if (isJpg) {
+      for (let i = 2; i + 9 < bin.length; i++) {
+        if (bin.charCodeAt(i) !== 0xff) continue;
+        const m = bin.charCodeAt(i + 1);
+        if (m >= 0xc0 && m <= 0xcf && m !== 0xc4 && m !== 0xc8 && m !== 0xcc) {
+          h = (bin.charCodeAt(i + 5) << 8) | bin.charCodeAt(i + 6);
+          w = (bin.charCodeAt(i + 7) << 8) | bin.charCodeAt(i + 8);
+          break;
+        }
+      }
+    }
+    (window.__savedImages = window.__savedImages || []).push({
+      dir: o.dir,
+      prefix: o.prefix,
+      format: o.format,
+      page: o.page,
+      total: o.total,
+      len: bin.length,
+      png: isPng,
+      jpg: isJpg,
+      w,
+      h,
+    });
+    await new Promise((r) => setTimeout(r, 20));
+    const name = o.prefix + '-' + String(o.page).padStart(3, '0') + '.' + (o.format === 'png' ? 'png' : 'jpg');
+    return {path: o.dir + '\\\\' + name, name, bytes: bin.length, page: o.page, existed: o.page === 2};
+  },
   OpenPath: async () => {}, DoubanRunning: async () => false, StartEnrichAll: async () => 0,
   PickOutDir: async () => (window.__outDir === undefined ? 'E:\\\\Books\\\\out' : window.__outDir),
   PickEpubFile: async () => (window.__pickEpub || 'E:\\\\Books\\\\santi.epub'),
@@ -277,7 +315,7 @@ async function main() {
   await page.waitForTimeout(500);
   const sections = await page.locator('.page-section-title').allTextContents();
   check('tool sections = 其他/PDF/EPUB', JSON.stringify(sections) === JSON.stringify(['其他', 'PDF', 'EPUB']), JSON.stringify(sections));
-  check('tool cards = 11', (await page.locator('.tool-card').count()) === 11, await page.locator('.tool-card').count());
+  check('tool cards = 12', (await page.locator('.tool-card').count()) === 12, await page.locator('.tool-card').count());
   const cardText = (await page.locator('.tool-card').first().textContent()) || '';
   check('工具卡片无「打开 ›」动作行', !cardText.includes('打开'), cardText);
   const sameRow = await page.evaluate(() => {
@@ -327,7 +365,12 @@ async function main() {
     JSON.stringify(await page.locator('.page-section-title').allTextContents()) === JSON.stringify(['PDF']),
     JSON.stringify(await page.locator('.page-section-title').allTextContents()),
   );
-  check('筛选 PDF：5 张卡片', (await page.locator('.tool-card').count()) === 5, await page.locator('.tool-card').count());
+  check('筛选 PDF：6 张卡片', (await page.locator('.tool-card').count()) === 6, await page.locator('.tool-card').count());
+  check(
+    '筛选 PDF：包含「转存图片」卡片',
+    (await page.locator('.tool-card').allTextContents()).some((c) => c.includes('转存图片') && c.includes('🖼️')),
+    JSON.stringify(await page.locator('.tool-card').allTextContents()),
+  );
   check(
     '筛选 PDF：包含「提取页面」卡片',
     (await page.locator('.tool-card').allTextContents()).some((c) => c.includes('提取页面') && c.includes('✂️')),
@@ -351,7 +394,7 @@ async function main() {
   );
   await page.screenshot({path: 'screens/tools-filter.png'});
   await clickChip('全部');
-  check('筛选「全部」：恢复 11 张卡片', (await page.locator('.tool-card').count()) === 11, await page.locator('.tool-card').count());
+  check('筛选「全部」：恢复 12 张卡片', (await page.locator('.tool-card').count()) === 12, await page.locator('.tool-card').count());
   await page.screenshot({path: 'screens/tools.png'});
 
   // PDF 工具：选文件 → 识别信息 → 设置密码
@@ -389,13 +432,14 @@ async function main() {
   await page.waitForTimeout(300);
   const subItems = await page.locator('.ctx-submenu button').allTextContents();
   check(
-    'ctx 子菜单 = [设置密码, 清除密码, 转存 EPUB, 合并 PDF, 提取页面]',
-    subItems.length === 5 &&
+    'ctx 子菜单 = [设置密码, 清除密码, 转存 EPUB, 合并 PDF, 提取页面, 转存图片]',
+    subItems.length === 6 &&
       subItems[0].includes('设置密码') &&
       subItems[1].includes('清除密码') &&
       subItems[2].includes('转存 EPUB') &&
       subItems[3].includes('合并 PDF') &&
-      subItems[4].includes('提取页面'),
+      subItems[4].includes('提取页面') &&
+      subItems[5].includes('转存图片'),
     JSON.stringify(subItems),
   );
   await page.screenshot({path: 'screens/ctx-pdf.png'});
@@ -769,6 +813,97 @@ async function main() {
   await page.locator('.modal-close').click();
   await page.waitForTimeout(300);
 
+  // 工具页 → 转存图片：默认所有页面 → 每页一张 PNG → 覆盖同名文件提示
+  await page.evaluate(() => {
+    window.__savedImages = [];
+    window.__pickTarget = 'E:\\Books\\huozhe.pdf';
+  });
+  await page.locator('.tool-card', {hasText: '转存图片'}).first().click();
+  await page.waitForTimeout(400);
+  check('转存图片弹窗', (await page.locator('.modal .modal-head h2', {hasText: '转存图片'}).count()) > 0);
+  check(
+    '转存图片：未选文件占位 + 不能导出',
+    ((await page.locator('.path-box').first().textContent()) || '').includes('还没有选择') &&
+      (await page.locator('.modal-foot .btn-primary').isDisabled()),
+  );
+  await page.locator('.modal .btn-soft', {hasText: '选择 PDF 文件'}).click();
+  await page.waitForSelector('.img-summary', {timeout: 15000}).catch(() => {});
+  await page.waitForTimeout(300);
+  const imSrc = (await page.locator('.path-box').first().textContent()) || '';
+  check('转存图片：识别页数/大小', imSrc.includes('huozhe.pdf') && imSrc.includes('23') && imSrc.includes('5.0 MB'), imSrc);
+  const imSummary = async () => (((await page.locator('.form-row .img-summary').first().textContent()) || '') + '').trim();
+  const imPreview = async () => (((await page.locator('.img-summary').last().textContent()) || '') + '').trim();
+  check(
+    '转存图片：默认「所有页面」',
+    (((await page.locator('.modal .chip.active').first().textContent()) || '').includes('所有页面')),
+    await page.locator('.modal .chip.active').first().textContent(),
+  );
+  check(
+    '转存图片：所有页面 → 23 页',
+    (await imSummary()).includes('将导出 23 页') && (await imSummary()).includes('1-23') && (await imSummary()).includes('共 23 页'),
+    await imSummary(),
+  );
+  const imDir = (await page.locator('.path-box').nth(1).textContent()) || '';
+  check('转存图片：默认输出到源文件旁边的 huozhe-images', imDir.includes('huozhe-images') && imDir.includes('Books'), imDir);
+  check('转存图片：文件名预览（补零页码）', (await imPreview()).includes('huozhe-001.png') && (await imPreview()).includes('huozhe-023.png'), await imPreview());
+  // 指定页面：写法错误 → 超范围 → 正常
+  await page.locator('.modal .chip', {hasText: '指定页面'}).first().click();
+  await page.waitForTimeout(200);
+  check('转存图片：可切换成指定页面（出现范围输入框）', (await page.locator('.img-range').count()) === 1);
+  await page.locator('.img-range').fill('abc');
+  await page.waitForTimeout(200);
+  check(
+    '转存图片：范围写法错误会提示 + 不能导出',
+    (((await page.locator('.merge-err').first().textContent()) || '').includes('页码写法不对')) &&
+      (await page.locator('.modal-foot .btn-primary').isDisabled()),
+    await page.locator('.merge-err').first().textContent(),
+  );
+  await page.locator('.img-range').fill('1-3,99');
+  await page.waitForTimeout(200);
+  const imOutErr = ((await page.locator('.merge-err').first().textContent()) || '') + '';
+  check('转存图片：页码超范围会提示', imOutErr.includes('超出范围') && imOutErr.includes('共 23 页'), imOutErr);
+  await page.locator('.img-range').fill('1-3,5');
+  await page.waitForTimeout(200);
+  check('转存图片：解析 1-3,5 → 4 页', (await imSummary()).includes('将导出 4 页') && (await imSummary()).includes('1-3, 5'), await imSummary());
+  check('转存图片：页码变了文件名预览也跟着变', (await imPreview()).includes('huozhe-005.png'), await imPreview());
+  // 回到所有页面，导出 23 张 PNG
+  await page.locator('.modal .chip', {hasText: '所有页面'}).first().click();
+  await page.waitForTimeout(200);
+  await page.locator('.modal-foot .btn-primary').click();
+  await page.waitForSelector('.tool-note.ok', {timeout: 120000});
+  await page.waitForTimeout(300);
+  const imDone = ((await page.locator('.tool-note.ok').textContent()) || '') + '';
+  check(
+    '转存图片：导出完成统计（23 张 + 覆盖 1 张同名）',
+    imDone.includes('导出完成') && imDone.includes('23 张图片') && imDone.includes('覆盖了 1 张同名图片') && imDone.includes('huozhe-images'),
+    imDone,
+  );
+  check(
+    '转存图片：完成后按钮变成「打开所在目录」',
+    (((await page.locator('.modal-foot .btn-primary').textContent()) || '').includes('打开所在目录')),
+    await page.locator('.modal-foot .btn-primary').textContent(),
+  );
+  const imSaved = await page.evaluate(() => window.__savedImages || []);
+  check(
+    '转存图片：23 页各落盘一次且页码齐全',
+    imSaved.length === 23 && imSaved[0].page === 1 && imSaved[22].page === 23 && imSaved.every((r) => r.png),
+    'len=' + imSaved.length + ' ' + JSON.stringify(imSaved.slice(0, 2).map((r) => r.page)),
+  );
+  check(
+    '转存图片：默认 150 DPI → 416×416 像素',
+    imSaved.every((r) => r.w === 416 && r.h === 416),
+    JSON.stringify(imSaved.slice(0, 2).map((r) => r.w + 'x' + r.h)),
+  );
+  check(
+    '转存图片：目录/前缀/格式/总页数参数',
+    imSaved.every((r) => r.dir.endsWith('huozhe-images') && r.prefix === 'huozhe' && r.format === 'png' && r.total === 23),
+    JSON.stringify(imSaved[0]),
+  );
+  check('转存图片：图片真的有内容（不是空画布）', imSaved.every((r) => r.len > 500), JSON.stringify(imSaved.slice(0, 4).map((r) => r.len)));
+  await page.screenshot({path: 'screens/pdf-image-done.png'});
+  await page.locator('.modal-close').click();
+  await page.waitForTimeout(300);
+
   // 书架右键 PDF → PDF 工具 → 转存 EPUB（预填书名/作者）
   await page.evaluate(() => {
     document.querySelectorAll('.nav-item').forEach((b) => {
@@ -845,6 +980,119 @@ async function main() {
   await page.screenshot({path: 'screens/pdf-extract-shelf.png'});
   await page.locator('.modal-close').click();
   await page.waitForTimeout(300);
+
+  // 书架右键 PDF → PDF 工具 → 转存图片（带入文件 → JPEG + 300DPI + 自定义目录/前缀）
+  await page.evaluate(() => {
+    window.__outDir = 'E:\\Books\\img-out';
+  });
+  const openImageFromShelf = async () => {
+    await page.locator('.book-card').nth(1).click({button: 'right'});
+    await page.waitForTimeout(400);
+    await page.locator('.ctx-sub').first().hover();
+    await page.waitForTimeout(300);
+    await page.locator('.ctx-submenu button', {hasText: '转存图片'}).first().click();
+    await page.waitForSelector('.img-summary', {timeout: 15000}).catch(() => {});
+    await page.waitForTimeout(400);
+  };
+  await openImageFromShelf();
+  check('书架入口进入转存图片', (await page.locator('.modal .modal-head h2', {hasText: '转存图片'}).count()) > 0);
+  const imShelfSrc = (await page.locator('.path-box').first().textContent()) || '';
+  check('转存图片：书架入口已带入这本书', imShelfSrc.includes('huozhe.pdf') && imShelfSrc.includes('23'), imShelfSrc);
+  check(
+    '转存图片：书架入口提示',
+    (await page.locator('.modal .hint').allTextContents()).some((h) => h.includes('活着')),
+    JSON.stringify(await page.locator('.modal .hint').allTextContents()),
+  );
+  check('转存图片：进来就能导出（不用再选文件）', !(await page.locator('.modal-foot .btn-primary').isDisabled()));
+  // JPEG + 300 DPI + 质量 60 + 指定页面 1-2,5 + 自定义目录/前缀
+  await page.evaluate(() => {
+    window.__savedImages = [];
+  });
+  await page.locator('.modal .chip', {hasText: '指定页面'}).first().click();
+  await page.locator('.img-range').fill('1-2,5');
+  await page.locator('.modal .chip', {hasText: 'JPEG'}).first().click();
+  await page.waitForTimeout(150);
+  check('转存图片：选 JPEG 才出现质量滑块', (await page.locator('.img-quality input[type="range"]').count()) === 1);
+  await page.locator('.img-quality input[type="range"]').fill('60');
+  await page.waitForTimeout(150);
+  check('转存图片：质量滑块显示 60', (((await page.locator('.img-quality-val').textContent()) || '').trim()) === '60', await page.locator('.img-quality-val').textContent());
+  await page.locator('.modal .chip', {hasText: '300 DPI'}).first().click();
+  await page.locator('.modal .btn-soft', {hasText: '选择目录'}).click();
+  await page.waitForTimeout(300);
+  await page.locator('.modal input[placeholder="huozhe"]').fill('三体');
+  await page.waitForTimeout(200);
+  check('转存图片：自定义输出目录生效', (((await page.locator('.path-box').nth(1).textContent()) || '').includes('img-out')), await page.locator('.path-box').nth(1).textContent());
+  check('转存图片：文件名预览用自定义前缀', (await imPreview()).includes('三体-001.jpg') && (await imPreview()).includes('将导出 3 张'), await imPreview());
+  await page.locator('.modal-foot .btn-primary').click();
+  await page.waitForSelector('.tool-note.ok', {timeout: 120000});
+  await page.waitForTimeout(300);
+  const im2 = await page.evaluate(() => window.__savedImages || []);
+  check(
+    '转存图片：JPEG 300DPI 导出 3 页（页码来自范围）',
+    im2.length === 3 && JSON.stringify(im2.map((r) => r.page)) === '[1,2,5]' && im2.every((r) => r.jpg && r.format === 'jpg'),
+    JSON.stringify(im2.map((r) => ({p: r.page, jpg: r.jpg}))),
+  );
+  check(
+    '转存图片：300 DPI → 833×833 像素',
+    im2.every((r) => r.w === 833 && r.h === 833),
+    JSON.stringify(im2.map((r) => r.w + 'x' + r.h)),
+  );
+  check(
+    '转存图片：自定义目录/前缀传到后端',
+    im2.every((r) => r.dir.endsWith('img-out') && r.prefix === '三体' && r.total === 23),
+    JSON.stringify(im2[0]),
+  );
+  const q60len = im2[0] ? im2[0].len : 0;
+  await page.screenshot({path: 'screens/pdf-image-jpg.png'});
+  await page.locator('.modal-close').click();
+  await page.waitForTimeout(300);
+
+  // 同一页换成质量 95 再导一次：文件要更大，说明质量参数真的生效
+  await openImageFromShelf();
+  await page.evaluate(() => {
+    window.__savedImages = [];
+  });
+  await page.locator('.modal .chip', {hasText: '指定页面'}).first().click();
+  await page.locator('.img-range').fill('1');
+  await page.locator('.modal .chip', {hasText: 'JPEG'}).first().click();
+  await page.waitForTimeout(150);
+  await page.locator('.img-quality input[type="range"]').fill('95');
+  await page.locator('.modal .chip', {hasText: '300 DPI'}).first().click();
+  await page.waitForTimeout(150);
+  await page.locator('.modal-foot .btn-primary').click();
+  await page.waitForSelector('.tool-note.ok', {timeout: 120000});
+  const q95 = await page.evaluate(() => window.__savedImages || []);
+  const q95len = q95[0] ? q95[0].len : 0;
+  check('转存图片：JPEG 质量参数生效（95 比 60 大）', q95len > q60len && q60len > 0, 'q60=' + q60len + ' q95=' + q95len);
+  await page.locator('.modal-close').click();
+  await page.waitForTimeout(300);
+
+  // 中途停止：已导出的部分保留
+  await openImageFromShelf();
+  await page.evaluate(() => {
+    window.__savedImages = [];
+  });
+  await page.locator('.modal .chip', {hasText: '300 DPI'}).first().click();
+  await page.locator('.modal-foot .btn-primary').click();
+  await page.waitForSelector('.progress-track', {timeout: 15000}).catch(() => {});
+  await page.waitForTimeout(600);
+  check('转存图片：导出中有进度条 + 可以停止', (await page.locator('.progress-track').count()) === 1);
+  await page.locator('.modal-foot .btn-soft', {hasText: '停止'}).click();
+  await page.waitForSelector('.tool-note.ok', {timeout: 60000});
+  await page.waitForTimeout(300);
+  const stopped = await page.evaluate(() => window.__savedImages || []);
+  const stopNote = ((await page.locator('.tool-note.ok').textContent()) || '') + '';
+  check(
+    '转存图片：中途停止（已导出部分保留）',
+    stopNote.includes('已停止导出') && stopped.length > 0 && stopped.length < 23,
+    'saved=' + stopped.length + ' note=' + stopNote.replace(/\s+/g, ' '),
+  );
+  await page.screenshot({path: 'screens/pdf-image-stopped.png'});
+  await page.locator('.modal-close').click();
+  await page.waitForTimeout(300);
+  await page.evaluate(() => {
+    window.__outDir = undefined;
+  });
 
   // 书架右键 EPUB → EPUB 工具 → 转存 PDF（只给 epub 类工具，不应出现 PDF 工具）
   await page.locator('.book-card').nth(0).click({button: 'right'});
