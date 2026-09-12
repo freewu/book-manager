@@ -203,3 +203,58 @@ export interface PdfToEpubProgress {
   total: number;
   chars: number;
 }
+
+/** EPUB 文件信息（转存 PDF 工具的表头） */
+export interface EpubFileInfo {
+  path: string;
+  name: string;
+  size: number;
+  title: string;
+  author: string;
+  language: string;
+  chapters: number;
+  chars: number;
+  has_cover: boolean;
+}
+
+export interface EpubToPdfOptions {
+  /** >0 表示书架中的书（用书上的路径，path 被忽略），否则传 0 */
+  book_id: number;
+  path: string;
+  /** 保存目录（留空 = EPUB 所在目录） */
+  out_dir: string;
+  /** 输出文件名（不含扩展名，留空 = 用书名 / 原文件名） */
+  file_name: string;
+  title: string;
+  author: string;
+  language: string;
+  /** 纸张：A4 / A5 / B5 / 16K / LETTER，留空按 A4 */
+  page_size: string;
+  /** 用 EPUB 封面生成封面页 */
+  use_cover: boolean;
+  /** 转换成功后自动入库 */
+  add_to_shelf: boolean;
+}
+
+export interface EpubToPdfResult {
+  /** 源 EPUB 路径 */
+  path: string;
+  /** 生成的 PDF 文件名（成功时） */
+  file_name: string;
+  pages: number;
+  chars: number;
+  chapters: number;
+  bytes: number;
+  /** EPUB 里没有可排版的正文 */
+  no_text: boolean;
+  added: boolean;
+  book_id: number;
+  shelf_error: string;
+}
+
+/** epub2pdf:progress 事件 */
+export interface EpubToPdfProgress {
+  current: number;
+  total: number;
+  chars: number;
+}

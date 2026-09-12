@@ -46,7 +46,7 @@ just push "feat: xxx"   # 提交并推送
 ```
 src/
   app.go / main.go / bindings_*.go   # Wails 入口 + 前端绑定方法
-  internal/{db,parser,scanner,douban,models,pdfcrypt,pdf2epub}  # 后端逻辑
+  internal/{db,parser,scanner,douban,models,pdfcrypt,pdf2epub,epub2pdf}  # 后端逻辑
   frontend/src/components/            # React 组件（书架/阅读器/宿主弹窗）
   frontend/src/tools/<id>/            # 工具插件（define.ts + lib.ts + tools.tsx）
   cmd/genlogo                         # logo 与图标生成
@@ -62,7 +62,7 @@ justfile                            # 常用命令（内部均 cd src 执行）
 
 ```
 src/frontend/src/tools/<tool-id>/
-  define.ts    # 工具元信息：分类 category（'other' | 'pdf'）、图标 icon、名称/描述 i18n 键、
+  define.ts    # 工具元信息：分类 category（'other' | 'pdf' | 'epub'）、图标 icon、名称/描述 i18n 键、
                # 排序 order、作用格式 bookFormats（书架右键「<分类>工具」子菜单据此显示）
   lib.ts       # 该工具用到的后端调用封装（wails bindings），UI 不直接调 App.*
   tools.tsx    # 工具弹窗组件（默认导出，props 见 tools/types.ts 的 ToolDialogProps）
@@ -81,9 +81,21 @@ src/frontend/src/tools/<tool-id>/
   排版细节：片段按内容流顺序拼接（很多 PDF 的 X 坐标不是真实笔位）、空白/未映射字形当空格、按中位行距判断新段落、
   faux-bold 重绘去重、页眉页脚剔除（见 `layout.go` 顶部常量）。对应工具 `tools/pdf-epub/`，绑定在 `bindings_pdf2epub.go`
   （`PickOutDir` + `ConvertPdfToEpub`，进度走 `pdf2epub:progress` 事件，可选自动入库）。
-- UI 改动后跑 `just ui-test`：它用 playwright-core 加载 `dist/` 并对 `window.go` 打桩，覆盖书架/统计/扫描/标签/设置/书籍详情/EPUB 与加密 PDF 阅读器/工具页与 PDF 设置·清除密码·转存 EPUB 弹窗。
+- EPUB → PDF 转换在 `src/internal/epub2pdf`（解析 epub 用 `golang.org/x/net/html`，排版用 `github.com/phpdave11/gofpdf`）：
+  `Convert(Options)` 按 spine 顺序把每个文档的正文排成页面，一章起新页并生成书签目录，可嵌入封面页与中文字体子集，
+  纸张支持 A4/A5/B5/16K/LETTER；`Inspect(path)` 返回书名/作者/章节数/字数给弹窗显示。
+  没有正文的 epub 返回 `ErrNoText`（绑定转成 `no_text=true` 数据），不是 epub 返回 `ErrNotEPUB`，找不到可嵌入字体返回 `ErrNoFont`。
+  两个坑（都已在测试里锁住）：
+  1. **绝不能用 gofpdf 的 `MultiCell` 排中文**：它对每个汉字都允许断行，自动换行时会丢掉断点处那一个字
+     （`fpdf.go` 里 `i = sep + 1` 跳过）。因此自己实现折行 `text.go`：按字符宽度贪心断行 + 行首/行尾禁则，
+     每行单独 `CellFormat(w, h, line, "", 2, align, false, 0, "")`。单测见 `text_test.go`。
+  2. 生成的 PDF 用 Type0/Identity-H + 恒等 `/ToUnicode`，rune 即 CID；字体子集保留原轮廓（仅末尾补零对齐）与重映射的复合字形引用。
+     **`github.com/ledongthuc/pdf` 读不了我们生成的 CJK PDF**（忽略 ToUnicode → 乱码），pdf.js / Acrobat / pypdf 正常。
+  对应工具 `tools/epub-pdf/`，绑定在 `bindings_epub2pdf.go`（`PickEpubFile` + `EpubInspect` + `EpubToPdf`，
+  进度走 `epub2pdf:progress` 事件，可选自动入库）。
+- UI 改动后跑 `just ui-test`：它用 playwright-core 加载 `dist/` 并对 `window.go` 打桩，覆盖书架/统计/扫描/标签/设置/书籍详情/EPUB 与加密 PDF 阅读器/工具页与 PDF 设置·清除密码·转存 EPUB·转存 PDF 弹窗（含书架右键 EPUB 工具子菜单）。
   mock 里没有的绑定会回退成空操作（Proxy），所以新增绑定不会直接弄坏冒烟；
-  `pdf2epub:progress` 这类事件由 mock 自己塞进 `window.__events` 触发（`EventsOn` 实际调的是 `window.runtime.EventsOnMultiple`）。
+  `pdf2epub:progress` / `epub2pdf:progress` 这类事件由 mock 自己塞进 `window.__events` 触发（`EventsOn` 实际调的是 `window.runtime.EventsOnMultiple`）。
 
 ## 注意事项
 

@@ -72,7 +72,7 @@ func (a *App) ConvertPdfToEpub(opts models.PdfToEpubOptions) (models.PdfToEpubRe
 	}
 
 	// 2. convert, then 3. optionally import the result into the library
-	cover, coverExt := coverImage(opts.UseCover, path, book)
+	cover, coverExt := coverImage("pdf", opts.UseCover, path, book)
 	out, err := pdf2epub.Convert(pdf2epub.Options{
 		SourcePath:  src,
 		OutDir:      opts.OutDir,
@@ -109,7 +109,7 @@ func (a *App) ConvertPdfToEpub(opts models.PdfToEpubOptions) (models.PdfToEpubRe
 	res.Dropped = out.Dropped
 
 	if opts.AddToShelf {
-		res.BookID, res.Added, res.ShelfError = a.addToShelf(out.Path)
+		res.BookID, res.Added, res.ShelfError = a.addToShelf(out.Path, "epub")
 	}
 	return res, nil
 }
@@ -132,11 +132,12 @@ func tempDecrypted(path, password string) (string, error) {
 	return name, nil
 }
 
-// addToShelf imports a converted EPUB the same way a scan would. It never
-// fails the conversion: the reason is reported in the result instead.
-func (a *App) addToShelf(path string) (int64, bool, string) {
+// addToShelf imports a converted book the same way a scan would. format is the
+// shelf format of the produced file (epub / pdf). It never fails the
+// conversion: the reason is reported in the result instead.
+func (a *App) addToShelf(path, format string) (int64, bool, string) {
 	sc := &scanner.Scanner{}
-	book, err := sc.Process(scanner.FileInfo{Path: path, Format: "epub"}, a.dataDir)
+	book, err := sc.Process(scanner.FileInfo{Path: path, Format: format}, a.dataDir)
 	if err != nil {
 		return 0, false, err.Error()
 	}
@@ -148,12 +149,12 @@ func (a *App) addToShelf(path string) (int64, bool, string) {
 }
 
 // coverImage returns the cover to embed and its extension: the cover embedded
-// in the PDF, or, failing that, the cover stored on the shelf entry.
-func coverImage(use bool, path string, book *models.Book) ([]byte, string) {
+// in the source file, or, failing that, the cover stored on the shelf entry.
+func coverImage(format string, use bool, path string, book *models.Book) ([]byte, string) {
 	if !use {
 		return nil, ""
 	}
-	if meta, err := parser.Parse(path, "pdf"); err == nil && len(meta.Cover) > 100 {
+	if meta, err := parser.Parse(path, format); err == nil && len(meta.Cover) > 100 {
 		return meta.Cover, meta.CoverExt
 	}
 	if book != nil && book.CoverPath != "" {

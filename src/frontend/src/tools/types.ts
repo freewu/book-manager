@@ -11,11 +11,11 @@ import type {ComponentType} from 'react';
 import type {Book, Settings, Tag} from '../types';
 
 /** 工具分类（类型）：决定工具页分组与书架右键子菜单 */
-export type ToolCategory = 'other' | 'pdf';
+export type ToolCategory = 'other' | 'pdf' | 'epub';
 
 /** define.ts 导出的工具元信息 */
 export interface ToolDef {
-  /** 分类：other=通用工具，pdf=PDF 工具 */
+  /** 分类：other=通用工具，pdf=PDF 工具，epub=EPUB 工具 */
   category: ToolCategory;
   /** 卡片图标（emoji） */
   icon: string;

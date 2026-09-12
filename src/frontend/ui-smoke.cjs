@@ -48,6 +48,27 @@ window.go = { main: { App: {
   RemovePdfPassword: async (o) => ({path: o.path, name: 'locked.pdf', size: 5242880, pages: 120, title: '活着', encrypted: false, needs_password: false}),
   OpenPath: async () => {}, DoubanRunning: async () => false, StartEnrichAll: async () => 0,
   PickOutDir: async () => (window.__outDir === undefined ? 'E:\\\\Books\\\\out' : window.__outDir),
+  PickEpubFile: async () => (window.__pickEpub || 'E:\\\\Books\\\\santi.epub'),
+  EpubInspect: async (p) => {
+    const name = String(p).split(/[\\/]/).pop();
+    return {path: p, name, size: 1048576, title: '三体', author: '刘慈欣', language: 'zh', chapters: 187, chars: 199856, has_cover: true};
+  },
+  EpubToPdf: async (o) => {
+    const name = String(o.path).split(/[\\/]/).pop();
+    if (name.includes('notext')) {
+      return {path: o.path, file_name: '', pages: 0, chars: 0, chapters: 0, bytes: 0, no_text: true, added: false, book_id: 0, shelf_error: ''};
+    }
+    // 模拟后端逐章上报进度（真实运行时是 epub2pdf:progress 事件）
+    const fire = (p) => (window.__events['epub2pdf:progress'] || []).forEach((cb) => cb(p));
+    window.__lastEpubConvert = o;
+    await new Promise((r) => setTimeout(r, 150));
+    fire({current: 60, total: 187, chars: 50000});
+    await new Promise((r) => setTimeout(r, 600));
+    fire({current: 187, total: 187, chars: 199856});
+    const base = (o.file_name || o.title || name.replace(/\.[^.]+$/, '')) + '.pdf';
+    const dir = o.out_dir || String(o.path).replace(/[\\/][^\\/]*$/, '');
+    return {path: dir + '\\\\' + base, file_name: base, pages: 212, chars: 199856, chapters: 187, bytes: 855716, no_text: false, added: o.add_to_shelf, book_id: o.add_to_shelf ? 4 : 0, shelf_error: ''};
+  },
   ConvertPdfToEpub: async (o) => {
     const name = String(o.path).split(/[\\/]/).pop();
     if (name.includes('locked') && o.password !== 'secret') {
@@ -178,8 +199,8 @@ async function main() {
   });
   await page.waitForTimeout(500);
   const sections = await page.locator('.page-section-title').allTextContents();
-  check('tool sections = 其他/PDF', JSON.stringify(sections) === JSON.stringify(['其他', 'PDF']), JSON.stringify(sections));
-  check('tool cards = 8', (await page.locator('.tool-card').count()) === 8, await page.locator('.tool-card').count());
+  check('tool sections = 其他/PDF/EPUB', JSON.stringify(sections) === JSON.stringify(['其他', 'PDF', 'EPUB']), JSON.stringify(sections));
+  check('tool cards = 9', (await page.locator('.tool-card').count()) === 9, await page.locator('.tool-card').count());
   const cardText = (await page.locator('.tool-card').first().textContent()) || '';
   check('工具卡片无「打开 ›」动作行', !cardText.includes('打开'), cardText);
   const sameRow = await page.evaluate(() => {
@@ -315,6 +336,44 @@ async function main() {
   await page.locator('.modal-close').click();
   await page.waitForTimeout(300);
 
+  // 工具页 → 转存 PDF：选文件 → 默认保存目录 / 文件名 → 纸张 → 转换（进度条） → 完成统计
+  await page.locator('.tool-card', {hasText: '转存 PDF'}).first().click();
+  await page.waitForTimeout(400);
+  check('转存 PDF 弹窗', (await page.locator('.modal .modal-head h2', {hasText: '转存 PDF'}).count()) > 0);
+  await page.evaluate(() => {
+    window.__pickEpub = 'E:\\Books\\santi2.epub';
+  });
+  await page.locator('.modal .btn-soft', {hasText: '选择文件'}).click();
+  await page.waitForTimeout(500);
+  check('转存 PDF 识别 EPUB 信息', (await page.locator('.pdf-info-val').count()) === 3);
+  const epubInfo = (await page.locator('.pdf-info').textContent()) || '';
+  check('信息含章节与字数', epubInfo.includes('187 章') && epubInfo.includes('199856 字'), epubInfo);
+  const epubOutBox = (await page.locator('.path-box').nth(1).textContent()) || '';
+  check('转存 PDF 默认目录 = EPUB 目录', epubOutBox.includes('E:\\Books'), epubOutBox);
+  const epubNameInput = page.locator('.modal .form-row input').nth(0);
+  check('转存 PDF 默认文件名 = 原文件名', (await epubNameInput.inputValue()) === 'santi2', await epubNameInput.inputValue());
+  check('纸张默认 A4', (await page.locator('.modal select').inputValue()) === 'A4');
+  await page.locator('.modal select').selectOption('16K');
+  await page.screenshot({path: 'screens/epub-pdf.png'});
+  await page.locator('.modal-foot .btn-primary').click();
+  await page.waitForTimeout(450);
+  check('转存 PDF 进度条可见', (await page.locator('.progress-track .fill').count()) > 0);
+  const epubProgText = (await page.locator('.progress-track + .hint').textContent().catch(() => '')) || '';
+  check('转存 PDF 进度文案含章节与字数', epubProgText.includes('60/187') && epubProgText.includes('50000'), epubProgText);
+  await page.waitForTimeout(900);
+  const pdfDone = (await page.locator('.tool-note.ok').textContent().catch(() => '')) || '';
+  check('转存 PDF 完成统计', pdfDone.includes('转换完成') && pdfDone.includes('212 页') && pdfDone.includes('187 章'), pdfDone);
+  check('转存 PDF 结果已入库提示', pdfDone.includes('santi2.pdf') && pdfDone.includes('已加入书架'), pdfDone);
+  const epubOpts = await page.evaluate(() => window.__lastEpubConvert);
+  check(
+    '转存 PDF 参数（纸张/目录/封面/入库）',
+    epubOpts && epubOpts.page_size === '16K' && epubOpts.out_dir === '' && epubOpts.use_cover === true && epubOpts.add_to_shelf === true && epubOpts.file_name === 'santi2',
+    JSON.stringify(epubOpts),
+  );
+  await page.screenshot({path: 'screens/epub-pdf-done.png'});
+  await page.locator('.modal-close').click();
+  await page.waitForTimeout(300);
+
   // 书架右键 PDF → PDF 工具 → 转存 EPUB（预填书名/作者）
   await page.evaluate(() => {
     document.querySelectorAll('.nav-item').forEach((b) => {
@@ -333,6 +392,23 @@ async function main() {
   const shelfAuthor = await page.locator('.modal .form-row input').nth(2).inputValue();
   check('预填书名/作者', shelfTitle === '活着' && shelfAuthor === '余华', shelfTitle + ' / ' + shelfAuthor);
   await page.screenshot({path: 'screens/pdf-epub-shelf.png'});
+  await page.locator('.modal-close').click();
+  await page.waitForTimeout(300);
+
+  // 书架右键 EPUB → EPUB 工具 → 转存 PDF（只给 epub 类工具，不应出现 PDF 工具）
+  await page.locator('.book-card').nth(0).click({button: 'right'});
+  await page.waitForTimeout(400);
+  check('EPUB 书籍右键有 EPUB 工具子菜单', (await page.locator('.ctx-sub', {hasText: 'EPUB 工具'}).count()) === 1);
+  check('EPUB 书籍右键无 PDF 工具子菜单', (await page.locator('.ctx-sub', {hasText: 'PDF 工具'}).count()) === 0);
+  await page.locator('.ctx-sub', {hasText: 'EPUB 工具'}).first().hover();
+  await page.waitForTimeout(300);
+  await page.locator('.ctx-submenu button', {hasText: '转存 PDF'}).first().click();
+  await page.waitForTimeout(700);
+  check('书架入口进入转存 PDF', (await page.locator('.modal .modal-head h2', {hasText: '转存 PDF'}).count()) > 0);
+  const epubShelfTitle = await page.locator('.modal .form-row input').nth(1).inputValue();
+  const epubShelfAuthor = await page.locator('.modal .form-row input').nth(2).inputValue();
+  check('书架入口预填书名/作者', epubShelfTitle === '三体' && epubShelfAuthor === '刘慈欣', epubShelfTitle + ' / ' + epubShelfAuthor);
+  await page.screenshot({path: 'screens/epub-pdf-shelf.png'});
   await page.locator('.modal-close').click();
   await page.waitForTimeout(300);
 

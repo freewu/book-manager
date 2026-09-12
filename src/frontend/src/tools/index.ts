@@ -15,7 +15,7 @@ function toolId(path: string): string {
 }
 
 /** 工具页分类展示顺序 */
-export const TOOL_CATEGORIES: ToolCategory[] = ['other', 'pdf'];
+export const TOOL_CATEGORIES: ToolCategory[] = ['other', 'pdf', 'epub'];
 
 export const TOOLS: ToolModule[] = Object.entries(defineModules)
   .map(([path, mod]) => {

@@ -161,6 +161,94 @@ export namespace models {
 	        this.pub_info = source["pub_info"];
 	    }
 	}
+	export class EpubFileInfo {
+	    path: string;
+	    name: string;
+	    size: number;
+	    title: string;
+	    author: string;
+	    language: string;
+	    chapters: number;
+	    chars: number;
+	    has_cover: boolean;
+	
+	    static createFrom(source: any = {}) {
+	        return new EpubFileInfo(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.path = source["path"];
+	        this.name = source["name"];
+	        this.size = source["size"];
+	        this.title = source["title"];
+	        this.author = source["author"];
+	        this.language = source["language"];
+	        this.chapters = source["chapters"];
+	        this.chars = source["chars"];
+	        this.has_cover = source["has_cover"];
+	    }
+	}
+	export class EpubToPdfOptions {
+	    book_id: number;
+	    path: string;
+	    out_dir: string;
+	    file_name: string;
+	    title: string;
+	    author: string;
+	    language: string;
+	    page_size: string;
+	    use_cover: boolean;
+	    add_to_shelf: boolean;
+	
+	    static createFrom(source: any = {}) {
+	        return new EpubToPdfOptions(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.book_id = source["book_id"];
+	        this.path = source["path"];
+	        this.out_dir = source["out_dir"];
+	        this.file_name = source["file_name"];
+	        this.title = source["title"];
+	        this.author = source["author"];
+	        this.language = source["language"];
+	        this.page_size = source["page_size"];
+	        this.use_cover = source["use_cover"];
+	        this.add_to_shelf = source["add_to_shelf"];
+	    }
+	}
+	export class EpubToPdfResult {
+	    path: string;
+	    file_name: string;
+	    pages: number;
+	    chars: number;
+	    chapters: number;
+	    bytes: number;
+	    no_text: boolean;
+	    added: boolean;
+	    book_id: number;
+	    shelf_error: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new EpubToPdfResult(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.path = source["path"];
+	        this.file_name = source["file_name"];
+	        this.pages = source["pages"];
+	        this.chars = source["chars"];
+	        this.chapters = source["chapters"];
+	        this.bytes = source["bytes"];
+	        this.no_text = source["no_text"];
+	        this.added = source["added"];
+	        this.book_id = source["book_id"];
+	        this.shelf_error = source["shelf_error"];
+	    }
+	}
 	export class Misrecord {
 	    id: number;
 	    path: string;

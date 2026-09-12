@@ -20,8 +20,8 @@ type Book struct {
 	DoubanRatingCount int     `json:"douban_rating_count"`
 	DoubanAuthors     string  `json:"douban_authors"`
 	Misrecord         bool    `json:"misrecord"`
-	DoubanFailCount  int     `json:"douban_fail_count"` // consecutive auto-enrich failures (>=3 stops retries)
-	CurrentLocation   string  `json:"current_location"` // epub cfi / pdf page / mobi position
+	DoubanFailCount   int     `json:"douban_fail_count"` // consecutive auto-enrich failures (>=3 stops retries)
+	CurrentLocation   string  `json:"current_location"`  // epub cfi / pdf page / mobi position
 	CurrentPage       int     `json:"current_page"`
 	TotalPages        int     `json:"total_pages"`
 	ReadProgress      float64 `json:"read_progress"` // 0-100
@@ -216,19 +216,82 @@ type PdfToEpubProgress struct {
 	Chars   int `json:"chars"`
 }
 
+// EpubFileInfo describes an EPUB picked from disk or from the shelf, so the
+// 「转存 PDF」 wizard can show what it is about to convert.
+type EpubFileInfo struct {
+	Path     string `json:"path"`
+	Name     string `json:"name"`
+	Size     int64  `json:"size"`
+	Title    string `json:"title"`
+	Author   string `json:"author"`
+	Language string `json:"language"`
+	Chapters int    `json:"chapters"`
+	Chars    int    `json:"chars"`
+	HasCover bool   `json:"has_cover"`
+}
+
+// EpubToPdfOptions is the input of the 「转存 PDF」 tool: it typesets an EPUB
+// into a PDF in OutDir/FileName. BookID selects a book from the shelf (its path
+// is used instead of Path); Path is used for files picked from disk.
+type EpubToPdfOptions struct {
+	BookID int64  `json:"book_id"`
+	Path   string `json:"path"`
+	// OutDir is the target directory; empty means the directory of the EPUB.
+	OutDir string `json:"out_dir"`
+	// FileName is the target file name (without extension); empty means the
+	// name of the EPUB.
+	FileName string `json:"file_name"`
+	// Title / Author override the metadata written into the PDF.
+	Title  string `json:"title"`
+	Author string `json:"author"`
+	// Language is only informative; the PDF font is picked from the text.
+	Language string `json:"language"`
+	// PageSize is one of A4 / A5 / B5 / 16K / LETTER; empty means A4.
+	PageSize string `json:"page_size"`
+	// UseCover adds a cover page with the EPUB cover image.
+	UseCover bool `json:"use_cover"`
+	// AddToShelf imports the result into the library when it is done.
+	AddToShelf bool `json:"add_to_shelf"`
+}
+
+// EpubToPdfResult reports what the conversion produced. NoText is data, not an
+// error: the UI explains that the EPUB holds no readable text.
+type EpubToPdfResult struct {
+	Path     string `json:"path"`
+	FileName string `json:"file_name"`
+	Pages    int    `json:"pages"`
+	Chars    int    `json:"chars"`
+	Chapters int    `json:"chapters"`
+	Bytes    int64  `json:"bytes"`
+	NoText   bool   `json:"no_text"`
+	// Added is true when the PDF was imported into the library, BookID is its
+	// id then; ShelfError explains why the import was skipped.
+	Added      bool   `json:"added"`
+	BookID     int64  `json:"book_id"`
+	ShelfError string `json:"shelf_error"`
+}
+
+// EpubToPdfProgress is emitted on the epub2pdf:progress event while an EPUB is
+// typeset chapter by chapter.
+type EpubToPdfProgress struct {
+	Current int `json:"current"`
+	Total   int `json:"total"`
+	Chars   int `json:"chars"`
+}
+
 // Settings is the key/value settings map exposed to the UI.
 type Settings map[string]string
 
 // Stats gives overview numbers for the dashboard.
 type Stats struct {
-	TotalBooks        int64   `json:"total_books"`
-	TotalSize         int64   `json:"total_size"`
-	TotalReadSeconds  int64   `json:"total_read_seconds"`
-	TotalNotes        int64   `json:"total_notes"`
-	TotalTags         int64   `json:"total_tags"`
-	TotalMisrecords   int64   `json:"total_misrecords"`
-	ReadingBooks      int64   `json:"reading_books"` // books with progress > 0
-	FinishedBooks     int64   `json:"finished_books"`
-	UnreadBooks       int64   `json:"unread_books"`
-	FormatCounts      map[string]int64 `json:"format_counts"`
+	TotalBooks       int64            `json:"total_books"`
+	TotalSize        int64            `json:"total_size"`
+	TotalReadSeconds int64            `json:"total_read_seconds"`
+	TotalNotes       int64            `json:"total_notes"`
+	TotalTags        int64            `json:"total_tags"`
+	TotalMisrecords  int64            `json:"total_misrecords"`
+	ReadingBooks     int64            `json:"reading_books"` // books with progress > 0
+	FinishedBooks    int64            `json:"finished_books"`
+	UnreadBooks      int64            `json:"unread_books"`
+	FormatCounts     map[string]int64 `json:"format_counts"`
 }

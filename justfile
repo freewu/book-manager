@@ -44,7 +44,7 @@ test: test-go test-js test-i18n
 
 # Go 后端测试
 test-go:
-    cd {{app}} && {{go}} test ./internal/...
+    cd {{app}} && {{go}} test ./internal/... && {{go}} test .
 
 # JS 端 MOBI 解析器验证
 test-js:

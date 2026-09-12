@@ -107,26 +107,46 @@ func (a *App) RemovePdfPassword(opts models.PdfProtectOptions) (models.PdfFileIn
 	return out, nil
 }
 
-// resolvePdfTarget resolves the file a PDF tool works on: a book from the shelf
+// resolveTarget resolves the file a tool works on: a book from the shelf
 // (bookID > 0 uses the path stored on the book, path is ignored) or a plain
-// path. The returned book is non-nil only for the shelf case, where the caller
-// has to refresh the stored file facts after an in-place rewrite.
-func (a *App) resolvePdfTarget(bookID int64, path string) (string, *models.Book, error) {
+// path. formats lists the shelf formats the tool accepts; label names them in
+// the error messages. The returned book is non-nil only for the shelf case,
+// where the caller has to refresh the stored file facts after an in-place
+// rewrite.
+func (a *App) resolveTarget(bookID int64, path, label string, formats ...string) (string, *models.Book, error) {
 	if bookID > 0 {
 		b, err := a.store.GetBook(bookID)
 		if err != nil {
 			return "", nil, err
 		}
-		if !strings.EqualFold(b.Format, "pdf") {
-			return "", nil, errors.New("not a pdf book")
+		ok := false
+		for _, f := range formats {
+			if strings.EqualFold(b.Format, f) {
+				ok = true
+				break
+			}
+		}
+		if !ok {
+			return "", nil, errors.New("not a " + label + " book")
 		}
 		return b.Path, b, nil
 	}
 	path = strings.TrimSpace(path)
 	if path == "" {
-		return "", nil, errors.New("no pdf file selected")
+		return "", nil, errors.New("no " + label + " file selected")
 	}
 	return path, nil, nil
+}
+
+// resolvePdfTarget resolves the PDF a PDF tool works on.
+func (a *App) resolvePdfTarget(bookID int64, path string) (string, *models.Book, error) {
+	return a.resolveTarget(bookID, path, "pdf", "pdf")
+}
+
+// resolveEpubTarget resolves the EPUB an EPUB tool works on. kepub files are
+// EPUBs with extra spans, so they work as well.
+func (a *App) resolveEpubTarget(bookID int64, path string) (string, *models.Book, error) {
+	return a.resolveTarget(bookID, path, "epub", "epub", "kepub")
 }
 
 // refreshBookFileFacts refreshes size / hash of a book whose file was rewritten

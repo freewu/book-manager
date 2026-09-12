@@ -62,6 +62,14 @@ export function EnrichBookByTitle(arg1, arg2) {
   return window['go']['main']['App']['EnrichBookByTitle'](arg1, arg2);
 }
 
+export function EpubInspect(arg1) {
+  return window['go']['main']['App']['EpubInspect'](arg1);
+}
+
+export function EpubToPdf(arg1) {
+  return window['go']['main']['App']['EpubToPdf'](arg1);
+}
+
 export function FetchDouban(arg1) {
   return window['go']['main']['App']['FetchDouban'](arg1);
 }
@@ -144,6 +152,10 @@ export function OpenWithKKFileView(arg1) {
 
 export function PdfInspect(arg1, arg2) {
   return window['go']['main']['App']['PdfInspect'](arg1, arg2);
+}
+
+export function PickEpubFile() {
+  return window['go']['main']['App']['PickEpubFile']();
 }
 
 export function PickOutDir(arg1) {

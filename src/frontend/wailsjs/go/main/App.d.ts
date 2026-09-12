@@ -33,6 +33,10 @@ export function EnrichAllMissing():Promise<number>;
 
 export function EnrichBookByTitle(arg1:number,arg2:models.DoubanBook):Promise<void>;
 
+export function EpubInspect(arg1:string):Promise<models.EpubFileInfo>;
+
+export function EpubToPdf(arg1:models.EpubToPdfOptions):Promise<models.EpubToPdfResult>;
+
 export function FetchDouban(arg1:number):Promise<models.Book>;
 
 export function GetBook(arg1:number):Promise<models.Book>;
@@ -74,6 +78,8 @@ export function OpenPath(arg1:string):Promise<void>;
 export function OpenWithKKFileView(arg1:number):Promise<string>;
 
 export function PdfInspect(arg1:string,arg2:string):Promise<models.PdfFileInfo>;
+
+export function PickEpubFile():Promise<string>;
 
 export function PickOutDir(arg1:string):Promise<string>;
 
