@@ -212,6 +212,59 @@ async function main() {
     return overlap > 0 && title.left > icon.left;
   });
   check('图标与名字在同一行', sameRow);
+
+  // 工具栏右侧的「类型」筛选：点分类只剩该类工具，点全部恢复
+  check(
+    '筛选栏：类型 + 全部/其他/PDF/EPUB 一行排开且不溢出',
+    await page.evaluate(() => {
+      const bar = document.querySelector('.filter-bar');
+      if (!bar) return false;
+      const chips = [...bar.querySelectorAll('.chip')];
+      if (chips.length !== 4) return false;
+      const tops = new Set(chips.map((c) => Math.round(c.getBoundingClientRect().top)));
+      const right = Math.max(...chips.map((c) => c.getBoundingClientRect().right));
+      return (
+        tops.size === 1 &&
+        right <= window.innerWidth &&
+        document.documentElement.scrollWidth <= window.innerWidth &&
+        (bar.querySelector('.filter-label')?.textContent || '') === '类型'
+      );
+    }),
+  );
+  check(
+    '筛选默认选中「全部」',
+    (await page.locator('.filter-bar .chip.active').first().textContent() || '').startsWith('全部'),
+    await page.locator('.filter-bar .chip.active').first().textContent(),
+  );
+  const clickChip = async (label) => {
+    await page.evaluate((l) => {
+      document.querySelectorAll('.filter-bar .chip').forEach((b) => {
+        if (b.textContent.startsWith(l)) b.click();
+      });
+    }, label);
+    await page.waitForTimeout(200);
+  };
+  await clickChip('PDF');
+  check(
+    '筛选 PDF：只剩 PDF 分组',
+    JSON.stringify(await page.locator('.page-section-title').allTextContents()) === JSON.stringify(['PDF']),
+    JSON.stringify(await page.locator('.page-section-title').allTextContents()),
+  );
+  check('筛选 PDF：3 张卡片', (await page.locator('.tool-card').count()) === 3, await page.locator('.tool-card').count());
+  check(
+    '工具描述不再带「书架里右键」说明',
+    !(await page.locator('.tool-desc').allTextContents()).some((d) => d.includes('右键')),
+  );
+  await clickChip('EPUB');
+  check(
+    '筛选 EPUB：1 张卡片（转存 PDF）',
+    (await page.locator('.tool-card').count()) === 1 &&
+      ((await page.locator('.tool-card').first().textContent()) || '').includes('转存 PDF'),
+    await page.locator('.tool-card').first().textContent(),
+  );
+  await page.screenshot({path: 'screens/tools-filter.png'});
+  await clickChip('全部');
+  check('筛选「全部」：恢复 9 张卡片', (await page.locator('.tool-card').count()) === 9, await page.locator('.tool-card').count());
   await page.screenshot({path: 'screens/tools.png'});
 
   // PDF 工具：选文件 → 识别信息 → 设置密码

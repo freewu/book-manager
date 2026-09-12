@@ -108,6 +108,8 @@ const DICT: Dict = {
 
   // ---- tools page ----
   'tools.title': {'zh-CN': '工具', 'zh-TW': '工具', 'en': 'Tools'},
+  'tools.filterType': {'zh-CN': '类型', 'zh-TW': '類型', 'en': 'Type'},
+  'tools.filterAll': {'zh-CN': '全部', 'zh-TW': '全部', 'en': 'All'},
   'tools.scan': {'zh-CN': '扫描书库', 'zh-TW': '掃描書庫', 'en': 'Scan library'},
   'tools.scanDesc': {'zh-CN': '扫描本地目录，把新增的电子书加入书架', 'zh-TW': '掃描本機目錄，把新增的電子書加入書架', 'en': 'Scan local folders and add new e-books to the shelf'},
   'tools.tags': {'zh-CN': '标签管理', 'zh-TW': '標籤管理', 'en': 'Tag manager'},
@@ -157,9 +159,9 @@ const DICT: Dict = {
   // ---- PDF：设置密码 ----
   'tools.pdfPassword': {'zh-CN': '设置密码', 'zh-TW': '設定密碼', 'en': 'Set password'},
   'tools.pdfPasswordDesc': {
-    'zh-CN': '给 PDF 设置打开密码；书架里右键 PDF 也可进入',
-    'zh-TW': '給 PDF 設定開啟密碼；書架裡右鍵 PDF 也可進入',
-    'en': 'Add an open password to a PDF; also available from the bookshelf right-click menu',
+    'zh-CN': '给 PDF 设置打开密码',
+    'zh-TW': '給 PDF 設定開啟密碼',
+    'en': 'Add an open password to a PDF',
   },
   'tools.pdfPwFile': {'zh-CN': 'PDF 文件', 'zh-TW': 'PDF 檔案', 'en': 'PDF file'},
   'tools.pdfPwNoFile': {'zh-CN': '尚未选择文件', 'zh-TW': '尚未選擇檔案', 'en': 'No file selected'},
@@ -195,9 +197,9 @@ const DICT: Dict = {
   // ---- PDF：清除密码 ----
   'tools.pdfUnlock': {'zh-CN': '清除密码', 'zh-TW': '清除密碼', 'en': 'Remove password'},
   'tools.pdfUnlockDesc': {
-    'zh-CN': '去掉 PDF 的打开密码；书架里右键 PDF 也可进入',
-    'zh-TW': '移除 PDF 的開啟密碼；書架裡右鍵 PDF 也可進入',
-    'en': 'Strip the open password of a PDF; also available from the bookshelf right-click menu',
+    'zh-CN': '去掉 PDF 的打开密码',
+    'zh-TW': '移除 PDF 的開啟密碼',
+    'en': 'Strip the open password of a PDF',
   },
   'tools.pdfUnlockSubmit': {'zh-CN': '清除密码', 'zh-TW': '清除密碼', 'en': 'Remove password'},
   'tools.pdfUnlockDone': {
@@ -213,9 +215,9 @@ const DICT: Dict = {
   },
   'tools.pdfEpub': {'zh-CN': '转存 EPUB', 'zh-TW': '轉存 EPUB', 'en': 'Convert to EPUB'},
   'tools.pdfEpubDesc': {
-    'zh-CN': '把 PDF 的文字排版成 epub 电子书，可选择保存目录；书架里右键 PDF 也可进入',
-    'zh-TW': '把 PDF 的文字排版成 epub 電子書，可選擇儲存目錄；書架裡右鍵 PDF 也可進入',
-    'en': 'Turn the text of a PDF into an epub book with a folder of your choice; also available from the bookshelf right-click menu',
+    'zh-CN': '把 PDF 的文字排版成 epub 电子书，可选择保存目录',
+    'zh-TW': '把 PDF 的文字排版成 epub 電子書，可選擇儲存目錄',
+    'en': 'Turn the text of a PDF into an epub book with a folder of your choice',
   },
   'tools.pdfEpubOutDir': {'zh-CN': '保存目录', 'zh-TW': '儲存目錄', 'en': 'Save to'},
   'tools.pdfEpubOutDirHint': {'zh-CN': '默认与 PDF 放在同一目录', 'zh-TW': '預設與 PDF 放在同一目錄', 'en': 'By default next to the PDF'},

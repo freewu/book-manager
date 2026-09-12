@@ -71,6 +71,9 @@ src/frontend/src/tools/<tool-id>/
 - 宿主 `src/frontend/src/tools/ToolHost.tsx` 由 `App.tsx` 的 `tool: {id, book}` 状态驱动，
   所有入口（工具页卡片、书架右键、统计页误录链接、侧栏 `open-scan` 事件）都走同一个 `openTool(id, book?)`。
 - 文案统一放在 `src/frontend/src/i18n.tsx`（define.ts 里只存 key），分类名用 `tools.category.*`。
+  工具页顶部有分类筛选（`tools.filterType` / `tools.filterAll`，默认「全部」），分类顺序由 `tools/index.ts` 的
+  `TOOL_CATEGORIES` 决定，每个分类的数量从注册表实时统计；工具描述只写工具本身做什么，
+  不要再写「书架里右键 xxx 也可进入」（右键子菜单和工具页卡片走的是同一个 `openTool`）。
 - 后端绑定按领域放在 `src/bindings_*.go`（如 PDF 工具 = `bindings_pdf.go`）。
 - 新增/改绑定后需重新生成 `src/frontend/wailsjs/`（`wails generate module` 或 `wails dev/build` 自动处理）。
 - 后端 PDF 加密逻辑在 `src/internal/pdfcrypt`（基于 pdfcpu）：`Inspect` / `Protect`（设置密码）/ `Remove`（清除密码）/ `DecryptTo`（解密副本，给转换用），都有单测，改完跑 `just test`。
@@ -93,7 +96,7 @@ src/frontend/src/tools/<tool-id>/
      **`github.com/ledongthuc/pdf` 读不了我们生成的 CJK PDF**（忽略 ToUnicode → 乱码），pdf.js / Acrobat / pypdf 正常。
   对应工具 `tools/epub-pdf/`，绑定在 `bindings_epub2pdf.go`（`PickEpubFile` + `EpubInspect` + `EpubToPdf`，
   进度走 `epub2pdf:progress` 事件，可选自动入库）。
-- UI 改动后跑 `just ui-test`：它用 playwright-core 加载 `dist/` 并对 `window.go` 打桩，覆盖书架/统计/扫描/标签/设置/书籍详情/EPUB 与加密 PDF 阅读器/工具页与 PDF 设置·清除密码·转存 EPUB·转存 PDF 弹窗（含书架右键 EPUB 工具子菜单）。
+- UI 改动后跑 `just ui-test`：它用 playwright-core 加载 `dist/` 并对 `window.go` 打桩，覆盖书架/统计/扫描/标签/设置/书籍详情/EPUB 与加密 PDF 阅读器/工具页（分类分组 + 类型筛选）与 PDF 设置·清除密码·转存 EPUB·转存 PDF 弹窗（含书架右键 EPUB 工具子菜单）。
   mock 里没有的绑定会回退成空操作（Proxy），所以新增绑定不会直接弄坏冒烟；
   `pdf2epub:progress` / `epub2pdf:progress` 这类事件由 mock 自己塞进 `window.__events` 触发（`EventsOn` 实际调的是 `window.runtime.EventsOnMultiple`）。
 
