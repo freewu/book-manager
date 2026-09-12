@@ -96,7 +96,12 @@ src/frontend/src/tools/<tool-id>/
      **`github.com/ledongthuc/pdf` 读不了我们生成的 CJK PDF**（忽略 ToUnicode → 乱码），pdf.js / Acrobat / pypdf 正常。
   对应工具 `tools/epub-pdf/`，绑定在 `bindings_epub2pdf.go`（`PickEpubFile` + `EpubInspect` + `EpubToPdf`，
   进度走 `epub2pdf:progress` 事件，可选自动入库）。
-- UI 改动后跑 `just ui-test`：它用 playwright-core 加载 `dist/` 并对 `window.go` 打桩，覆盖书架/统计/扫描/标签/设置/书籍详情/EPUB 与加密 PDF 阅读器/工具页（分类分组 + 类型筛选）与 PDF 设置·清除密码·转存 EPUB·转存 PDF 弹窗（含书架右键 EPUB 工具子菜单）。
+- 书架（`components/Bookshelf.tsx`）的滚动位置在会话内记住：打开阅读器时整个书架会被卸载，
+  重新挂载后用 `useLayoutEffect` 把 `.shelf` 的 `scrollTop` 放回去（搜索/筛选/排序变化则回到顶部）。
+  改这块注意两点：① 保存位置用 `scroll` 监听 + 卸载清理，且清理里只在 `el.isConnected` 时读
+  `scrollTop`（passive effect 的清理可能晚于 DOM 摘除，此时读到的是 0）；② 卡片封面用
+  `aspect-ratio` 固定高度，网格高度不依赖图片加载，所以挂载即可恢复、不会跳。
+- UI 改动后跑 `just ui-test`：它用 playwright-core 加载 `dist/` 并对 `window.go` 打桩，覆盖书架（含滚动位置恢复）/统计/扫描/标签/设置/书籍详情/EPUB 与加密 PDF 阅读器/工具页（分类分组 + 类型筛选）与 PDF 设置·清除密码·转存 EPUB·转存 PDF 弹窗（含书架右键 EPUB 工具子菜单）。
   mock 里没有的绑定会回退成空操作（Proxy），所以新增绑定不会直接弄坏冒烟；
   `pdf2epub:progress` / `epub2pdf:progress` 这类事件由 mock 自己塞进 `window.__events` 触发（`EventsOn` 实际调的是 `window.runtime.EventsOnMultiple`）。
 

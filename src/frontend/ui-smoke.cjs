@@ -24,9 +24,20 @@ const BOOKS = [
   {id: 2, path: 'E:\\Books\\huozhe.pdf', file_name: 'huozhe.pdf', format: 'pdf', title: '活着', author: '余华', publisher: '作家出版社', language: 'zh', description: '讲述福贵的一生。', size: 5242880, hash: 'def', cover_path: '', has_cover: false, douban_url: '', douban_rating: 0, douban_rating_count: 0, douban_authors: '', misrecord: false, current_location: '12', current_page: 12, total_pages: 120, read_progress: 10, last_read_at: '2026-02-01 20:00:00', total_read_seconds: 3600, note_count: 2, tags: [], created_at: '2026-01-02 10:00:00', updated_at: '2026-02-01 20:00:00'},
 ];
 
+// 书架滚动位置测试用的一屏放不下的书（window.__manyBooks 打开时返回）
+const MANY_BOOKS = Array.from({length: 40}, (_, i) => ({
+  ...BOOKS[0],
+  id: 100 + i,
+  path: 'E:\\Books\\scroll' + i + '.epub',
+  file_name: 'scroll' + i + '.epub',
+  title: '滚动测试 ' + (i + 1),
+  has_cover: false,
+  tags: [],
+}));
+
 const MOCK = `
 window.go = { main: { App: {
-  GetBooks: async () => ${JSON.stringify(BOOKS)},
+  GetBooks: async () => (window.__manyBooks ? ${JSON.stringify(MANY_BOOKS)} : ${JSON.stringify(BOOKS)}),
   GetBook: async (id) => ${JSON.stringify(BOOKS)}.find(b => b.id === id) || ${JSON.stringify(BOOKS)}[0],
   GetCoverData: async (id) => id === 1 ? 'data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEASABIAAD/2wBDAP//////////////////////////////////////////////////////////////////////////////////////2wBDAf//////////////////////////////////////////////////////////////////////////////////////wAARCAABAAEDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAX/xAAUEAEAAAAAAAAAAAAAAAAAAAAA/9oADAMBAAIQAxAAAAH/xAAUEAEAAAAAAAAAAAAAAAAAAAAA/9oACAEBAAEFAqf/xAAUEQEAAAAAAAAAAAAAAAAAAAAA/9oACAEDAQE/AV//xAAUEQEAAAAAAAAAAAAAAAAAAAAA/9oACAECAQE/AV//xAAUEAEAAAAAAAAAAAAAAAAAAAAA/9oACAEBAAY/Aqf/xAAUEAEAAAAAAAAAAAAAAAAAAAAA/9oACAEBAAE/IV//2gAMAwEAAgADAAAAEP/EABQRAQAAAAAAAAAAAAAAAAAAABD/2gAIAQMBAT8QH//EABQRAQAAAAAAAAAAAAAAAAAAABD/2gAIAQIBAT8QH//EABQQAQAAAAAAAAAAAAAAAAAAABD/2gAIAQEAAT8QH//Z' : '', GetBookData: async (id) => id === 1 ? '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' : ${JSON.stringify(PDF_ENC_B64)}, GetStats: async () => ({total_books: 2, total_size: 6291456, total_read_seconds: 3600, total_notes: 2, total_tags: 1, total_misrecords: 0, reading_books: 1, finished_books: 0, unread_books: 1, format_counts: {epub: 1, pdf: 1}}),
   GetSettings: async () => ({idle_seconds: '60', formats: 'epub,pdf,mobi,azw3,kepub', douban_auto: '0', theme: 'light'}),
@@ -236,13 +247,13 @@ async function main() {
     (await page.locator('.filter-bar .chip.active').first().textContent() || '').startsWith('全部'),
     await page.locator('.filter-bar .chip.active').first().textContent(),
   );
-  const clickChip = async (label) => {
+  const clickChip = async (label, wait = 200) => {
     await page.evaluate((l) => {
       document.querySelectorAll('.filter-bar .chip').forEach((b) => {
         if (b.textContent.startsWith(l)) b.click();
       });
     }, label);
-    await page.waitForTimeout(200);
+    await page.waitForTimeout(wait);
   };
   await clickChip('PDF');
   check(
@@ -472,6 +483,66 @@ async function main() {
     });
   });
   await page.waitForTimeout(400);
+
+  // ---- 书架滚动位置：打开书籍 → 关闭后回到原来停留的位置 ----
+  await page.evaluate(() => { window.__manyBooks = true; });
+  const navTo = async (label) => {
+    await page.evaluate((l) => {
+      document.querySelectorAll('.nav-item').forEach((b) => {
+        if (b.textContent.includes(l)) b.click();
+      });
+    }, label);
+    await page.waitForTimeout(500);
+  };
+  const shelfTop = () => page.evaluate(() => {
+    const el = document.querySelector('.shelf');
+    return el ? el.scrollTop : -1;
+  });
+  await clickChip('EPUB'); // 触发一次重新查询，拿到 40 本书
+  await clickChip('EPUB'); // 取消筛选（查询变化会把位置重置到顶部）
+  check('滚动测试：书架有 40 本书', (await page.locator('.book-card').count()) === 40, await page.locator('.book-card').count());
+  const scrollInfo = await page.evaluate(async () => {
+    const el = document.querySelector('.shelf');
+    el.scrollTop = 600;
+    await new Promise((r) => setTimeout(r, 400));
+    return {top: el.scrollTop, max: el.scrollHeight - el.clientHeight};
+  });
+  check('滚动测试：书架可以滚动', scrollInfo.top > 300, JSON.stringify(scrollInfo));
+  await page.screenshot({path: 'screens/shelf-scrolled.png'});
+
+  await page.locator('.book-card').nth(20).click(); // 打开阅读器
+  await page.waitForTimeout(1500);
+  check('滚动测试：阅读器已打开', (await page.locator('.reader-root').count()) > 0);
+  check('滚动测试：阅读时书架已卸载', (await page.locator('.shelf').count()) === 0);
+  await page.evaluate(() => { const b = document.querySelector('.reader-toolbar button:last-child'); b?.click(); });
+  await page.waitForTimeout(800);
+  const afterClose = await shelfTop();
+  check(
+    '关闭阅读器后回到原来的滚动位置',
+    Math.abs(afterClose - scrollInfo.top) <= 2,
+    'before=' + scrollInfo.top + ' after=' + afterClose,
+  );
+  await page.screenshot({path: 'screens/shelf-restored.png'});
+
+  // 切到别的页面再回书架，同样记得位置
+  await navTo('统计');
+  await navTo('书架');
+  check('切页后回到书架也记得位置', Math.abs((await shelfTop()) - scrollInfo.top) <= 2, 'top=' + (await shelfTop()));
+
+  // 搜索/筛选变化后按新结果从头看（位置重置）
+  await page.evaluate(() => { document.querySelector('.shelf').scrollTop = 300; });
+  await page.waitForTimeout(300);
+  await clickChip('PDF');
+  check('筛选变化后回到顶部', (await shelfTop()) === 0, 'top=' + (await shelfTop()));
+  await clickChip('PDF');
+
+  // 收尾：恢复 2 本书的书架
+  await page.evaluate(() => { window.__manyBooks = false; });
+  await clickChip('EPUB');
+  await clickChip('EPUB');
+  await page.waitForTimeout(400);
+  check('滚动测试收尾：书架恢复 2 本书', (await page.locator('.book-card').count()) === 2, await page.locator('.book-card').count());
+
   // PDF 阅读器：加密文件弹密码框 → 错误密码提示 → 正确密码渲染页面
   await page.locator('.book-card').nth(1).click();
   await page.waitForTimeout(1200);

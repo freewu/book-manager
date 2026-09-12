@@ -1,4 +1,4 @@
-import React, {useEffect, useRef, useState} from 'react';
+import React, {useEffect, useLayoutEffect, useRef, useState} from 'react';
 import type {Book, Tag} from '../types';
 import {App, getCoverDataUrl} from '../api';
 import {BrowserOpenURL} from '../../wailsjs/runtime/runtime';
@@ -47,6 +47,10 @@ const SORTS: [string, string][] = [
   ['size', 'sort.size'],
 ];
 
+// 书架滚动位置（会话内记住）：打开阅读器时整个书架会被卸载，
+// 关闭阅读器后重新挂载要把用户放回原来停留的位置。
+let savedShelfScroll = 0;
+
 export default function Bookshelf({
   books,
   loading,
@@ -71,6 +75,12 @@ export default function Bookshelf({
   const {t} = useI18n();
   const toast = useToast();
   const [covers, setCovers] = useState<Record<number, string | null>>({});
+  // 滚动容器（书籍网格所在的 .shelf）
+  const shelfRef = useRef<HTMLDivElement | null>(null);
+  // 位置是否已恢复（避免每次列表刷新都把人拽回去）
+  const scrollRestored = useRef(false);
+  // 首次渲染不算「查询变化」
+  const queryInited = useRef(false);
   // Right-click context menu: {screen position + target book} | null
   const [ctx, setCtx] = useState<{x: number; y: number; book: Book} | null>(null);
   // Tag picker dialog opened from the context menu
@@ -79,6 +89,43 @@ export default function Bookshelf({
   const ctxOpenedAt = useRef(0);
   // 「<分类>工具」子菜单（例如 PDF → 设置密码），只显示适用于该格式的工具
   const ctxToolGroups = ctx ? groupByCategory(toolsForBook(ctx.book)) : [];
+
+  // 记录滚动位置：滚动时记，卸载前再记一次（卸载后再读就晚了）
+  useEffect(() => {
+    const el = shelfRef.current;
+    if (!el) return;
+    const onScroll = () => {
+      savedShelfScroll = el.scrollTop;
+    };
+    el.addEventListener('scroll', onScroll, {passive: true});
+    return () => {
+      // 注意：passive effect 的清理可能在 DOM 已经摘掉之后才跑，
+      // 那时读 scrollTop 会拿到 0（把好值冲掉），所以只在还在文档里时读。
+      if (el.isConnected) savedShelfScroll = el.scrollTop;
+      el.removeEventListener('scroll', onScroll);
+    };
+  }, [books.length > 0, loading]);
+
+  // 列表渲染出来后恢复位置；内容还没撑开（滚不到目标）就等下次渲染再试
+  useLayoutEffect(() => {
+    if (scrollRestored.current || savedShelfScroll <= 0) return;
+    const el = shelfRef.current;
+    if (!el) return;
+    el.scrollTop = savedShelfScroll;
+    if (el.scrollTop > 0) scrollRestored.current = true;
+  }, [books, loading]);
+
+  // 搜索 / 筛选 / 排序变了：按新结果从头看，不再恢复旧位置
+  const queryKey = `${keyword}|${formats.join(',')}|${tagFilter.join(',')}|${sort}|${desc}`;
+  useEffect(() => {
+    if (!queryInited.current) {
+      queryInited.current = true;
+      return;
+    }
+    savedShelfScroll = 0;
+    scrollRestored.current = true;
+    if (shelfRef.current) shelfRef.current.scrollTop = 0;
+  }, [queryKey]);
 
   useEffect(() => {
     const map: Record<number, string | null> = {};
@@ -280,7 +327,7 @@ export default function Bookshelf({
           )}
         </div>
       ) : (
-        <div className="shelf">
+        <div className="shelf" ref={shelfRef}>
           <div className="book-grid">
             {books.map((b) => (
               <BookCard
