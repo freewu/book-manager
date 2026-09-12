@@ -170,6 +170,10 @@ export function PdfMergeInspect(arg1, arg2) {
   return window['go']['main']['App']['PdfMergeInspect'](arg1, arg2);
 }
 
+export function PdfMetaInspect(arg1, arg2) {
+  return window['go']['main']['App']['PdfMetaInspect'](arg1, arg2);
+}
+
 export function PickEpubFile() {
   return window['go']['main']['App']['PickEpubFile']();
 }
@@ -216,6 +220,10 @@ export function ReportReading(arg1, arg2, arg3) {
 
 export function SavePdfImage(arg1) {
   return window['go']['main']['App']['SavePdfImage'](arg1);
+}
+
+export function SavePdfMeta(arg1) {
+  return window['go']['main']['App']['SavePdfMeta'](arg1);
 }
 
 export function SaveProgress(arg1, arg2, arg3, arg4, arg5) {

@@ -2105,3 +2105,21 @@ textarea:focus {
   color: var(--text-2);
   min-width: 28px;
 }
+
+/* 修改文档：字段名旁的「已修改」标记 / 改动汇总行 */
+.meta-group {
+  font-weight: 600;
+}
+.meta-tag {
+  margin-left: 8px;
+}
+.meta-summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.meta-revert {
+  padding: 2px 10px;
+  font-size: 11px;
+}

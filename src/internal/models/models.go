@@ -396,6 +396,65 @@ type PdfImageResult struct {
 	Existed bool `json:"existed"`
 }
 
+// PdfMetaInfo describes a source PDF of the 「修改文档」 tool.
+type PdfMetaInfo struct {
+	Path string `json:"path"`
+	Name string `json:"name"`
+	Size int64  `json:"size"`
+	// Pages is 0 while the file is encrypted and no valid password was given.
+	Pages     int    `json:"pages"`
+	Version   string `json:"version"`
+	Encrypted bool   `json:"encrypted"`
+	// NeedsPassword is true when the file is encrypted and the password is
+	// missing or wrong.
+	NeedsPassword bool   `json:"needs_password"`
+	Error         string `json:"error"`
+
+	// 四个可编辑字段
+	Title    string   `json:"title"`
+	Author   string   `json:"author"`
+	Subject  string   `json:"subject"`
+	Keywords []string `json:"keywords"`
+
+	// 只读信息
+	Creator      string `json:"creator"`
+	Producer     string `json:"producer"`
+	CreationDate string `json:"creation_date"`
+	ModDate      string `json:"mod_date"`
+}
+
+// PdfMetaOptions is the input of the 「修改文档」 tool. The four editable fields
+// are the wanted values: an empty one removes the key from the Info dictionary.
+// OutPath equal to Path overwrites the source file.
+type PdfMetaOptions struct {
+	Path     string `json:"path"`
+	Password string `json:"password"`
+	OutPath  string `json:"out_path"`
+
+	Title    string   `json:"title"`
+	Author   string   `json:"author"`
+	Subject  string   `json:"subject"`
+	Keywords []string `json:"keywords"`
+
+	// AddToShelf imports the result into the library when it is done.
+	AddToShelf bool `json:"add_to_shelf"`
+}
+
+// PdfMetaResult reports what the 「修改文档」 tool wrote.
+type PdfMetaResult struct {
+	Path  string `json:"path"`
+	Bytes int64  `json:"bytes"`
+	// Changed holds the Info dictionary keys that were written (Title, Author,
+	// Subject, Keywords).
+	Changed []string `json:"changed"`
+	// InPlace is true when the source file itself was rewritten.
+	InPlace bool `json:"in_place"`
+
+	Added      bool   `json:"added"`
+	BookID     int64  `json:"book_id"`
+	ShelfError string `json:"shelf_error"`
+}
+
 // Settings is the key/value settings map exposed to the UI.
 type Settings map[string]string
 

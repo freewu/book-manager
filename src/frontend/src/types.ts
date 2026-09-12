@@ -366,3 +366,53 @@ export interface PdfImageResult {
   /** 写之前同名文件已存在（这次覆盖了它） */
   existed: boolean;
 }
+
+/** 修改文档工具：读到的 PDF 文档信息 */
+export interface PdfMetaInfo {
+  path: string;
+  name: string;
+  size: number;
+  /** 加密且没给对密码时为 0 */
+  pages: number;
+  version: string;
+  encrypted: boolean;
+  /** 文件加密且密码缺失/不对 */
+  needs_password: boolean;
+  error: string;
+  /** 四个可编辑字段 */
+  title: string;
+  author: string;
+  subject: string;
+  keywords: string[];
+  /** 只读信息 */
+  creator: string;
+  producer: string;
+  creation_date: string;
+  mod_date: string;
+}
+
+/** 四个字段是「想要的值」，空字符串表示删掉这个键 */
+export interface PdfMetaOptions {
+  path: string;
+  password: string;
+  /** 与 path 相同就是覆盖原文件 */
+  out_path: string;
+  title: string;
+  author: string;
+  subject: string;
+  keywords: string[];
+  /** 另存成功后自动入库（覆盖原文件时不入库） */
+  add_to_shelf: boolean;
+}
+
+export interface PdfMetaResult {
+  path: string;
+  bytes: number;
+  /** 实际写入的 Info 字典键：Title / Author / Subject / Keywords */
+  changed: string[];
+  /** 覆盖了原文件（而不是另存） */
+  in_place: boolean;
+  added: boolean;
+  book_id: number;
+  shelf_error: string;
+}

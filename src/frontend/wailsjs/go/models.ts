@@ -497,6 +497,98 @@ export namespace models {
 	        this.shelf_error = source["shelf_error"];
 	    }
 	}
+	export class PdfMetaInfo {
+	    path: string;
+	    name: string;
+	    size: number;
+	    pages: number;
+	    version: string;
+	    encrypted: boolean;
+	    needs_password: boolean;
+	    error: string;
+	    title: string;
+	    author: string;
+	    subject: string;
+	    keywords: string[];
+	    creator: string;
+	    producer: string;
+	    creation_date: string;
+	    mod_date: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new PdfMetaInfo(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.path = source["path"];
+	        this.name = source["name"];
+	        this.size = source["size"];
+	        this.pages = source["pages"];
+	        this.version = source["version"];
+	        this.encrypted = source["encrypted"];
+	        this.needs_password = source["needs_password"];
+	        this.error = source["error"];
+	        this.title = source["title"];
+	        this.author = source["author"];
+	        this.subject = source["subject"];
+	        this.keywords = source["keywords"];
+	        this.creator = source["creator"];
+	        this.producer = source["producer"];
+	        this.creation_date = source["creation_date"];
+	        this.mod_date = source["mod_date"];
+	    }
+	}
+	export class PdfMetaOptions {
+	    path: string;
+	    password: string;
+	    out_path: string;
+	    title: string;
+	    author: string;
+	    subject: string;
+	    keywords: string[];
+	    add_to_shelf: boolean;
+	
+	    static createFrom(source: any = {}) {
+	        return new PdfMetaOptions(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.path = source["path"];
+	        this.password = source["password"];
+	        this.out_path = source["out_path"];
+	        this.title = source["title"];
+	        this.author = source["author"];
+	        this.subject = source["subject"];
+	        this.keywords = source["keywords"];
+	        this.add_to_shelf = source["add_to_shelf"];
+	    }
+	}
+	export class PdfMetaResult {
+	    path: string;
+	    bytes: number;
+	    changed: string[];
+	    in_place: boolean;
+	    added: boolean;
+	    book_id: number;
+	    shelf_error: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new PdfMetaResult(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.path = source["path"];
+	        this.bytes = source["bytes"];
+	        this.changed = source["changed"];
+	        this.in_place = source["in_place"];
+	        this.added = source["added"];
+	        this.book_id = source["book_id"];
+	        this.shelf_error = source["shelf_error"];
+	    }
+	}
 	export class PdfProtectOptions {
 	    book_id: number;
 	    path: string;

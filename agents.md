@@ -46,7 +46,7 @@ just push "feat: xxx"   # 提交并推送
 ```
 src/
   app.go / main.go / bindings_*.go   # Wails 入口 + 前端绑定方法
-  internal/{db,parser,scanner,douban,models,pdfcrypt,pdf2epub,epub2pdf,pdfmerge,pdfextract,pdfimage}  # 后端逻辑
+  internal/{db,parser,scanner,douban,models,pdfcrypt,pdf2epub,epub2pdf,pdfmerge,pdfextract,pdfimage,pdfmeta}  # 后端逻辑
   frontend/src/components/            # React 组件（书架/阅读器/宿主弹窗）
   frontend/src/tools/<id>/            # 工具插件（define.ts + lib.ts + tools.tsx）
   cmd/genlogo                         # logo 与图标生成
@@ -131,12 +131,29 @@ src/frontend/src/tools/<tool-id>/
   单页像素按 4000 万上限钳制，避免高 DPI 大页把内存打爆。
   冒烟会把真实导出的第 1 张 PNG/JPEG 落到 `src/frontend/screens/`（`pdf-image-page1.*`），
   用 Pillow 解码复核「尺寸对得上 + 有深色像素」，证明 pdf.js 渲染出来的不是空画布。
+- PDF 修改文档信息（标题 / 作者 / 主题 / 关键词）在 `src/internal/pdfmeta`。
+  这一层**绕开 `api.AddProperties*`**：它拒绝 `Keywords`（pdfcpu 把它留给自己的 keywords 命令）也拒绝空值，
+  而本工具四个字段一起写、还允许清空；所以自己 `api.ReadValidateAndOptimize` 之后直接调
+  `pdfcpu.PropertiesAdd` / `PropertiesRemove` / `KeywordsAdd`，再用 `api.WriteContext` 写出去。
+  `Inspect(path, password)` 一次 `api.PDFInfo` 拿齐标题/作者/主题/关键词/创建工具/生成工具/时间/页数/版本；
+  `Save(Options)` 只写**真正改动过**的键（其余键包括 Creator 和自定义键原样保留），
+  空字符串 = 删掉该键（`PropertiesRemove`），关键词是**覆盖**而不是追加（先把 `ctx.KeywordList` 清空）。
+  输出先落到目标目录的临时文件、关掉输入句柄后再 `os.Rename`，所以 Windows 上原地覆盖也不会留下半个文件。
+  加密文件不能原地覆盖（`ErrEncryptedInPlace`：解密后写回去等于把密码摘掉了），只能另存为新文件，
+  另存时先 `pdfcrypt.DecryptTo` 到临时副本再读。
+  几个要知道的行为：pdfcpu 每次重写都会把 `Producer` 换成自己并刷新 `CreationDate`/`ModDate`（`ensureInfoDict`，改不了，UI 里有提示）；
+  PDF 2.0 的文件没有 Info 字典时关键词写不进去（`ErrNoInfoDict`）；权限加密（打开不要密码）的文件读得到但同样不能原地覆盖。
+  对应工具 `tools/pdf-meta/`（📝，PDF 分类最后一个），绑定在 `bindings_pdfmeta.go`
+  （`PdfMetaInspect` + `SavePdfMeta`，另存可自动入库；`nonNil` 保证 `changed`/`keywords` 序列化成 `[]` 而不是 `null`）。
+  弹窗交互：改过的字段行内标「已修改」并汇总「已修改 N 项：…」，可一键还原；
+  保存方式默认「另存为新文件」（`<原名>-文档信息.pdf`），也可以「覆盖原文件」（带备份警告）；
+  只读区展示页数/版本/创建工具/生成工具/时间。
 - 书架（`components/Bookshelf.tsx`）的滚动位置在会话内记住：打开阅读器时整个书架会被卸载，
   重新挂载后用 `useLayoutEffect` 把 `.shelf` 的 `scrollTop` 放回去（搜索/筛选/排序变化则回到顶部）。
   改这块注意两点：① 保存位置用 `scroll` 监听 + 卸载清理，且清理里只在 `el.isConnected` 时读
   `scrollTop`（passive effect 的清理可能晚于 DOM 摘除，此时读到的是 0）；② 卡片封面用
   `aspect-ratio` 固定高度，网格高度不依赖图片加载，所以挂载即可恢复、不会跳。
-- UI 改动后跑 `just ui-test`：它用 playwright-core 加载 `dist/` 并对 `window.go` 打桩，覆盖书架（含滚动位置恢复）/统计/扫描/标签/设置/书籍详情/EPUB 与加密 PDF 阅读器/工具页（分类分组 + 类型筛选）与 PDF 设置·清除密码·转存 EPUB·转存 PDF·合并 PDF·提取页面·转存图片 弹窗（含书架右键 EPUB 工具子菜单、合并列表顺序调整与加密文件密码、提取页面的 20 页分组/跨组选择/放大查看、转存图片的页码范围解析/DPI 像素数/JPEG 质量与中途停止）。
+- UI 改动后跑 `just ui-test`：它用 playwright-core 加载 `dist/` 并对 `window.go` 打桩，覆盖书架（含滚动位置恢复）/统计/扫描/标签/设置/书籍详情/EPUB 与加密 PDF 阅读器/工具页（分类分组 + 类型筛选）与 PDF 设置·清除密码·转存 EPUB·转存 PDF·合并 PDF·提取页面·转存图片·修改文档 弹窗（含书架右键 EPUB 工具子菜单、合并列表顺序调整与加密文件密码、提取页面的 20 页分组/跨组选择/放大查看、转存图片的页码范围解析/DPI 像素数/JPEG 质量与中途停止、修改文档的原值预填/改动汇总与还原/另存与覆盖两种保存方式/加密文件密码流程）。
   mock 里没有的绑定会回退成空操作（Proxy），所以新增绑定不会直接弄坏冒烟；
   `pdf2epub:progress` / `epub2pdf:progress` / `pdfmerge:progress` 这类事件由 mock 自己塞进 `window.__events` 触发（`EventsOn` 实际调的是 `window.runtime.EventsOnMultiple`）。
   mock 的 `ReadPdfData` 用文件里的 `window.__mkPdf(23)` 现场造一份 23 页的最小 PDF（够真实渲染缩略图，也够测「翻到第二组只剩 3 页」）。

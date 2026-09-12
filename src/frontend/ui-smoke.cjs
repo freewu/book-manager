@@ -164,6 +164,38 @@ window.go = { main: { App: {
     const name = o.prefix + '-' + String(o.page).padStart(3, '0') + '.' + (o.format === 'png' ? 'png' : 'jpg');
     return {path: o.dir + '\\\\' + name, name, bytes: bin.length, page: o.page, existed: o.page === 2};
   },
+  // ---- 修改文档：读 / 写 PDF 文档信息 ----
+  PdfMetaInspect: async (p, pw) => {
+    const name = String(p).split(/[\\/]/).pop();
+    const locked = name.includes('locked');
+    const blank = {title: '', author: '', subject: '', keywords: [], creator: '', producer: '', creation_date: '', mod_date: ''};
+    if (locked && pw !== 'secret') {
+      return Object.assign({path: p, name, size: 5242880, pages: 0, version: '', encrypted: true, needs_password: true, error: 'PDF 已加密，需要先输入打开密码'}, blank);
+    }
+    window.__lastMetaInspect = {path: p, pw};
+    return Object.assign({path: p, name, size: 5242880, pages: 23, version: locked ? '1.4' : '1.7', encrypted: locked, needs_password: false, error: ''}, blank, {
+      title: '活着',
+      author: '余华',
+      subject: '长篇小说',
+      keywords: ['当代文学', '中国文学'],
+      creator: 'Microsoft Word 2019',
+      producer: 'pdfcpu v0.15.0',
+      creation_date: "D:20240102030405+08'00'",
+      mod_date: "D:20240304050607+08'00'",
+    });
+  },
+  SavePdfMeta: async (o) => {
+    window.__lastMeta = o;
+    await new Promise((r) => setTimeout(r, 300));
+    const orig = {title: '活着', author: '余华', subject: '长篇小说', keywords: '当代文学,中国文学'};
+    const changed = [];
+    if ((o.title || '').trim() !== orig.title) changed.push('Title');
+    if ((o.author || '').trim() !== orig.author) changed.push('Author');
+    if ((o.subject || '').trim() !== orig.subject) changed.push('Subject');
+    if ((o.keywords || []).join(',') !== orig.keywords) changed.push('Keywords');
+    const inPlace = o.out_path === o.path;
+    return {path: o.out_path, bytes: 5240000, changed, in_place: inPlace, added: !inPlace && o.add_to_shelf, book_id: o.add_to_shelf ? 7 : 0, shelf_error: ''};
+  },
   OpenPath: async () => {}, DoubanRunning: async () => false, StartEnrichAll: async () => 0,
   PickOutDir: async () => (window.__outDir === undefined ? 'E:\\\\Books\\\\out' : window.__outDir),
   PickEpubFile: async () => (window.__pickEpub || 'E:\\\\Books\\\\santi.epub'),
@@ -318,7 +350,7 @@ async function main() {
   await page.waitForTimeout(500);
   const sections = await page.locator('.page-section-title').allTextContents();
   check('tool sections = 其他/PDF/EPUB', JSON.stringify(sections) === JSON.stringify(['其他', 'PDF', 'EPUB']), JSON.stringify(sections));
-  check('tool cards = 12', (await page.locator('.tool-card').count()) === 12, await page.locator('.tool-card').count());
+  check('tool cards = 13', (await page.locator('.tool-card').count()) === 13, await page.locator('.tool-card').count());
   const cardText = (await page.locator('.tool-card').first().textContent()) || '';
   check('工具卡片无「打开 ›」动作行', !cardText.includes('打开'), cardText);
   const sameRow = await page.evaluate(() => {
@@ -368,7 +400,12 @@ async function main() {
     JSON.stringify(await page.locator('.page-section-title').allTextContents()) === JSON.stringify(['PDF']),
     JSON.stringify(await page.locator('.page-section-title').allTextContents()),
   );
-  check('筛选 PDF：6 张卡片', (await page.locator('.tool-card').count()) === 6, await page.locator('.tool-card').count());
+  check('筛选 PDF：7 张卡片', (await page.locator('.tool-card').count()) === 7, await page.locator('.tool-card').count());
+  check(
+    '筛选 PDF：包含「修改文档」卡片',
+    (await page.locator('.tool-card').allTextContents()).some((c) => c.includes('修改文档') && c.includes('📝')),
+    JSON.stringify(await page.locator('.tool-card').allTextContents()),
+  );
   check(
     '筛选 PDF：包含「转存图片」卡片',
     (await page.locator('.tool-card').allTextContents()).some((c) => c.includes('转存图片') && c.includes('🖼️')),
@@ -397,7 +434,7 @@ async function main() {
   );
   await page.screenshot({path: 'screens/tools-filter.png'});
   await clickChip('全部');
-  check('筛选「全部」：恢复 12 张卡片', (await page.locator('.tool-card').count()) === 12, await page.locator('.tool-card').count());
+  check('筛选「全部」：恢复 13 张卡片', (await page.locator('.tool-card').count()) === 13, await page.locator('.tool-card').count());
   await page.screenshot({path: 'screens/tools.png'});
 
   // PDF 工具：选文件 → 识别信息 → 设置密码
@@ -435,14 +472,15 @@ async function main() {
   await page.waitForTimeout(300);
   const subItems = await page.locator('.ctx-submenu button').allTextContents();
   check(
-    'ctx 子菜单 = [设置密码, 清除密码, 转存 EPUB, 合并 PDF, 提取页面, 转存图片]',
-    subItems.length === 6 &&
+    'ctx 子菜单 = [设置密码, 清除密码, 转存 EPUB, 合并 PDF, 提取页面, 转存图片, 修改文档]',
+    subItems.length === 7 &&
       subItems[0].includes('设置密码') &&
       subItems[1].includes('清除密码') &&
       subItems[2].includes('转存 EPUB') &&
       subItems[3].includes('合并 PDF') &&
       subItems[4].includes('提取页面') &&
-      subItems[5].includes('转存图片'),
+      subItems[5].includes('转存图片') &&
+      subItems[6].includes('修改文档'),
     JSON.stringify(subItems),
   );
   await page.screenshot({path: 'screens/ctx-pdf.png'});
@@ -1104,6 +1142,257 @@ async function main() {
   await page.evaluate(() => {
     window.__outDir = undefined;
   });
+
+  // ---- 修改文档：工具页入口 → 读信息 → 改字段 → 覆盖原文件 ----------------
+  await page.evaluate(() => {
+    document.querySelectorAll('.nav-item').forEach((b) => {
+      if (b.textContent.includes('工具')) b.click();
+    });
+  });
+  await page.waitForTimeout(500);
+  await page.locator('.tool-card', {hasText: '修改文档'}).first().click();
+  await page.waitForTimeout(400);
+  check('修改文档弹窗', (await page.locator('.modal .modal-head h2', {hasText: '修改文档'}).count()) > 0);
+  const metaNoFile = (await page.locator('.path-box').first().textContent()) || '';
+  check(
+    '修改文档：未选文件占位 + 不能保存',
+    metaNoFile.includes('还没有选择 PDF 文件') && (await page.locator('.modal-foot .btn-primary').isDisabled()),
+    metaNoFile,
+  );
+  const metaField = (k) => page.locator(`.modal .form-row[data-field="${k}"] input`);
+  await page.locator('.modal .btn-soft', {hasText: '选择 PDF 文件'}).click();
+  await page.waitForTimeout(500);
+  const metaSrc = (await page.locator('.path-box').first().textContent()) || '';
+  check('修改文档：识别文件/页数/大小', metaSrc.includes('huozhe.pdf') && metaSrc.includes('23') && metaSrc.includes('5.0 MB'), metaSrc);
+  const metaPrefill = await page.evaluate(() => {
+    const v = (k) => document.querySelector(`.modal .form-row[data-field="${k}"] input`).value;
+    return [v('title'), v('author'), v('subject'), v('keywords')];
+  });
+  check(
+    '修改文档：四个字段按原值预填',
+    JSON.stringify(metaPrefill) === JSON.stringify(['活着', '余华', '长篇小说', '当代文学, 中国文学']),
+    JSON.stringify(metaPrefill),
+  );
+  check(
+    '修改文档：关键词个数提示',
+    ((await page.locator('.modal .form-row[data-field="keywords"] .hint').textContent()) || '').includes('共 2 个关键词'),
+    await page.locator('.modal .form-row[data-field="keywords"] .hint').textContent(),
+  );
+  const metaRO = await page.locator('.modal .pdf-info-val').allTextContents();
+  check(
+    '修改文档：只读信息（页数/版本/创建工具/生成工具/时间）',
+    JSON.stringify(metaRO) === JSON.stringify(['23', '1.7', 'Microsoft Word 2019', 'pdfcpu v0.15.0', '2024-01-02 03:04', '2024-03-04 05:06']),
+    JSON.stringify(metaRO),
+  );
+  check(
+    '修改文档：没改动时提示「还没有改动」+ 保存按钮禁用',
+    ((await page.locator('.modal .meta-summary').textContent()) || '').includes('还没有改动') &&
+      (await page.locator('.modal-foot .btn-primary').isDisabled()),
+    await page.locator('.modal .meta-summary').textContent(),
+  );
+  const metaLayout = await page.evaluate(() => {
+    const modal = document.querySelector('.modal');
+    const r = modal.getBoundingClientRect();
+    const body = document.querySelector('.modal-body');
+    const inputs = [...document.querySelectorAll('.modal .form-row[data-field] input')];
+    return {
+      right: Math.round(r.right),
+      inner: window.innerWidth,
+      pageOverflow: document.documentElement.scrollWidth > window.innerWidth,
+      bodyOverflow: body.scrollWidth > body.clientWidth + 1,
+      inputOverflow: inputs.some((i) => i.getBoundingClientRect().right > r.right),
+      rows: inputs.length,
+    };
+  });
+  check(
+    '修改文档：弹窗不溢出、四个输入框都在框内',
+    metaLayout.right <= metaLayout.inner &&
+      !metaLayout.pageOverflow &&
+      !metaLayout.bodyOverflow &&
+      !metaLayout.inputOverflow &&
+      metaLayout.rows === 4,
+    JSON.stringify(metaLayout),
+  );
+  check('修改文档：默认「另存为新文件」', (((await page.locator('.modal .chip-row .chip.active').textContent()) || '').includes('另存为新文件')));
+  const metaOutName = (await page.locator('.path-box').nth(1).textContent()) || '';
+  check('修改文档：默认另存文件名 = 原名-文档信息.pdf', metaOutName.includes('huozhe-文档信息.pdf'), metaOutName);
+  await page.locator('.modal .form-row[data-field="title"] input').fill('活着（修订版）');
+  await page.waitForTimeout(200);
+  const metaSummary1 = (await page.locator('.modal .meta-summary').textContent()) || '';
+  check(
+    '修改文档：改标题 → 行内「已修改」+ 汇总已修改 1 项',
+    ((await page.locator('.modal .form-row[data-field="title"] .pdf-badge').textContent()) || '').includes('已修改') &&
+      metaSummary1.includes('已修改 1 项') &&
+      metaSummary1.includes('标题') &&
+      !(await page.locator('.modal-foot .btn-primary').isDisabled()),
+    metaSummary1,
+  );
+  await page.screenshot({path: 'screens/pdf-meta-edited.png'});
+  await page.locator('.modal .meta-revert').click();
+  await page.waitForTimeout(200);
+  check(
+    '修改文档：还原改动 → 回到原值 + 保存按钮又禁用',
+    (await metaField('title').inputValue()) === '活着' &&
+      ((await page.locator('.modal .meta-summary').textContent()) || '').includes('还没有改动') &&
+      (await page.locator('.modal-foot .btn-primary').isDisabled()),
+    await metaField('title').inputValue(),
+  );
+  // 改标题 + 关键词（重复项要去掉）后覆盖原文件
+  await metaField('title').fill('活着（修订版）');
+  await metaField('keywords').fill('当代文学, 中国文学, 长篇小说, 当代文学');
+  await page.waitForTimeout(200);
+  const metaSummary2 = (await page.locator('.modal .meta-summary').textContent()) || '';
+  check(
+    '修改文档：改两个字段 → 汇总已修改 2 项 + 关键词去重为 3 个',
+    metaSummary2.includes('已修改 2 项') &&
+      ((await page.locator('.modal .form-row[data-field="keywords"] .hint').textContent()) || '').includes('共 3 个关键词'),
+    metaSummary2 + ' / ' + (await page.locator('.modal .form-row[data-field="keywords"] .hint').textContent()),
+  );
+  await page.locator('.modal .chip-row .chip', {hasText: '覆盖原文件'}).first().click();
+  await page.waitForTimeout(200);
+  check(
+    '修改文档：选「覆盖原文件」→ 出现备份警告 + 另存行消失',
+    ((await page.locator('.modal .merge-warn').textContent()) || '').includes('先备份') && (await page.locator('.path-box').count()) === 1,
+    await page.locator('.modal .merge-warn').textContent(),
+  );
+  await page.screenshot({path: 'screens/pdf-meta-inplace.png'});
+  await page.locator('.modal-foot .btn-primary').click();
+  await page.waitForSelector('.tool-note.ok', {timeout: 30000});
+  await page.waitForTimeout(300);
+  const metaSaved = await page.evaluate(() => window.__lastMeta);
+  check(
+    '修改文档：覆盖原文件把 out_path 设成源文件、不入库',
+    metaSaved.out_path === 'E:\\Books\\huozhe.pdf' &&
+      metaSaved.path === 'E:\\Books\\huozhe.pdf' &&
+      metaSaved.add_to_shelf === false &&
+      metaSaved.password === '' &&
+      JSON.stringify(metaSaved.keywords) === JSON.stringify(['当代文学', '中国文学', '长篇小说']),
+    JSON.stringify(metaSaved),
+  );
+  const metaDone1 = (await page.locator('.tool-note.ok').textContent()) || '';
+  check(
+    '修改文档：覆盖成功统计（2 项 + 大小）',
+    metaDone1.includes('已覆盖原文件') && metaDone1.includes('改动 2 项') && metaDone1.includes('标题') && metaDone1.includes('关键词') && metaDone1.includes('5.0 MB'),
+    metaDone1.replace(/\s+/g, ' '),
+  );
+  check('修改文档：保存后按钮变「打开所在目录」', (await page.locator('.modal-foot .btn-primary').textContent()) === '打开所在目录');
+  await page.screenshot({path: 'screens/pdf-meta-done.png'});
+  await page.locator('.modal-close').click();
+  await page.waitForTimeout(300);
+
+  // ---- 修改文档：另存为新文件 + 加入书架 ----------------
+  await page.locator('.tool-card', {hasText: '修改文档'}).first().click();
+  await page.waitForTimeout(400);
+  await page.locator('.modal .btn-soft', {hasText: '选择 PDF 文件'}).click();
+  await page.waitForTimeout(500);
+  await metaField('author').fill('余华 著');
+  await page.waitForTimeout(200);
+  check(
+    '修改文档：只改作者 → 只算 1 项改动',
+    (((await page.locator('.modal .meta-summary').textContent()) || '').includes('已修改 1 项：作者')),
+    await page.locator('.modal .meta-summary').textContent(),
+  );
+  await page.locator('.modal-foot .btn-primary').click();
+  await page.waitForSelector('.tool-note.ok', {timeout: 30000});
+  await page.waitForTimeout(300);
+  const meta2 = await page.evaluate(() => ({o: window.__lastMeta, name: window.__lastOutName, title: window.__lastOutTitle}));
+  check(
+    '修改文档：另存为走 PickOutPdfFile（默认名 + 对话框标题）',
+    meta2.name === 'huozhe-文档信息.pdf' && meta2.title === '保存文档信息',
+    JSON.stringify(meta2),
+  );
+  check(
+    '修改文档：另存路径 + 加入书架',
+    meta2.o.out_path === 'E:\\Books\\huozhe-文档信息.pdf' &&
+      meta2.o.out_path !== meta2.o.path &&
+      meta2.o.add_to_shelf === true &&
+      meta2.o.title === '活着' &&
+      meta2.o.author === '余华 著',
+    JSON.stringify(meta2.o),
+  );
+  const metaDone2 = (await page.locator('.tool-note.ok').textContent()) || '';
+  check(
+    '修改文档：另存成功提示 + 已加入书架',
+    metaDone2.includes('已另存为新文件') && metaDone2.includes('huozhe-文档信息.pdf') && metaDone2.includes('已加入书架'),
+    metaDone2.replace(/\s+/g, ' '),
+  );
+  await page.screenshot({path: 'screens/pdf-meta-newsave.png'});
+  await page.locator('.modal-close').click();
+  await page.waitForTimeout(300);
+
+  // ---- 修改文档：加密文件的密码流程 + 只能另存 ----------------
+  await page.locator('.tool-card', {hasText: '修改文档'}).first().click();
+  await page.waitForTimeout(400);
+  await page.evaluate(() => {
+    window.__pickTarget = 'E:\\Books\\locked.pdf';
+  });
+  await page.locator('.modal .btn-soft', {hasText: '选择 PDF 文件'}).click();
+  await page.waitForTimeout(500);
+  const metaLocked = (await page.locator('.path-box').first().textContent()) || '';
+  check('修改文档：加密文件要密码', metaLocked.includes('locked.pdf') && !metaLocked.includes('23 页'), metaLocked);
+  check(
+    '修改文档：没密码时隐藏表单 + 提示需要密码',
+    (await page.locator('.modal .form-row[data-field="title"]').count()) === 0 &&
+      ((await page.locator('.modal .merge-warn').textContent()) || '').includes('先输入密码'),
+    await page.locator('.modal .merge-warn').textContent(),
+  );
+  await page.locator('.modal input[type="password"]').fill('wrong');
+  await page.locator('.modal .btn-soft', {hasText: '验证'}).click();
+  await page.waitForTimeout(400);
+  const metaPwErr = await page.locator('.modal .merge-err').nth(1).textContent().catch(() => '');
+  check(
+    '修改文档：密码错误时提示（仍是加密提示，表单不出现）',
+    metaPwErr.includes('需要先输入打开密码') && (await page.locator('.modal .form-row[data-field="title"]').count()) === 0,
+    metaPwErr,
+  );
+  await page.locator('.modal input[type="password"]').fill('secret');
+  await page.locator('.modal .btn-soft', {hasText: '验证'}).click();
+  await page.waitForTimeout(500);
+  check(
+    '修改文档：密码正确后读出信息',
+    (await metaField('title').inputValue()) === '活着' && ((await page.locator('.path-box').first().textContent()) || '').includes('23 页'),
+    await metaField('title').inputValue(),
+  );
+  check(
+    '修改文档：加密文件不让选「覆盖原文件」+ 单独提示',
+    (await page.locator('.modal .chip-row .chip', {hasText: '覆盖原文件'}).count()) === 0 &&
+      ((await page.locator('.modal .merge-warn').textContent()) || '').includes('只能另存为新文件'),
+    await page.locator('.modal .merge-warn').textContent(),
+  );
+  await page.screenshot({path: 'screens/pdf-meta-locked.png'});
+  await page.locator('.modal-close').click();
+  await page.waitForTimeout(300);
+  await page.evaluate(() => {
+    window.__pickTarget = undefined;
+  });
+
+  // 书架右键 PDF → PDF 工具 → 修改文档（带入文件 → 预填表单）
+  await page.evaluate(() => {
+    document.querySelectorAll('.nav-item').forEach((b) => {
+      if (b.textContent.includes('书架')) b.click();
+    });
+  });
+  await page.waitForTimeout(400);
+  await page.locator('.book-card').nth(1).click({button: 'right'});
+  await page.waitForTimeout(400);
+  await page.locator('.ctx-sub').first().hover();
+  await page.waitForTimeout(300);
+  await page.locator('.ctx-submenu button', {hasText: '修改文档'}).first().click();
+  await page.waitForTimeout(600);
+  check('书架入口进入修改文档', (await page.locator('.modal .modal-head h2', {hasText: '修改文档'}).count()) > 0);
+  check(
+    '修改文档：书架入口已带入这本书并按原值预填',
+    ((await page.locator('.path-box').first().textContent()) || '').includes('huozhe.pdf') && (await metaField('title').inputValue()) === '活着',
+    await page.locator('.path-box').first().textContent(),
+  );
+  check(
+    '修改文档：书架入口提示',
+    (await page.locator('.modal .hint').allTextContents()).some((h) => h.includes('活着')),
+    JSON.stringify(await page.locator('.modal .hint').allTextContents()),
+  );
+  await page.screenshot({path: 'screens/pdf-meta-shelf.png'});
+  await page.locator('.modal-close').click();
+  await page.waitForTimeout(300);
 
   // 书架右键 EPUB → EPUB 工具 → 转存 PDF（只给 epub 类工具，不应出现 PDF 工具）
   await page.locator('.book-card').nth(0).click({button: 'right'});

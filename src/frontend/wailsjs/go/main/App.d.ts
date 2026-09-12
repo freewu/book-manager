@@ -87,6 +87,8 @@ export function PdfInspect(arg1:string,arg2:string):Promise<models.PdfFileInfo>;
 
 export function PdfMergeInspect(arg1:Array<string>,arg2:Record<string, string>):Promise<Array<models.PdfMergeFile>>;
 
+export function PdfMetaInspect(arg1:string,arg2:string):Promise<models.PdfMetaInfo>;
+
 export function PickEpubFile():Promise<string>;
 
 export function PickOutDir(arg1:string):Promise<string>;
@@ -110,6 +112,8 @@ export function RemoveScanDir(arg1:string):Promise<void>;
 export function ReportReading(arg1:number,arg2:number,arg3:number):Promise<number>;
 
 export function SavePdfImage(arg1:models.PdfImageOptions):Promise<models.PdfImageResult>;
+
+export function SavePdfMeta(arg1:models.PdfMetaOptions):Promise<models.PdfMetaResult>;
 
 export function SaveProgress(arg1:number,arg2:string,arg3:number,arg4:number,arg5:number):Promise<void>;
 
