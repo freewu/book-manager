@@ -305,3 +305,39 @@ export interface PdfMergeProgress {
   name: string;
   phase: string;
 }
+
+/** 提取页面工具里的源文件 */
+export interface PdfExtractInfo {
+  path: string;
+  name: string;
+  size: number;
+  /** 页数；加密且密码不对时为 0 */
+  pages: number;
+  encrypted: boolean;
+  /** 加密文件还没给出（正确的）打开密码 */
+  needs_password: boolean;
+  /** 读不出来的原因，空串表示没问题 */
+  error: string;
+}
+
+export interface PdfExtractOptions {
+  path: string;
+  /** 加密源文件的打开密码 */
+  password: string;
+  /** 1 起的页码；后端会升序去重 */
+  pages: number[];
+  /** 新 PDF 的完整路径（含文件名） */
+  out_path: string;
+  /** 提取成功后自动入库 */
+  add_to_shelf: boolean;
+}
+
+export interface PdfExtractResult {
+  path: string;
+  /** 实际写进新文件的页码（升序） */
+  pages: number[];
+  bytes: number;
+  added: boolean;
+  book_id: number;
+  shelf_error: string;
+}

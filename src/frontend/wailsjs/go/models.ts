@@ -297,6 +297,72 @@ export namespace models {
 	        this.updated_at = source["updated_at"];
 	    }
 	}
+	export class PdfExtractInfo {
+	    path: string;
+	    name: string;
+	    size: number;
+	    pages: number;
+	    encrypted: boolean;
+	    needs_password: boolean;
+	    error: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new PdfExtractInfo(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.path = source["path"];
+	        this.name = source["name"];
+	        this.size = source["size"];
+	        this.pages = source["pages"];
+	        this.encrypted = source["encrypted"];
+	        this.needs_password = source["needs_password"];
+	        this.error = source["error"];
+	    }
+	}
+	export class PdfExtractOptions {
+	    path: string;
+	    password: string;
+	    pages: number[];
+	    out_path: string;
+	    add_to_shelf: boolean;
+	
+	    static createFrom(source: any = {}) {
+	        return new PdfExtractOptions(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.path = source["path"];
+	        this.password = source["password"];
+	        this.pages = source["pages"];
+	        this.out_path = source["out_path"];
+	        this.add_to_shelf = source["add_to_shelf"];
+	    }
+	}
+	export class PdfExtractResult {
+	    path: string;
+	    pages: number[];
+	    bytes: number;
+	    added: boolean;
+	    book_id: number;
+	    shelf_error: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new PdfExtractResult(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.path = source["path"];
+	        this.pages = source["pages"];
+	        this.bytes = source["bytes"];
+	        this.added = source["added"];
+	        this.book_id = source["book_id"];
+	        this.shelf_error = source["shelf_error"];
+	    }
+	}
 	export class PdfFileInfo {
 	    path: string;
 	    name: string;

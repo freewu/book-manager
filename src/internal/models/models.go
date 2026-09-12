@@ -330,6 +330,45 @@ type PdfMergeProgress struct {
 	Phase   string `json:"phase"`
 }
 
+// PdfExtractOptions is the input of the 「提取页面」 tool. Pages holds 1 based
+// page numbers in any order; the result is written in ascending order.
+type PdfExtractOptions struct {
+	Path string `json:"path"`
+	// Password is the open password of an encrypted source file.
+	Password string `json:"password"`
+	Pages    []int  `json:"pages"`
+	// OutPath is the new PDF holding the selected pages (a file, not a folder).
+	OutPath string `json:"out_path"`
+	// AddToShelf imports the result into the library when it is done.
+	AddToShelf bool `json:"add_to_shelf"`
+}
+
+// PdfExtractResult reports what the extraction produced.
+type PdfExtractResult struct {
+	Path  string `json:"path"`
+	Pages []int  `json:"pages"`
+	Bytes int64  `json:"bytes"`
+	// Added is true when the extracted file was imported into the library,
+	// BookID is its id then; ShelfError explains why the import was skipped.
+	Added      bool   `json:"added"`
+	BookID     int64  `json:"book_id"`
+	ShelfError string `json:"shelf_error"`
+}
+
+// PdfExtractInfo describes a source PDF of the 「提取页面」 tool.
+type PdfExtractInfo struct {
+	Path string `json:"path"`
+	Name string `json:"name"`
+	Size int64  `json:"size"`
+	// Pages is 0 while the file is encrypted and no valid password was given.
+	Pages     int  `json:"pages"`
+	Encrypted bool `json:"encrypted"`
+	// NeedsPassword is true when the file is encrypted and the password is
+	// missing or wrong.
+	NeedsPassword bool   `json:"needs_password"`
+	Error         string `json:"error"`
+}
+
 // Settings is the key/value settings map exposed to the UI.
 type Settings map[string]string
 

@@ -36,6 +36,31 @@ const MANY_BOOKS = Array.from({length: 40}, (_, i) => ({
 }));
 
 const MOCK = `
+// 生成 n 页的最小 PDF（纯 ASCII，btoa 直接可用）：提取页面工具靠它渲染缩略图
+window.__mkPdf = (n) => {
+  const objs = ['<< /Type /Catalog /Pages 2 0 R >>', '', '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>'];
+  const kids = [];
+  for (let i = 0; i < n; i++) {
+    const pageObj = objs.length + 1;
+    const contentObj = pageObj + 1;
+    kids.push(pageObj + ' 0 R');
+    const stream = 'BT /F1 24 Tf 20 100 Td (p' + (i + 1) + ') Tj ET';
+    objs.push('<< /Type /Page /Parent 2 0 R /MediaBox [0 0 200 200] /Contents ' + contentObj + ' 0 R /Resources << /Font << /F1 3 0 R >> >> >>');
+    objs.push('<< /Length ' + stream.length + ' >>\\nstream\\n' + stream + '\\nendstream');
+  }
+  objs[1] = '<< /Type /Pages /Kids [' + kids.join(' ') + '] /Count ' + n + ' >>';
+  let out = '%PDF-1.4\\n';
+  const offsets = [];
+  for (let i = 0; i < objs.length; i++) {
+    offsets.push(out.length);
+    out += (i + 1) + ' 0 obj\\n' + objs[i] + '\\nendobj\\n';
+  }
+  const xref = out.length;
+  out += 'xref\\n0 ' + (objs.length + 1) + '\\n0000000000 65535 f \\n';
+  for (const off of offsets) out += String(off).padStart(10, '0') + ' 00000 n \\n';
+  out += 'trailer\\n<< /Size ' + (objs.length + 1) + ' /Root 1 0 R >>\\nstartxref\\n' + xref + '\\n%%EOF\\n';
+  return btoa(out);
+};
 window.go = { main: { App: {
   GetBooks: async () => (window.__manyBooks ? ${JSON.stringify(MANY_BOOKS)} : ${JSON.stringify(BOOKS)}),
   GetBook: async (id) => ${JSON.stringify(BOOKS)}.find(b => b.id === id) || ${JSON.stringify(BOOKS)}[0],
@@ -65,7 +90,11 @@ window.go = { main: { App: {
     const pw = (passwords || {})[p] || '';
     return {path: p, name, size: 1048576, pages: 10, encrypted: locked, needs_password: locked && pw !== 'secret', error: name.includes('bad') ? '不是有效的 PDF 文件' : ''};
   }),
-  PickOutPdfFile: async (name, dir) => (window.__mergeOut === undefined ? (dir || 'E:\\\\Books') + '\\\\' + (name || 'merged.pdf') : window.__mergeOut),
+  PickOutPdfFile: async (name, dir, title) => {
+    window.__lastOutTitle = title;
+    window.__lastOutName = name;
+    return window.__mergeOut === undefined ? (dir || 'E:\\\\Books') + '\\\\' + (name || 'merged.pdf') : window.__mergeOut;
+  },
   MergePdfs: async (o) => {
     // 模拟后端逐个准备文件 + 开始合并（真实运行时是 pdfmerge:progress 事件）
     const fire = (p) => (window.__events['pdfmerge:progress'] || []).forEach((cb) => cb(p));
@@ -80,6 +109,19 @@ window.go = { main: { App: {
     const blocked = files.some((f) => String(f).includes('locked') && !((o.passwords || {})[f]));
     if (blocked) throw new Error('《locked.pdf》已加密，需要先输入打开密码');
     return {path: o.out_path, files: files.length, pages: files.length * 10, bytes: 2097152, added: o.add_to_shelf, book_id: o.add_to_shelf ? 5 : 0, shelf_error: ''};
+  },
+  // ---- 提取页面：pdf.js 缩略图 + 跨组选择 ----
+  ReadPdfData: async (p) => window.__pdfData || window.__mkPdf(23),
+  PdfExtractInspect: async (p, pw) => {
+    const name = String(p).split(/[\\\\/]/).pop();
+    const locked = name.includes('locked');
+    const needPw = locked && pw !== 'secret';
+    return {path: p, name, size: 5242880, pages: needPw ? 0 : 23, encrypted: locked, needs_password: needPw, error: needPw ? 'PDF 已加密，需要先输入打开密码' : ''};
+  },
+  ExtractPdfPages: async (o) => {
+    window.__lastExtract = o;
+    await new Promise((r) => setTimeout(r, 400));
+    return {path: o.out_path, pages: (o.pages || []).slice().sort((a, b) => a - b), bytes: 3145728, added: o.add_to_shelf, book_id: o.add_to_shelf ? 6 : 0, shelf_error: ''};
   },
   OpenPath: async () => {}, DoubanRunning: async () => false, StartEnrichAll: async () => 0,
   PickOutDir: async () => (window.__outDir === undefined ? 'E:\\\\Books\\\\out' : window.__outDir),
@@ -235,7 +277,7 @@ async function main() {
   await page.waitForTimeout(500);
   const sections = await page.locator('.page-section-title').allTextContents();
   check('tool sections = 其他/PDF/EPUB', JSON.stringify(sections) === JSON.stringify(['其他', 'PDF', 'EPUB']), JSON.stringify(sections));
-  check('tool cards = 10', (await page.locator('.tool-card').count()) === 10, await page.locator('.tool-card').count());
+  check('tool cards = 11', (await page.locator('.tool-card').count()) === 11, await page.locator('.tool-card').count());
   const cardText = (await page.locator('.tool-card').first().textContent()) || '';
   check('工具卡片无「打开 ›」动作行', !cardText.includes('打开'), cardText);
   const sameRow = await page.evaluate(() => {
@@ -285,7 +327,12 @@ async function main() {
     JSON.stringify(await page.locator('.page-section-title').allTextContents()) === JSON.stringify(['PDF']),
     JSON.stringify(await page.locator('.page-section-title').allTextContents()),
   );
-  check('筛选 PDF：4 张卡片', (await page.locator('.tool-card').count()) === 4, await page.locator('.tool-card').count());
+  check('筛选 PDF：5 张卡片', (await page.locator('.tool-card').count()) === 5, await page.locator('.tool-card').count());
+  check(
+    '筛选 PDF：包含「提取页面」卡片',
+    (await page.locator('.tool-card').allTextContents()).some((c) => c.includes('提取页面') && c.includes('✂️')),
+    JSON.stringify(await page.locator('.tool-card').allTextContents()),
+  );
   check(
     '筛选 PDF：包含「合并 PDF」卡片',
     (await page.locator('.tool-card').allTextContents()).some((c) => c.includes('合并 PDF') && c.includes('🧷')),
@@ -304,7 +351,7 @@ async function main() {
   );
   await page.screenshot({path: 'screens/tools-filter.png'});
   await clickChip('全部');
-  check('筛选「全部」：恢复 10 张卡片', (await page.locator('.tool-card').count()) === 10, await page.locator('.tool-card').count());
+  check('筛选「全部」：恢复 11 张卡片', (await page.locator('.tool-card').count()) === 11, await page.locator('.tool-card').count());
   await page.screenshot({path: 'screens/tools.png'});
 
   // PDF 工具：选文件 → 识别信息 → 设置密码
@@ -342,12 +389,13 @@ async function main() {
   await page.waitForTimeout(300);
   const subItems = await page.locator('.ctx-submenu button').allTextContents();
   check(
-    'ctx 子菜单 = [设置密码, 清除密码, 转存 EPUB, 合并 PDF]',
-    subItems.length === 4 &&
+    'ctx 子菜单 = [设置密码, 清除密码, 转存 EPUB, 合并 PDF, 提取页面]',
+    subItems.length === 5 &&
       subItems[0].includes('设置密码') &&
       subItems[1].includes('清除密码') &&
       subItems[2].includes('转存 EPUB') &&
-      subItems[3].includes('合并 PDF'),
+      subItems[3].includes('合并 PDF') &&
+      subItems[4].includes('提取页面'),
     JSON.stringify(subItems),
   );
   await page.screenshot({path: 'screens/ctx-pdf.png'});
@@ -568,6 +616,159 @@ async function main() {
   await page.locator('.modal-close').click();
   await page.waitForTimeout(300);
 
+  // 工具页 → 提取页面：一组 20 页缩略图 → 选中 → 翻组不丢 → 放大细看 → 提取
+  await page.evaluate(() => {
+    window.__pickTarget = 'E:\\Books\\huozhe.pdf';
+  });
+  await page.locator('.tool-card', {hasText: '提取页面'}).first().click();
+  await page.waitForTimeout(400);
+  check('提取页面弹窗', (await page.locator('.modal .modal-head h2', {hasText: '提取页面'}).count()) > 0);
+  check(
+    '提取页面：未选文件占位 + 不能提取',
+    ((await page.locator('.path-box').first().textContent()) || '').includes('还没有选择') &&
+      (await page.locator('.modal-foot .btn-primary').isDisabled()),
+  );
+  await page.locator('.modal .btn-soft', {hasText: '选择 PDF 文件'}).click();
+  await page.waitForSelector('.page-thumb[data-page="20"]', {timeout: 15000}).catch(() => {});
+  const exSrc = (await page.locator('.path-box').first().textContent()) || '';
+  check('提取页面：识别页数/大小', exSrc.includes('huozhe.pdf') && exSrc.includes('23') && exSrc.includes('5.0 MB'), exSrc);
+  check('提取页面：一组 20 页', (await page.locator('.page-thumb').count()) === 20, await page.locator('.page-thumb').count());
+  const exRange1 = (await page.locator('.thumb-range').first().textContent()) || '';
+  check('提取页面：页码范围 第 1-20 页 · 共 23 页', exRange1.includes('1-20') && exRange1.includes('23'), exRange1);
+  const exPainted = await page.evaluate(() => {
+    const c = document.querySelector('.page-thumb[data-page="1"] canvas');
+    if (!c || !c.width) return 0;
+    const d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data;
+    let dark = 0;
+    for (let i = 0; i < d.length; i += 4) if (d[i] < 200) dark++;
+    return dark;
+  });
+  check('提取页面：缩略图真的画出了内容', exPainted > 20, exPainted);
+  check('提取页面：第一组不能再上一组', await page.locator('.thumb-toolbar .btn-soft', {hasText: '上一组'}).isDisabled());
+  await page.locator('.page-thumb[data-page="3"] .page-thumb-canvas').click();
+  await page.waitForTimeout(200);
+  const exSelLabel = async () => ((await page.locator('.modal .form-row > label', {hasText: '已选'}).first().textContent()) || '');
+  check(
+    '提取页面：点缩略图选中第 3 页',
+    (await page.locator('.page-thumb.on').count()) === 1 &&
+      (await page.locator('.sel-chip').count()) === 1 &&
+      (await exSelLabel()).includes('已选 1 页'),
+    await exSelLabel(),
+  );
+  await page.locator('.thumb-toolbar .btn-soft', {hasText: '下一组'}).click();
+  await page.waitForSelector('.page-thumb[data-page="21"]', {timeout: 15000});
+  check('提取页面：第二组只剩 3 页', (await page.locator('.page-thumb').count()) === 3, await page.locator('.page-thumb').count());
+  const exRange2 = (await page.locator('.thumb-range').first().textContent()) || '';
+  check('提取页面：翻到 第 21-23 页', exRange2.includes('21-23'), exRange2);
+  check(
+    '提取页面：翻组后选择不丢',
+    (await page.locator('.sel-chip').count()) === 1 && ((await page.locator('.sel-chip').first().textContent()) || '').startsWith('3'),
+    JSON.stringify(await page.locator('.sel-chip').allTextContents()),
+  );
+  check('提取页面：最后一组不能再下一组', await page.locator('.thumb-toolbar .btn-soft', {hasText: '下一组'}).isDisabled());
+  await page.locator('.page-thumb[data-page="22"] .page-thumb-canvas').click();
+  await page.waitForTimeout(200);
+  check('提取页面：已选 2 页', (await page.locator('.sel-chip').count()) === 2, await page.locator('.sel-chip').count());
+
+  // 放大查看单页
+  await page.locator('.page-thumb[data-page="22"] .page-thumb-zoom').click();
+  await page.waitForSelector('.viewer-stage canvas', {timeout: 15000}).catch(() => {});
+  check('提取页面：打开放大查看', (await page.locator('.viewer').count()) > 0);
+  check('提取页面：放大页是第 22 页', ((await page.locator('.viewer-page').textContent()) || '').includes('22 / 23'), await page.locator('.viewer-page').textContent());
+  const vw0 = await page.evaluate(() => document.querySelector('.viewer-stage canvas')?.width || 0);
+  check('提取页面：放大后画布远大于缩略图', vw0 > 900 && vw0 < 1300, vw0);
+  await page.locator('.viewer-bar button', {hasText: '＋'}).click();
+  await page.waitForTimeout(500);
+  const vw1 = await page.evaluate(() => document.querySelector('.viewer-stage canvas')?.width || 0);
+  check('提取页面：还能继续放大', vw1 > vw0, vw0 + ' -> ' + vw1);
+  await page.locator('.viewer-bar button', {hasText: '适应'}).click();
+  await page.waitForTimeout(500);
+  const vw2 = await page.evaluate(() => document.querySelector('.viewer-stage canvas')?.width || 0);
+  check(
+    '提取页面：「适应」回到 100%',
+    vw2 === 720 && ((await page.locator('.viewer-zoom').textContent()) || '').trim() === '100%',
+    vw2 + ' / ' + (await page.locator('.viewer-zoom').textContent()),
+  );
+  check('提取页面：放大时这一页是选中态', (await page.locator('.viewer-bar button', {hasText: '取消本页'}).count()) === 1);
+  await page.locator('.viewer-bar button', {hasText: '取消本页'}).click();
+  await page.waitForTimeout(300);
+  check(
+    '提取页面：放大时能取消选中',
+    (await page.locator('.sel-chip').count()) === 1 && (await page.locator('.viewer-bar button', {hasText: '选中本页'}).count()) === 1,
+  );
+  await page.locator('.viewer-bar button', {hasText: '选中本页'}).click();
+  await page.waitForTimeout(300);
+  check('提取页面：放大时能重新选中', (await page.locator('.sel-chip').count()) === 2);
+  await page.locator('.viewer-bar button', {hasText: '上一页'}).click();
+  await page.waitForTimeout(500);
+  check('提取页面：放大时能翻页', ((await page.locator('.viewer-page').textContent()) || '').includes('21 / 23'), await page.locator('.viewer-page').textContent());
+  await page.screenshot({path: 'screens/pdf-extract-viewer.png'});
+  await page.keyboard.press('Escape');
+  await page.waitForTimeout(300);
+  check('提取页面：Esc 关闭放大查看', (await page.locator('.viewer').count()) === 0);
+
+  // 跳页 + 缩略图大小
+  await page.locator('.thumb-jump').fill('23');
+  await page.locator('.thumb-toolbar .btn-soft', {hasText: '跳转'}).click();
+  await page.waitForTimeout(300);
+  const exRange3 = (await page.locator('.thumb-range').first().textContent()) || '';
+  check('提取页面：按页码跳到第 23 页所在组', exRange3.includes('21-23'), exRange3);
+  const exSmall = await page.evaluate(() => document.querySelector('.page-thumb[data-page="21"] canvas')?.width || 0);
+  await page.locator('.thumb-toolbar .chip', {hasText: '大'}).click();
+  await page.waitForSelector('.page-thumb[data-page="21"] canvas', {timeout: 15000});
+  await page.waitForTimeout(700);
+  const exLarge = await page.evaluate(() => document.querySelector('.page-thumb[data-page="21"] canvas')?.width || 0);
+  check('提取页面：缩略图大小可调', exLarge > exSmall, exSmall + ' -> ' + exLarge);
+
+  // 整组选择 / 清空
+  await page.locator('.thumb-toolbar .btn-soft', {hasText: '选中本组'}).click();
+  await page.waitForTimeout(400);
+  check(
+    '提取页面：选中本组 → 3 + 1 页',
+    (await page.locator('.sel-chip').count()) === 4 && ((await page.locator('.sel-chip').first().textContent()) || '').startsWith('3'),
+    JSON.stringify(await page.locator('.sel-chip').allTextContents()),
+  );
+  await page.locator('.thumb-toolbar .btn-soft', {hasText: '取消本组'}).click();
+  await page.waitForTimeout(400);
+  check('提取页面：取消本组 → 只剩第 3 页', (await page.locator('.sel-chip').count()) === 1, JSON.stringify(await page.locator('.sel-chip').allTextContents()));
+  await page.locator('.thumb-toolbar .btn-soft', {hasText: '清空选择'}).click();
+  await page.waitForTimeout(400);
+  check(
+    '提取页面：清空选择',
+    (await page.locator('.sel-chip').count()) === 0 &&
+      (await page.locator('.merge-empty').count()) === 1 &&
+      (await page.locator('.modal-foot .btn-primary').isDisabled()),
+  );
+  await page.screenshot({path: 'screens/pdf-extract.png'});
+
+  // 提取两个页 → 保存框 → 完成
+  await page.locator('.page-thumb[data-page="21"] .page-thumb-canvas').click();
+  await page.locator('.page-thumb[data-page="23"] .page-thumb-canvas').click();
+  await page.waitForTimeout(200);
+  check('提取页面：已选页码 [21, 23]', JSON.stringify(await page.locator('.sel-chip').allTextContents()) === JSON.stringify(['21 ✕', '23 ✕']), JSON.stringify(await page.locator('.sel-chip').allTextContents()));
+  await page.locator('.modal-foot .btn-primary').click();
+  await page.waitForTimeout(1000);
+  const exDone = (await page.locator('.tool-note.ok').textContent().catch(() => '')) || '';
+  check(
+    '提取页面：完成统计',
+    exDone.includes('提取完成') && exDone.includes('从 23 页中提取 2 页') && exDone.includes('3.0 MB') && exDone.includes('已加入书架'),
+    exDone,
+  );
+  const exOpts = await page.evaluate(() => ({opts: window.__lastExtract, title: window.__lastOutTitle, name: window.__lastOutName}));
+  check(
+    '提取页面：参数（页码升序 / 输出名 / 入库 / 保存框标题）',
+    exOpts.opts &&
+      JSON.stringify(exOpts.opts.pages) === JSON.stringify([21, 23]) &&
+      /huozhe-提取\.pdf$/.test(exOpts.opts.out_path) &&
+      exOpts.opts.add_to_shelf === true &&
+      exOpts.title === '保存提取出的 PDF' &&
+      exOpts.name === 'huozhe-提取.pdf',
+    JSON.stringify(exOpts),
+  );
+  await page.screenshot({path: 'screens/pdf-extract-done.png'});
+  await page.locator('.modal-close').click();
+  await page.waitForTimeout(300);
+
   // 书架右键 PDF → PDF 工具 → 转存 EPUB（预填书名/作者）
   await page.evaluate(() => {
     document.querySelectorAll('.nav-item').forEach((b) => {
@@ -605,6 +806,43 @@ async function main() {
     JSON.stringify(await page.locator('.modal .hint').allTextContents()),
   );
   await page.screenshot({path: 'screens/pdf-merge-shelf.png'});
+  await page.locator('.modal-close').click();
+  await page.waitForTimeout(300);
+
+  // 书架右键 PDF → PDF 工具 → 提取页面（把这本书带进来，直接出缩略图）
+  await page.locator('.book-card').nth(1).click({button: 'right'});
+  await page.waitForTimeout(400);
+  await page.locator('.ctx-sub').first().hover();
+  await page.waitForTimeout(300);
+  await page.locator('.ctx-submenu button', {hasText: '提取页面'}).first().click();
+  await page.waitForSelector('.page-thumb[data-page="20"]', {timeout: 15000}).catch(() => {});
+  check('书架入口进入提取页面', (await page.locator('.modal .modal-head h2', {hasText: '提取页面'}).count()) > 0);
+  const exShelfSrc = (await page.locator('.path-box').first().textContent()) || '';
+  check('书架入口已带入这本书', exShelfSrc.includes('huozhe.pdf') && exShelfSrc.includes('23'), exShelfSrc);
+  check(
+    '提取页面书架入口提示',
+    (await page.locator('.modal .hint').allTextContents()).some((h) => h.includes('活着')),
+    JSON.stringify(await page.locator('.modal .hint').allTextContents()),
+  );
+  check('书架入口进来就有缩略图', (await page.locator('.page-thumb').count()) === 20, await page.locator('.page-thumb').count());
+  const exLayout = await page.evaluate(() => {
+    const modal = document.querySelector('.modal');
+    if (!modal) return null;
+    const r = modal.getBoundingClientRect();
+    const grid = document.querySelector('.thumb-grid');
+    return {
+      right: Math.round(r.right),
+      inner: window.innerWidth,
+      pageOverflow: document.documentElement.scrollWidth > window.innerWidth,
+      gridOverflow: grid ? grid.scrollWidth > grid.clientWidth + 1 : false,
+    };
+  });
+  check(
+    '提取页面弹窗不溢出、缩略图网格不横溢',
+    !!exLayout && exLayout.right <= exLayout.inner && !exLayout.pageOverflow && !exLayout.gridOverflow,
+    JSON.stringify(exLayout),
+  );
+  await page.screenshot({path: 'screens/pdf-extract-shelf.png'});
   await page.locator('.modal-close').click();
   await page.waitForTimeout(300);
 

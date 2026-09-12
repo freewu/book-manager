@@ -65,10 +65,14 @@ func (a *App) PdfMergeInspect(paths []string, passwords map[string]string) []mod
 	return out
 }
 
-// PickOutPdfFile opens the "save as" dialog for the merged file.
-func (a *App) PickOutPdfFile(defaultName, defaultDir string) (string, error) {
+// PickOutPdfFile opens the "save as" dialog for a new PDF. title is the dialog
+// caption (the merge and extract tools share this binding).
+func (a *App) PickOutPdfFile(defaultName, defaultDir, title string) (string, error) {
+	if title = strings.TrimSpace(title); title == "" {
+		title = "保存 PDF"
+	}
 	opts := wailsRuntime.SaveDialogOptions{
-		Title: "保存合并后的 PDF",
+		Title: title,
 		Filters: []wailsRuntime.FileFilter{
 			{DisplayName: "PDF (*.pdf)", Pattern: "*.pdf"},
 		},

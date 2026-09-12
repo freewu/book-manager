@@ -37,6 +37,8 @@ export function EpubInspect(arg1:string):Promise<models.EpubFileInfo>;
 
 export function EpubToPdf(arg1:models.EpubToPdfOptions):Promise<models.EpubToPdfResult>;
 
+export function ExtractPdfPages(arg1:models.PdfExtractOptions):Promise<models.PdfExtractResult>;
+
 export function FetchDouban(arg1:number):Promise<models.Book>;
 
 export function GetBook(arg1:number):Promise<models.Book>;
@@ -79,6 +81,8 @@ export function OpenPath(arg1:string):Promise<void>;
 
 export function OpenWithKKFileView(arg1:number):Promise<string>;
 
+export function PdfExtractInspect(arg1:string,arg2:string):Promise<models.PdfExtractInfo>;
+
 export function PdfInspect(arg1:string,arg2:string):Promise<models.PdfFileInfo>;
 
 export function PdfMergeInspect(arg1:Array<string>,arg2:Record<string, string>):Promise<Array<models.PdfMergeFile>>;
@@ -87,13 +91,15 @@ export function PickEpubFile():Promise<string>;
 
 export function PickOutDir(arg1:string):Promise<string>;
 
-export function PickOutPdfFile(arg1:string,arg2:string):Promise<string>;
+export function PickOutPdfFile(arg1:string,arg2:string,arg3:string):Promise<string>;
 
 export function PickPdfFile():Promise<string>;
 
 export function PickPdfFiles():Promise<Array<string>>;
 
 export function PickScanDir():Promise<string>;
+
+export function ReadPdfData(arg1:string):Promise<string>;
 
 export function RemoveMisrecord(arg1:number):Promise<void>;
 

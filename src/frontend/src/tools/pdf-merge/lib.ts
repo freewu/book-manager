@@ -14,7 +14,7 @@ export function inspectPdfFiles(paths: string[], passwords: Record<string, strin
 
 /** 选择合并后的保存位置（取消返回空串） */
 export function pickOutPdfFile(defaultName: string, defaultDir: string): Promise<string> {
-  return App.PickOutPdfFile(defaultName, defaultDir);
+  return App.PickOutPdfFile(defaultName, defaultDir, '保存合并后的 PDF');
 }
 
 /** 合并，成功后返回结果（合并结果本身不带密码） */

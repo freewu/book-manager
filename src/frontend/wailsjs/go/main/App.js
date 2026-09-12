@@ -70,6 +70,10 @@ export function EpubToPdf(arg1) {
   return window['go']['main']['App']['EpubToPdf'](arg1);
 }
 
+export function ExtractPdfPages(arg1) {
+  return window['go']['main']['App']['ExtractPdfPages'](arg1);
+}
+
 export function FetchDouban(arg1) {
   return window['go']['main']['App']['FetchDouban'](arg1);
 }
@@ -154,6 +158,10 @@ export function OpenWithKKFileView(arg1) {
   return window['go']['main']['App']['OpenWithKKFileView'](arg1);
 }
 
+export function PdfExtractInspect(arg1, arg2) {
+  return window['go']['main']['App']['PdfExtractInspect'](arg1, arg2);
+}
+
 export function PdfInspect(arg1, arg2) {
   return window['go']['main']['App']['PdfInspect'](arg1, arg2);
 }
@@ -170,8 +178,8 @@ export function PickOutDir(arg1) {
   return window['go']['main']['App']['PickOutDir'](arg1);
 }
 
-export function PickOutPdfFile(arg1, arg2) {
-  return window['go']['main']['App']['PickOutPdfFile'](arg1, arg2);
+export function PickOutPdfFile(arg1, arg2, arg3) {
+  return window['go']['main']['App']['PickOutPdfFile'](arg1, arg2, arg3);
 }
 
 export function PickPdfFile() {
@@ -184,6 +192,10 @@ export function PickPdfFiles() {
 
 export function PickScanDir() {
   return window['go']['main']['App']['PickScanDir']();
+}
+
+export function ReadPdfData(arg1) {
+  return window['go']['main']['App']['ReadPdfData'](arg1);
 }
 
 export function RemoveMisrecord(arg1) {
