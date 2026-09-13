@@ -292,16 +292,23 @@ export default function BookDetail({book: initial, tags, onClose, onChanged, onO
                   <div className="form-row">
                     <label>{t('detail.tags')}</label>
                     <div className="tag-picker">
-                      {tags.map((t) => (
-                        <span
-                          key={t.id}
-                          className={`tag-choice ${book.tags.some((x) => x.id === t.id) ? 'on' : ''}`}
-                          style={book.tags.some((x) => x.id === t.id) ? {background: t.color, borderColor: t.color} : {}}
-                          onClick={() => toggleTag(t.id)}
-                        >
-                          {t.name}
-                        </span>
-                      ))}
+                      {/* 冻结的标签不再可选：已打上的仍然显示（不然会看不出为什么筛选不到） */}
+                      {tags
+                        .filter((tg) => !tg.frozen || book.tags.some((x) => x.id === tg.id))
+                        .map((tg) => {
+                          const on = book.tags.some((x) => x.id === tg.id);
+                          return (
+                            <span
+                              key={tg.id}
+                              className={`tag-choice ${on ? 'on' : ''}${tg.frozen ? ' frozen' : ''}`}
+                              title={tg.frozen ? t('tag.frozenBadge') : undefined}
+                              style={on ? {background: tg.color, borderColor: tg.color} : {}}
+                              onClick={() => toggleTag(tg.id)}
+                            >
+                              {tg.name}
+                            </span>
+                          );
+                        })}
                     </div>
                   </div>
 

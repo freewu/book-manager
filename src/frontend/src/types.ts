@@ -4,6 +4,8 @@ export interface Tag {
   id: number;
   name: string;
   color: string;
+  /** 冻结的标签保留打标关系，但不再出现在书籍详情的可选标签里 */
+  frozen: boolean;
   book_count: number;
   created_at: string;
 }

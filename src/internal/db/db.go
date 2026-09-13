@@ -2,6 +2,7 @@ package db
 
 import (
 	"database/sql"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -12,6 +13,15 @@ import (
 
 	_ "modernc.org/sqlite"
 )
+
+// Tag errors returned to the UI (translated there).
+var (
+	ErrTagNameEmpty = errors.New("标签名不能为空")
+	ErrTagExists    = errors.New("标签名已存在")
+)
+
+// defaultTagColor is used when a tag is created without an explicit color.
+const defaultTagColor = "#6c8cff"
 
 // Store wraps the sqlite database.
 type Store struct {
@@ -82,6 +92,7 @@ CREATE TABLE IF NOT EXISTS tags (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT NOT NULL UNIQUE,
     color TEXT NOT NULL DEFAULT '#6c8cff',
+    frozen INTEGER NOT NULL DEFAULT 0,
     created_at TEXT NOT NULL DEFAULT (datetime('now','localtime'))
 );
 
@@ -140,6 +151,7 @@ func (s *Store) migrate() error {
 	}
 	// migrations for pre-existing databases (idempotent, ignore "duplicate column")
 	_, _ = s.db.Exec(`ALTER TABLE books ADD COLUMN douban_fail_count INTEGER NOT NULL DEFAULT 0`)
+	_, _ = s.db.Exec(`ALTER TABLE tags ADD COLUMN frozen INTEGER NOT NULL DEFAULT 0`)
 	return nil
 }
 
@@ -343,19 +355,58 @@ type modelsStats = struct {
 
 // ---------- tags ----------
 
-func (s *Store) CreateTag(name, color string) (int64, error) {
-	if color == "" {
-		color = "#6c8cff"
+// TagName validates and normalizes a tag name.
+func TagName(name string) (string, error) {
+	n := strings.TrimSpace(name)
+	if n == "" {
+		return "", ErrTagNameEmpty
 	}
-	res, err := s.db.Exec("INSERT INTO tags(name,color) VALUES(?,?)", strings.TrimSpace(name), color)
+	return n, nil
+}
+
+// tagErr maps sqlite's UNIQUE violation onto ErrTagExists.
+func tagErr(err error) error {
+	if err != nil && strings.Contains(strings.ToUpper(err.Error()), "UNIQUE") {
+		return ErrTagExists
+	}
+	return err
+}
+
+func (s *Store) CreateTag(name, color string) (int64, error) {
+	n, err := TagName(name)
 	if err != nil {
 		return 0, err
+	}
+	if color == "" {
+		color = defaultTagColor
+	}
+	res, err := s.db.Exec("INSERT INTO tags(name,color) VALUES(?,?)", n, color)
+	if err != nil {
+		return 0, tagErr(err)
 	}
 	return res.LastInsertId()
 }
 
 func (s *Store) UpdateTag(id int64, name, color string) error {
-	_, err := s.db.Exec("UPDATE tags SET name=?, color=?, updated_at=datetime('now','localtime') WHERE id=?", name, color, id)
+	n, err := TagName(name)
+	if err != nil {
+		return err
+	}
+	if color == "" {
+		color = defaultTagColor
+	}
+	_, err = s.db.Exec("UPDATE tags SET name=?, color=? WHERE id=?", n, color, id)
+	return tagErr(err)
+}
+
+// SetTagFrozen freezes (true) or unfreezes (false) a tag. A frozen tag keeps
+// its book associations but is no longer offered when tagging books.
+func (s *Store) SetTagFrozen(id int64, frozen bool) error {
+	v := 0
+	if frozen {
+		v = 1
+	}
+	_, err := s.db.Exec("UPDATE tags SET frozen=? WHERE id=?", v, id)
 	return err
 }
 
@@ -366,9 +417,9 @@ func (s *Store) DeleteTag(id int64) error {
 
 func (s *Store) ListTags() ([]models.Tag, error) {
 	rows, err := s.db.Query(`
-		SELECT t.id, t.name, t.color, t.created_at,
+		SELECT t.id, t.name, t.color, t.frozen, t.created_at,
 	       (SELECT COUNT(*) FROM book_tags bt WHERE bt.tag_id=t.id) AS cnt
-		FROM tags t ORDER BY t.name`)
+		FROM tags t ORDER BY t.frozen, t.name`)
 	if err != nil {
 		return nil, err
 	}
@@ -376,7 +427,7 @@ func (s *Store) ListTags() ([]models.Tag, error) {
 	out := []models.Tag{}
 	for rows.Next() {
 		var t models.Tag
-		if err := rows.Scan(&t.ID, &t.Name, &t.Color, &t.CreatedAt, &t.BookCount); err == nil {
+		if err := rows.Scan(&t.ID, &t.Name, &t.Color, &t.Frozen, &t.CreatedAt, &t.BookCount); err == nil {
 			out = append(out, t)
 		}
 	}

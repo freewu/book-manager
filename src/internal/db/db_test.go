@@ -2,6 +2,7 @@ package db_test
 
 import (
 	"archive/zip"
+	"database/sql"
 	"os"
 	"path/filepath"
 	"testing"
@@ -164,5 +165,154 @@ func TestDuplicateScanSkips(t *testing.T) {
 	_, isNew2, err := store.UpsertScannedBook(book)
 	if err != nil || isNew2 {
 		t.Fatalf("second upsert should update not insert: %v", err)
+	}
+}
+
+func TestTagLifecycle(t *testing.T) {
+	tmp := t.TempDir()
+	bookDir := filepath.Join(tmp, "books")
+	os.MkdirAll(bookDir, 0o755)
+	if err := makeTestEpub(filepath.Join(bookDir, "a.epub")); err != nil {
+		t.Fatal(err)
+	}
+	store, err := db.Open(filepath.Join(tmp, "data", "book.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer store.Close()
+	sc := &scanner.Scanner{}
+	files := sc.Collect([]string{bookDir})
+	book, _ := sc.Process(files[0], tmp)
+	bid, _, err := store.UpsertScannedBook(book)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// 新建：空名 / 纯空格名被拒
+	if _, err := store.CreateTag("   ", "#fff"); err != db.ErrTagNameEmpty {
+		t.Fatalf("blank name: %v", err)
+	}
+	// 默认颜色
+	plain, err := store.CreateTag("默认色", "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	tags, _ := store.ListTags()
+	for _, tg := range tags {
+		if tg.ID == plain && tg.Color != "#6c8cff" {
+			t.Fatalf("default color: %q", tg.Color)
+		}
+	}
+
+	// 重名（含前后空格被 trim 后重名）被拒
+	if _, err := store.CreateTag("默认色", "#111111"); err != db.ErrTagExists {
+		t.Fatalf("duplicate create: %v", err)
+	}
+	if _, err := store.CreateTag("  默认色 ", "#111111"); err != db.ErrTagExists {
+		t.Fatalf("duplicate create (trimmed): %v", err)
+	}
+
+	tid, err := store.CreateTag(" 科幻 ", "#ff0000")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := store.SetBookTags(bid, []int64{tid}); err != nil {
+		t.Fatal(err)
+	}
+
+	// 改名换色（会 trim）+ 数量
+	if err := store.UpdateTag(tid, " 硬科幻 ", "#00ff00"); err != nil {
+		t.Fatal(err)
+	}
+	tags, _ = store.ListTags()
+	var found bool
+	for _, tg := range tags {
+		if tg.ID == tid {
+			found = true
+			if tg.Name != "硬科幻" || tg.Color != "#00ff00" || tg.BookCount != 1 || tg.Frozen {
+				t.Fatalf("after update: %+v", tg)
+			}
+		}
+	}
+	if !found {
+		t.Fatal("tag missing after update")
+	}
+
+	// 改名撞已有标签
+	if err := store.UpdateTag(tid, "默认色", "#00ff00"); err != db.ErrTagExists {
+		t.Fatalf("duplicate rename: %v", err)
+	}
+	if err := store.UpdateTag(tid, "", "#00ff00"); err != db.ErrTagNameEmpty {
+		t.Fatalf("blank rename: %v", err)
+	}
+
+	// 冻结 / 解冻：保留打标关系，ListTags 里 frozen 排后面
+	if err := store.SetTagFrozen(tid, true); err != nil {
+		t.Fatal(err)
+	}
+	got, _ := store.GetBook(bid)
+	if len(got.Tags) != 1 || !got.Tags[0].Frozen {
+		t.Fatalf("book tag frozen flag: %+v", got.Tags)
+	}
+	tags, _ = store.ListTags()
+	if len(tags) < 2 || tags[0].ID == tid {
+		t.Fatalf("frozen tag should be listed last: %+v", tags)
+	}
+	if err := store.SetTagFrozen(tid, false); err != nil {
+		t.Fatal(err)
+	}
+	got, _ = store.GetBook(bid)
+	if got.Tags[0].Frozen {
+		t.Fatal("unfreeze failed")
+	}
+
+	// 删除：关联一起消失
+	if err := store.DeleteTag(tid); err != nil {
+		t.Fatal(err)
+	}
+	got, _ = store.GetBook(bid)
+	if len(got.Tags) != 0 {
+		t.Fatalf("book_tags should cascade: %+v", got.Tags)
+	}
+	if books, _ := store.ListBooks(db.BookQuery{TagIDs: []int64{tid}}); len(books) != 0 {
+		t.Fatalf("filter by deleted tag: %d", len(books))
+	}
+}
+
+// 老库（没有 frozen 列）打开后要能自动补列。
+func TestTagFrozenMigration(t *testing.T) {
+	tmp := t.TempDir()
+	dbPath := filepath.Join(tmp, "data", "book.db")
+	os.MkdirAll(filepath.Dir(dbPath), 0o755)
+	raw, err := sql.Open("sqlite", "file:"+dbPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := raw.Exec(`CREATE TABLE tags (
+		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		name TEXT NOT NULL UNIQUE,
+		color TEXT NOT NULL DEFAULT '#6c8cff',
+		created_at TEXT NOT NULL DEFAULT (datetime('now','localtime')))`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := raw.Exec("INSERT INTO tags(name,color) VALUES('旧标签','#123456')"); err != nil {
+		t.Fatal(err)
+	}
+	raw.Close()
+
+	store, err := db.Open(dbPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer store.Close()
+	tags, err := store.ListTags()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(tags) != 1 || tags[0].Name != "旧标签" || tags[0].Frozen {
+		t.Fatalf("migrated tags: %+v", tags)
+	}
+	if err := store.SetTagFrozen(tags[0].ID, true); err != nil {
+		t.Fatal(err)
 	}
 }

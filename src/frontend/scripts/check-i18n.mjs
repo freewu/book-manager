@@ -1,7 +1,8 @@
 // 静态校验：
 // 1) i18n 字典中每个 key 都含 zh-CN / zh-TW / en 三种语言，且无重复 key
 // 2) 前端源码里出现的 t('xxx') / nameKey: 'xxx' 等字面量 key 都存在于字典
-// 3) 每个工具目录都具备 define.ts / lib.ts / tools.tsx
+// 3) 每个工具目录都具备 define.ts / lib.ts，以及 tools.tsx（弹窗工具）
+//    或 page.tsx（整页工具，define.ts 里声明 page 字段）
 // 用法: node.exe scripts/check-i18n.mjs
 import fs from 'node:fs';
 import path from 'node:path';
@@ -50,7 +51,7 @@ const walk = (dir) => {
 };
 walk(srcDir);
 
-const keyRef = /(?:\bt\(|\btranslate\([^,)]+,\s*|(?:name|desc|label|title|action|hint)Key:\s*)'([A-Za-z0-9_.\-@]+)'/g;
+const keyRef = /(?:\bt\(|\btranslate\([^,)]+,\s*|(?:name|desc|label|title|action|hint|err)Key:\s*)'([A-Za-z0-9_.\-@]+)'/g;
 const unknown = [];
 const used = new Set();
 for (const f of files) {
@@ -77,9 +78,14 @@ const toolsDir = path.join(srcDir, 'tools');
 const toolIssues = [];
 for (const e of fs.readdirSync(toolsDir, {withFileTypes: true})) {
   if (!e.isDirectory()) continue;
-  for (const need of ['define.ts', 'lib.ts', 'tools.tsx']) {
+  for (const need of ['define.ts', 'lib.ts']) {
     if (!fs.existsSync(path.join(toolsDir, e.name, need))) toolIssues.push(`${e.name}/ 缺少 ${need}`);
   }
+  const definePath = path.join(toolsDir, e.name, 'define.ts');
+  const defineSrc = fs.existsSync(definePath) ? fs.readFileSync(definePath, 'utf8') : '';
+  const isPageTool = /\bpage:\s*'/.test(defineSrc);
+  const view = isPageTool ? 'page.tsx' : 'tools.tsx';
+  if (!fs.existsSync(path.join(toolsDir, e.name, view))) toolIssues.push(`${e.name}/ 缺少 ${view}`);
 }
 
 const unused = [...keys].filter((k) => !used.has(k));

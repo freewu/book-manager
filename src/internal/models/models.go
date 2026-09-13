@@ -35,9 +35,12 @@ type Book struct {
 
 // Tag is a user-defined label.
 type Tag struct {
-	ID        int64  `json:"id"`
-	Name      string `json:"name"`
-	Color     string `json:"color"`
+	ID   int64  `json:"id"`
+	Name string `json:"name"`
+	Color string `json:"color"`
+	// Frozen tags keep their book associations but are hidden from the tag
+	// picker (frozen / unfrozen在标签页管理).
+	Frozen    bool   `json:"frozen"`
 	BookCount int64  `json:"book_count"`
 	CreatedAt string `json:"created_at"`
 }

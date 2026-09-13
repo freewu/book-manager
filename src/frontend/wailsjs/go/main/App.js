@@ -86,6 +86,10 @@ export function FetchDouban(arg1) {
   return window['go']['main']['App']['FetchDouban'](arg1);
 }
 
+export function FreezeTag(arg1, arg2) {
+  return window['go']['main']['App']['FreezeTag'](arg1, arg2);
+}
+
 export function GetBook(arg1) {
   return window['go']['main']['App']['GetBook'](arg1);
 }

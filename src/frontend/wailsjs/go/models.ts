@@ -35,6 +35,7 @@ export namespace models {
 	    id: number;
 	    name: string;
 	    color: string;
+	    frozen: boolean;
 	    book_count: number;
 	    created_at: string;
 	
@@ -47,6 +48,7 @@ export namespace models {
 	        this.id = source["id"];
 	        this.name = source["name"];
 	        this.color = source["color"];
+	        this.frozen = source["frozen"];
 	        this.book_count = source["book_count"];
 	        this.created_at = source["created_at"];
 	    }

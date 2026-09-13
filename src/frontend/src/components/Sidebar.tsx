@@ -9,24 +9,37 @@ interface Props {
   page: Page;
   onNav: (page: Page) => void;
   stats: Stats | null;
+  /** 标签数量（「标签」入口的角标） */
+  tagCount: number;
   collapsed: boolean;
   onToggleCollapsed: (collapsed: boolean) => void;
 }
 
-const NAV: {key: Page; icon: string; labelKey: string; hint?: (s: Stats | null) => string | null}[] = [
+interface NavCtx {
+  stats: Stats | null;
+  tagCount: number;
+}
+
+const NAV: {key: Page; icon: string; labelKey: string; hint?: (c: NavCtx) => string | null}[] = [
   {key: 'bookshelf', icon: '📚', labelKey: 'nav.bookshelf'},
   {
     key: 'reading',
     icon: '📖',
     labelKey: 'nav.reading',
-    hint: (s) => (s && s.reading_books > 0 ? String(s.reading_books) : null),
+    hint: (c) => (c.stats && c.stats.reading_books > 0 ? String(c.stats.reading_books) : null),
+  },
+  {
+    key: 'tags',
+    icon: '🏷️',
+    labelKey: 'nav.tags',
+    hint: (c) => (c.tagCount > 0 ? String(c.tagCount) : null),
   },
   {key: 'stats', icon: '📊', labelKey: 'nav.stats'},
   {key: 'tools', icon: '🧰', labelKey: 'nav.tools'},
   {key: 'settings', icon: '⚙️', labelKey: 'nav.settings'},
 ];
 
-export default function Sidebar({page, onNav, stats, collapsed, onToggleCollapsed}: Props) {
+export default function Sidebar({page, onNav, stats, tagCount, collapsed, onToggleCollapsed}: Props) {
   const {t} = useI18n();
   const [version, setVersion] = useState('');
   useEffect(() => {
@@ -47,7 +60,7 @@ export default function Sidebar({page, onNav, stats, collapsed, onToggleCollapse
 
       <nav className="nav-list">
         {NAV.map((item) => {
-          const hint = item.hint?.(stats);
+          const hint = item.hint?.({stats, tagCount});
           return (
             <button
               key={item.key}

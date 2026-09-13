@@ -144,7 +144,7 @@ func (s *Store) GetBookByPath(path string) (*models.Book, error) {
 
 func (s *Store) tagsForBook(bookID int64) ([]models.Tag, error) {
 	rows, err := s.db.Query(`
-		SELECT t.id, t.name, t.color, t.created_at, 0
+		SELECT t.id, t.name, t.color, t.frozen, t.created_at, 0
 		FROM tags t JOIN book_tags bt ON bt.tag_id=t.id
 		WHERE bt.book_id=? ORDER BY t.name`, bookID)
 	if err != nil {
@@ -154,7 +154,7 @@ func (s *Store) tagsForBook(bookID int64) ([]models.Tag, error) {
 	out := []models.Tag{}
 	for rows.Next() {
 		var t models.Tag
-		if err := rows.Scan(&t.ID, &t.Name, &t.Color, &t.CreatedAt, &t.BookCount); err == nil {
+		if err := rows.Scan(&t.ID, &t.Name, &t.Color, &t.Frozen, &t.CreatedAt, &t.BookCount); err == nil {
 			out = append(out, t)
 		}
 	}

@@ -45,6 +45,8 @@ export function ExtractPdfPages(arg1:models.PdfExtractOptions):Promise<models.Pd
 
 export function FetchDouban(arg1:number):Promise<models.Book>;
 
+export function FreezeTag(arg1:number,arg2:boolean):Promise<void>;
+
 export function GetBook(arg1:number):Promise<models.Book>;
 
 export function GetBookData(arg1:number):Promise<string>;

@@ -282,7 +282,8 @@ export default function Bookshelf({
             <span className="filter-empty">{t('filter.noTags')}</span>
           ) : (
             <div className="chip-row tag-chips">
-              {tags.map((tg) => (
+              {/* 冻结的标签默认不展示，只有它已被选中时保留（否则筛选条件会看不见） */}
+              {tags.filter((tg) => !tg.frozen || tagFilter.includes(tg.id)).map((tg) => (
                 <button
                   key={tg.id}
                   className={`chip ${tagFilter.includes(tg.id) ? 'active' : ''}`}
@@ -290,6 +291,7 @@ export default function Bookshelf({
                 >
                   <span className="tag-dot" style={{background: tg.color}} />
                   {tg.name}
+                  {tg.frozen && <span className="chip-frozen" title={t('tag.frozenBadge')}>❄</span>}
                   <span className="chip-cnt">{tg.book_count}</span>
                 </button>
               ))}

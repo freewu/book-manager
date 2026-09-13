@@ -20,6 +20,8 @@ export default function ToolHost({tool, settings, tags, onClose, onChanged}: Pro
   if (!tool) return null;
   const mod = getTool(tool.id);
   if (!mod) return null;
+  // 整页工具（如「标签管理」）由侧栏入口切页打开，宿主不弹窗。
+  if (!mod.Dialog) return null;
   const Dialog = mod.Dialog;
   return (
     <Dialog

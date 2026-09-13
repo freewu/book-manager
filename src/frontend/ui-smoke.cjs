@@ -20,7 +20,7 @@ const server = http.createServer((req, res) => {
 const PDF_ENC_B64 = 'JVBERi0xLjcKJeLjz9MKMSAwIG9iago8PC9QYWdlcyAyIDAgUi9UeXBlL0NhdGFsb2c+PgplbmRvYmoKMyAwIG9iago8PC9Db250ZW50cyA0IDAgUi9NZWRpYUJveFswIDAgMjAwIDIwMF0vUGFyZW50IDIgMCBSL1Jlc291cmNlczw8L0ZvbnQ8PC9GMSA1IDAgUj4+Pj4vVHlwZS9QYWdlPj4KZW5kb2JqCjQgMCBvYmoKPDwvTGVuZ3RoIDY0Pj4Kc3RyZWFtClTbNepIWFPqxFzl1MnkK4uuA6w/Y3PAEvakJfS3aTYrY7vfPTfUAPjd/SRDhvdw3ndA6fCVsn/hqljHNIPrcD4KZW5kc3RyZWFtCmVuZG9iago1IDAgb2JqCjw8L0Jhc2VGb250L0hlbHZldGljYS9TdWJ0eXBlL1R5cGUxL1R5cGUvRm9udD4+CmVuZG9iagoyIDAgb2JqCjw8L0NvdW50IDEvS2lkc1szIDAgUl0vVHlwZS9QYWdlcz4+CmVuZG9iago2IDAgb2JqCjw8L0NyZWF0aW9uRGF0ZShcbibCBlx0/NlcXHxqhGUqzeuqlTj35G/z3MYz9QHrbYUzLVr2+GFcKfVr/exVdLdnl06CKS9Nb2REYXRlKNRPc9zCif2FosnFx689an97MtpNtVLIXGLpX5pJMbg6XG5SpzBJPTl2wMfmB0gH8g66KS9Qcm9kdWNlcigge3prdVc/+bZWv+uKGDfPnnlJl44wgAMzLxOOA6ZeXHIh6/QFlh6fmJUnmA/gxkoSKT4+CmVuZG9iago3IDAgb2JqCjw8L0NGPDwvU3RkQ0Y8PC9BdXRoRXZlbnQvRG9jT3Blbi9DRk0vQUVTVjMvTGVuZ3RoIDI1Nj4+Pj4vRmlsdGVyL1N0YW5kYXJkL0xlbmd0aCAyNTYvTzw5ODQ0ZmIyYTY4Mjg5ZGJhMWQyMWZlMjhlZmI3YjcyZmYyMTJhMTNmODBjZjNiZDIyNWFiNzI0MWUwOTA4MDc0YmFmNmJhYzZkY2QxYzcwZDBlMGY1NDU2OTJlYzMzNzU+L09FPGVkMDFlYzhkYTNjZGI2N2IxODhkZDBjOTY3ZGI1MDE5MTI3MjA5ZjU5NzQ2MTdmZDkwYjQwNWFlMGIzMzFmZTM+L1AgLTM5MDEvUGVybXM8NGI5ZGZmOGFjMGQ1ZDNkMzdhOGJlZjIzM2FlNzhiYTc+L1IgNS9TdG1GL1N0ZENGL1N0ckYvU3RkQ0YvVTw1MTY1ODQyN2I3NmU5ZTU2MDI0OWQ0MTYzY2I3NTk3YTc3MmJkNGI5NjFmMTEyYmI0NGRlNTljMThlNzk4YmE4YmZlNzM3Njc5NTY4NDg0NWQ1NTUzNTk4MzliZWYyYTQ+L1VFPGFkMDUzYjE0NWQ3OTM3NTQ4MTRmZWU3MGQ5OWQ5YjZiNzUxMTcyMDFkYTQwNmZjYmI1YWFmYmE0MDljOGIxOWU+L1YgNT4+CmVuZG9iagp4cmVmCjAgOAowMDAwMDAwMDAwIDY1NTM1IGYgCjAwMDAwMDAwMTUgMDAwMDAgbiAKMDAwMDAwMDM0NyAwMDAwMCBuIAowMDAwMDAwMDYwIDAwMDAwIG4gCjAwMDAwMDAxNzIgMDAwMDAgbiAKMDAwMDAwMDI4NCAwMDAwMCBuIAowMDAwMDAwMzk4IDAwMDAwIG4gCjAwMDAwMDA2MDUgMDAwMDAgbiAKdHJhaWxlcgo8PC9FbmNyeXB0IDcgMCBSL0lEWzwwMTAyMDMwNDA1MDYwNzA4MDkwQTBCMEMwRDBFMEYxMD4gPDJFRkQ1NjA3OUQ2QjBGNkM3NzQ2RUU2NDIwRUIyMDcyPl0vSW5mbyA2IDAgUi9Sb290IDEgMCBSL1NpemUgOD4+CnN0YXJ0eHJlZgoxMTI0CiUlRU9GCg==';
 
 const BOOKS = [
-  {id: 1, path: 'E:\\Books\\santi.epub', file_name: 'santi.epub', format: 'epub', title: '三体', author: '刘慈欣', publisher: '重庆出版社', language: 'zh', description: '地球往事三部曲之一。', size: 1048576, hash: 'abc', cover_path: '', has_cover: false, douban_url: 'https://book.douban.com/subject/2567698/', douban_rating: 8.9, douban_rating_count: 517493, douban_authors: '刘慈欣', misrecord: false, current_location: '', current_page: 0, total_pages: 0, read_progress: 0, last_read_at: '', total_read_seconds: 0, note_count: 0, tags: [{id: 1, name: '科幻', color: '#5b7cfa', book_count: 1, created_at: ''}], created_at: '2026-01-01 10:00:00', updated_at: '2026-01-01 10:00:00'},
+  {id: 1, path: 'E:\\Books\\santi.epub', file_name: 'santi.epub', format: 'epub', title: '三体', author: '刘慈欣', publisher: '重庆出版社', language: 'zh', description: '地球往事三部曲之一。', size: 1048576, hash: 'abc', cover_path: '', has_cover: false, douban_url: 'https://book.douban.com/subject/2567698/', douban_rating: 8.9, douban_rating_count: 517493, douban_authors: '刘慈欣', misrecord: false, current_location: '', current_page: 0, total_pages: 0, read_progress: 0, last_read_at: '', total_read_seconds: 0, note_count: 0, tags: [{id: 1, name: '科幻', color: '#5b7cfa', frozen: false, book_count: 1, created_at: ''}], created_at: '2026-01-01 10:00:00', updated_at: '2026-01-01 10:00:00'},
   {id: 2, path: 'E:\\Books\\huozhe.pdf', file_name: 'huozhe.pdf', format: 'pdf', title: '活着', author: '余华', publisher: '作家出版社', language: 'zh', description: '讲述福贵的一生。', size: 5242880, hash: 'def', cover_path: '', has_cover: false, douban_url: '', douban_rating: 0, douban_rating_count: 0, douban_authors: '', misrecord: false, current_location: '12', current_page: 12, total_pages: 120, read_progress: 10, last_read_at: '2026-02-01 20:00:00', total_read_seconds: 3600, note_count: 2, tags: [], created_at: '2026-01-02 10:00:00', updated_at: '2026-02-01 20:00:00'},
 ];
 
@@ -36,6 +36,12 @@ const MANY_BOOKS = Array.from({length: 40}, (_, i) => ({
 }));
 
 const MOCK = `
+// 标签页测试用的标签表（ListTags / CreateTag / UpdateTag / FreezeTag / DeleteTag 共享）
+window.__tags = [
+  {id: 1, name: '科幻', color: '#5b7cfa', frozen: false, book_count: 1, created_at: ''},
+  {id: 2, name: '待读', color: '#22c55e', frozen: false, book_count: 0, created_at: ''},
+];
+window.__lastTagAction = null;
 // 生成 n 页的最小 PDF（纯 ASCII，btoa 直接可用）：提取页面工具靠它渲染缩略图
 window.__mkPdf = (n) => {
   const objs = ['<< /Type /Catalog /Pages 2 0 R >>', '', '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>'];
@@ -62,14 +68,41 @@ window.__mkPdf = (n) => {
   return btoa(out);
 };
 window.go = { main: { App: {
-  GetBooks: async () => (window.__manyBooks ? ${JSON.stringify(MANY_BOOKS)} : ${JSON.stringify(BOOKS)}),
+  GetBooks: async (q) => {
+    const all = window.__manyBooks ? ${JSON.stringify(MANY_BOOKS)} : ${JSON.stringify(BOOKS)};
+    const ids = (q && q.tag_ids) || [];
+    if (!ids.length) return all;
+    return all.filter((b) => (b.tags || []).some((x) => ids.indexOf(x.id) >= 0));
+  },
   GetBook: async (id) => ${JSON.stringify(BOOKS)}.find(b => b.id === id) || ${JSON.stringify(BOOKS)}[0],
   GetCoverData: async (id) => id === 1 ? 'data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEASABIAAD/2wBDAP//////////////////////////////////////////////////////////////////////////////////////2wBDAf//////////////////////////////////////////////////////////////////////////////////////wAARCAABAAEDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAX/xAAUEAEAAAAAAAAAAAAAAAAAAAAA/9oADAMBAAIQAxAAAAH/xAAUEAEAAAAAAAAAAAAAAAAAAAAA/9oACAEBAAEFAqf/xAAUEQEAAAAAAAAAAAAAAAAAAAAA/9oACAEDAQE/AV//xAAUEQEAAAAAAAAAAAAAAAAAAAAA/9oACAECAQE/AV//xAAUEAEAAAAAAAAAAAAAAAAAAAAA/9oACAEBAAY/Aqf/xAAUEAEAAAAAAAAAAAAAAAAAAAAA/9oACAEBAAE/IV//2gAMAwEAAgADAAAAEP/EABQRAQAAAAAAAAAAAAAAAAAAABD/2gAIAQMBAT8QH//EABQRAQAAAAAAAAAAAAAAAAAAABD/2gAIAQIBAT8QH//EABQQAQAAAAAAAAAAAAAAAAAAABD/2gAIAQEAAT8QH//Z' : '', GetBookData: async (id) => id === 1 ? 'UEsDBBQACAAIAAAAAAAAAAAAAAAAAAAAAAAWAAAATUVUQS1JTkYvY29udGFpbmVyLnhtbFSNwUoGMQyEX6XkKvtXr6XtD4JnBZ8gdrNabJPQZmV9e9HDqreBmfm+eD16cx80ZhVOcHe5hWuORdiwMo3/jTt645lgHxwEZ52BsdMMVoIo8Spl78QWfmbhhECOQ8S22mj+RrftrS2K9pbg8eH+6dl/H4jtIrqB67RWXOxTKQGqtlrQqrAXetG5KJZ3fKWbozfwOfo/fH9681cAAAD//1BLBwgeC9fJnwAAAN0AAABQSwMEFAAIAAgAAAAAAAAAAAAAAAAAAAAAABEAAABPRUJQUy9jb250ZW50Lm9wZpySPY7bMBCFr0KwDSzqpwhgUPRZCHIkjUNSDDWylfQBnDpN+rQ5QJrcxvE5AsuyvAa22S313nyfhgTlbvKOHSAN2IeaF1nOd0pGbT7pFtjkXRhq3hHFrRDH4zFDG5usT60o8/yj6GPDH3CV5ZyNAT+PsEELgbBBSDVHy5X0QNpq0jfn1ppVG8fkZqU1Ahx4CDSIIisEV9KaLSE5UOc/389/f0ixBtfKJNDUJ/Xv9PPy7XT5/Wvu7+l1wunQjroF9bWbu/V73ocF7aHmpj9A4sz0gSBQzQ1yoaS4b6yk1wEbGEhJJPAM7TzDugTNQmf72HLmwaLe0JcINUevWxD7CO1V9uCKlSuyqSPvnjEdo0OjCfsg5vrD5N2zoVwN5TsN1Wqo3mQQj4sYIga4ORM0DO1ypvuPXobla2E1CxeNWB6c+h8AAP//UEsHCHs40dpGAQAAjwIAAFBLAwQUAAgACAAAAAAAAAAAAAAAAAAAAAAADwAAAE9FQlBTL2NvdmVyLmpwZ+zAsREAEBQFMCOYSfHv2L+gs8mzhiLJzm191awBAAB8L+cFAAD//1BLBwhcv7vFJwAAAMQLAABQSwMEFAAIAAgAAAAAAAAAAAAAAAAAAAAAAA4AAABPRUJQUy9jMS54aHRtbOzXT07CQBTH8asQDsCkcVUzzl00EGtSpNEmxV0hgBrrv1giNSaYmGBTqJUFKa2oh2HezLDyCqb2DOze8uX9Pgf4UsNumpV20zw+3asatm3tEuI4Ts3ZqbVODomm6zppF5sqo0Zjv86ofWSbDcaXl/zrgZLyoqT8HbTqZ4waGpOzGV+6cvpSkW/3EE/UdyaHHiWGxqjFxDwS6Ur0xnDxoc4jSOdyGsBzyPMBz3Ppj+VTD647ED+qNIHb17XbpcQqpPoJxCgRiyuVDGHQh/fsd+VJP+T5zSbyVNKR/gLiO55NNqO+Sj4hCNduFxUqVKhQoUKFChUqVKi2p/5zhZQ5RIp8Yn8BAAD//1BLBwhQn93LCAEAAGkNAABQSwMEFAAIAAgAAAAAAAAAAAAAAAAAAAAAAA4AAABPRUJQUy9jMi54aHRtbLLJKMnNUajIzckrtlXKKCkpsNLXLy8v1ys31ssvStc3tLS01K8AqVGys8lITUyxsynJLMlJtXu+Zs2TXT3PVy+w0YcI2OhDpJPyUyrtbDIMESoUnvZveD6h2UY/w9DOpsDuyY7GJ7tXPZ2z4um6eS9X9Txdt+Rle8+ziW1P97Q8n9sAUfu4oclGv8DORh9imj7IAXaAAAAA//9QSwcID5zQCJoAAACrAAAAUEsDBBQACAAIAAAAAAAAAAAAAAAAAAAAAAAOAAAAT0VCUFMvYzMueGh0bWyyySjJzVGoyM3JK7ZVyigpKbDS1y8vL9crN9bLL0rXN7S0tNSvAKlRsrPJSE1MsbMpySzJSbV7vmbNkx2dz1cvsNGHCNjoQ6ST8lMq7WwyDBEqFJ5uaHnW2f1kR9/TtjlP5+x6smO3jX6GoZ1Ngd3zzpXPJ7Q9Xbvs6c5tT3b0Pl074+mcFY8bmmz0C+xs9CFG6YNstwMEAAD//1BLBwjM+MXYmwAAAKgAAABQSwECFAAUAAgACAAAAAAAHgvXyZ8AAADdAAAAFgAAAAAAAAAAAAAAAAAAAAAATUVUQS1JTkYvY29udGFpbmVyLnhtbFBLAQIUABQACAAIAAAAAAB7ONHaRgEAAI8CAAARAAAAAAAAAAAAAAAAAOMAAABPRUJQUy9jb250ZW50Lm9wZlBLAQIUABQACAAIAAAAAABcv7vFJwAAAMQLAAAPAAAAAAAAAAAAAAAAAGgCAABPRUJQUy9jb3Zlci5qcGdQSwECFAAUAAgACAAAAAAAUJ/dywgBAABpDQAADgAAAAAAAAAAAAAAAADMAgAAT0VCUFMvYzEueGh0bWxQSwECFAAUAAgACAAAAAAAD5zQCJoAAACrAAAADgAAAAAAAAAAAAAAAAAQBAAAT0VCUFMvYzIueGh0bWxQSwECFAAUAAgACAAAAAAAzPjF2JsAAACoAAAADgAAAAAAAAAAAAAAAADmBAAAT0VCUFMvYzMueGh0bWxQSwUGAAAAAAYABgB0AQAAvQUAAAAA' : ${JSON.stringify(PDF_ENC_B64)}, GetStats: async () => ({total_books: 2, total_size: 6291456, total_read_seconds: 3600, total_notes: 2, total_tags: 1, total_misrecords: 0, reading_books: 1, finished_books: 0, unread_books: 1, format_counts: {epub: 1, pdf: 1}}),
   GetSettings: async () => ({idle_seconds: '60', formats: 'epub,pdf,mobi,azw3,kepub', douban_auto: '0', theme: 'light'}),
-  SetSettings: async () => {}, ListTags: async () => ${JSON.stringify([{id: 1, name: '科幻', color: '#5b7cfa', book_count: 1, created_at: ''}])},
+  SetSettings: async () => {}, ListTags: async () => window.__tags.map((x) => Object.assign({}, x)),
   ListScanDirs: async () => ['E:\\\\Books'], AddScanDir: async () => {}, RemoveScanDir: async () => {}, PickScanDir: async () => '', ScanStart: async () => {}, ScanStatus: async () => false,
   ListNotes: async () => [], CreateNote: async () => 1, UpdateNote: async () => {}, DeleteNote: async () => {},
-  DeleteBook: async () => {}, UpdateBookMeta: async () => {}, MarkMisrecord: async () => {}, UnmarkMisrecord: async () => {}, SetBookTags: async () => {}, CreateTag: async () => 1, UpdateTag: async () => {}, DeleteTag: async () => {},
+  DeleteBook: async () => {}, UpdateBookMeta: async () => {}, MarkMisrecord: async () => {}, UnmarkMisrecord: async () => {},
+  SetBookTags: async (id, ids) => { window.__lastBookTags = {id: id, ids: ids}; },
+  CreateTag: async (name, color) => {
+    if (window.__tags.some((x) => x.name === name)) throw new Error('标签名已存在');
+    const id = window.__tags.reduce((m, x) => Math.max(m, x.id), 0) + 1;
+    window.__tags.push({id: id, name: name, color: color, frozen: false, book_count: 0, created_at: ''});
+    window.__lastTagAction = {op: 'create', name: name, color: color};
+    return id;
+  },
+  UpdateTag: async (id, name, color) => {
+    const tg = window.__tags.find((x) => x.id === id);
+    if (tg) { tg.name = name; tg.color = color; }
+    window.__lastTagAction = {op: 'update', id: id, name: name, color: color};
+  },
+  FreezeTag: async (id, frozen) => {
+    const tg = window.__tags.find((x) => x.id === id);
+    if (tg) { tg.frozen = frozen; }
+    window.__lastTagAction = {op: 'freeze', id: id, frozen: frozen};
+  },
+  DeleteTag: async (id) => {
+    window.__tags = window.__tags.filter((x) => x.id !== id);
+    window.__lastTagAction = {op: 'delete', id: id};
+  },
   GetMisrecords: async () => [], RemoveMisrecord: async () => {}, ClearMisrecords: async () => {}, SaveProgress: async () => {}, ReportReading: async () => 3600, ListReadingSessions: async () => [],
   GetVersion: async () => 'v0.1.0-test', GetSystemDarkMode: async () => false, SetUiTheme: async () => {}, AutoEnrichBook: async () => {}, GetBookDataRange: async () => '',
   KKFileAddr: async () => '', SetKKFileAddr: async () => {}, OpenWithKKFileView: async () => {},
@@ -328,7 +361,7 @@ async function main() {
   if (errors.length) console.log('EARLY JS ERRORS:', errors.slice(0, 3).join(' | '));
 
   check('cards = 2', (await page.locator('.book-card').count()) === 2, await page.locator('.book-card').count());
-  check('filter tag chips = 1', (await page.locator('.tag-chips .chip').count()) === 1, await page.locator('.tag-chips .chip').count());
+  check('filter tag chips = 2', (await page.locator('.tag-chips .chip').count()) === 2, await page.locator('.tag-chips .chip').count());
   const logoOk = await page.evaluate(() => { const img = document.querySelector('.logo img.icon'); return img ? (img.src.length > 0 && img.naturalWidth > 0) : false; });
   check('sidebar logo img loaded', logoOk);
 
@@ -346,11 +379,110 @@ async function main() {
   await page.screenshot({path: 'screens/scan.png'});
   await page.evaluate(() => document.querySelector('.modal-close')?.click());
 
-  // open tag manager (书架工具栏「标签」按钮)
+  // ---- 标签页（侧栏「标签」入口）：列表 + 新建 / 编辑 / 冻结 / 删除 ----
+  const nav = (text) => page.evaluate((tx) => {
+    document.querySelectorAll('.nav-item').forEach((b) => { if (b.textContent.includes(tx)) b.click(); });
+  }, text);
+  await nav('标签');
+  await page.waitForTimeout(400);
+  check('侧栏「标签」打开标签页', (await page.locator('.tags-page').count()) === 1, await page.locator('.tags-page').count());
+  check('标签行 = 2', (await page.locator('.tag-row').count()) === 2, await page.locator('.tag-row').count());
+  const firstCount = (await page.locator('.tag-row .tag-count-btn').first().textContent()) || '';
+  check('标签显示书籍数量', firstCount.includes('1 本书'), firstCount);
+  check('使用中分组存在', (await page.locator('.page-section-title').allTextContents()).some((x) => x.includes('使用中')));
+  await page.screenshot({path: 'screens/tags.png'});
+
+  // 新建标签
+  await page.locator('.tag-name-input').first().fill('测试标签');
+  await page.locator('.tag-new-row .btn-primary').click();
+  await page.waitForTimeout(350);
+  check('新建后标签行 = 3', (await page.locator('.tag-row').count()) === 3, await page.locator('.tag-row').count());
+  check('新建调用参数', await page.evaluate(() => {
+    const a = window.__lastTagAction;
+    return !!a && a.op === 'create' && a.name === '测试标签' && String(a.color).startsWith('#');
+  }));
+  check('新建后输入框已清空', (await page.locator('.tag-name-input').first().inputValue()) === '');
+
+  // 重名 → 页面内报错，不再发请求
+  await page.locator('.tag-name-input').first().fill('测试标签');
+  await page.locator('.tag-new-row .btn-primary').click();
+  await page.waitForTimeout(250);
+  const dupErr = (await page.locator('.tag-err').textContent()) || '';
+  check('同名标签报错', dupErr.includes('已经有同名标签'), dupErr);
+
+  // 编辑：改名 + 换色（进入编辑态后行内没有文本，用 data-tag-id 定位）
+  const editId = await page.locator('.tag-row').filter({hasText: '测试标签'}).getAttribute('data-tag-id');
+  const target = page.locator('.tag-row[data-tag-id="' + editId + '"]');
+  await target.locator('button', {hasText: '编辑'}).click();
+  await page.waitForTimeout(250);
+  await target.locator('.tag-name-input').fill('改名标签');
+  await target.locator('.tag-color-input').evaluate((el) => {
+    // React 会拦截 value 的 setter（value tracker），必须走原生 setter 才能触发 onChange
+    const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set;
+    setter.call(el, '#ff0000');
+    el.dispatchEvent(new Event('input', {bubbles: true}));
+  });
+  await target.locator('button', {hasText: '保存'}).click();
+  await page.waitForTimeout(350);
+  check('改名换色调用参数', await page.evaluate(() => {
+    const a = window.__lastTagAction;
+    return !!a && a.op === 'update' && a.name === '改名标签' && a.color === '#ff0000';
+  }));
+  check('改名后列表已更新', (await page.locator('.tag-row').filter({hasText: '改名标签'}).count()) === 1);
+
+  // 冻结 / 解冻
+  const renamed = page.locator('.tag-row').filter({hasText: '改名标签'});
+  await renamed.locator('button', {hasText: '冻结'}).click();
+  await page.waitForTimeout(350);
+  check('冻结调用参数', await page.evaluate(() => {
+    const a = window.__lastTagAction;
+    return !!a && a.op === 'freeze' && a.frozen === true;
+  }));
+  check('冻结行样式 + 徽标', (await page.locator('.tag-row.frozen').count()) === 1, await page.locator('.tag-row.frozen').count());
+  check('已冻结分组存在', (await page.locator('.page-section-title').allTextContents()).some((x) => x.includes('已冻结')));
+  await page.screenshot({path: 'screens/tags-frozen.png'});
+
+  // 点数量 → 跳到书架并按该标签筛选（冻结的标签不再出现在筛选条里）
+  await page.locator('.tag-row').filter({hasText: '科幻'}).locator('.tag-count-btn').click();
+  await page.waitForTimeout(400);
+  check('跳到书架', (await page.locator('.book-grid').count()) === 1 && (await page.locator('.tags-page').count()) === 0);
+  check('书架按标签筛选（1 本）', (await page.locator('.book-card').count()) === 1, await page.locator('.book-card').count());
+  check('筛选条选中该标签', (await page.locator('.tag-chips .chip.active').count()) === 1);
+  check('冻结标签不出现在筛选条', (await page.locator('.tag-chips .chip').count()) === 2, await page.locator('.tag-chips .chip').count());
+  await page.screenshot({path: 'screens/tags-jump.png'});
+  await page.locator('.filter-bar .btn-ghost').click(); // 清除筛选
+  await page.waitForTimeout(400);
+  check('清除筛选后回到 2 本', (await page.locator('.book-card').count()) === 2, await page.locator('.book-card').count());
+
+  // 书架工具栏「标签管理」也进同一个页面
   await page.evaluate(() => { document.querySelectorAll('.toolbar button').forEach(b => { if (b.textContent.includes('标签')) b.click(); }); });
-  await page.waitForTimeout(300);
-  check('tag manager open', (await page.locator('text=新建标签').count()) > 0);
-  await page.evaluate(() => document.querySelector('.modal-close')?.click());
+  await page.waitForTimeout(400);
+  check('书架「标签管理」进入标签页', (await page.locator('.tags-page').count()) === 1);
+  check('书架入口不弹窗', (await page.locator('.modal').count()) === 0);
+
+  // 回到标签页继续：解冻 → 删除
+  await nav('标签');
+  await page.waitForTimeout(350);
+  await page.locator('.tag-row').filter({hasText: '改名标签'}).locator('button', {hasText: '解冻'}).click();
+  await page.waitForTimeout(350);
+  check('解冻调用参数', await page.evaluate(() => {
+    const a = window.__lastTagAction;
+    return !!a && a.op === 'freeze' && a.frozen === false;
+  }));
+  check('解冻后回到使用中', (await page.locator('.tag-row.frozen').count()) === 0);
+
+  page.once('dialog', (d) => d.accept());
+  await page.locator('.tag-row').filter({hasText: '改名标签'}).locator('button', {hasText: '删除'}).click();
+  await page.waitForTimeout(400);
+  check('删除调用参数', await page.evaluate(() => {
+    const a = window.__lastTagAction;
+    return !!a && a.op === 'delete';
+  }));
+  check('删除后标签行 = 2', (await page.locator('.tag-row').count()) === 2, await page.locator('.tag-row').count());
+
+  await nav('书架');
+  await page.waitForTimeout(350);
+  check('回到书架', (await page.locator('.book-card').count()) === 2);
 
   // 设置页（侧栏导航）
   await page.evaluate(() => { document.querySelectorAll('.nav-item').forEach((b) => { if (b.textContent.includes('设置')) b.click(); }); });
@@ -409,6 +541,15 @@ async function main() {
     return overlap > 0 && title.left > icon.left;
   });
   check('图标与名字在同一行', sameRow);
+
+  // 「标签管理」卡片是整页工具：点它进标签页，而不是弹窗
+  await page.locator('.tool-card').filter({hasText: '标签管理'}).click();
+  await page.waitForTimeout(450);
+  check('工具卡片进入标签页', (await page.locator('.tags-page').count()) === 1);
+  check('工具卡片不弹窗', (await page.locator('.modal').count()) === 0);
+  await nav('工具');
+  await page.waitForTimeout(400);
+  check('返回工具页', (await page.locator('.tool-card').count()) === 14, await page.locator('.tool-card').count());
 
   // 工具栏右侧的「类型」筛选：点分类只剩该类工具，点全部恢复
   check(

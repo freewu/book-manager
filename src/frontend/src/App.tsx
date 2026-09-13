@@ -14,8 +14,9 @@ import BookDetail from './components/BookDetail';
 import Reader from './components/Reader';
 import {useToast} from './components/Toast';
 import ToolHost, {type ActiveTool} from './tools/ToolHost';
+import {getTool, getToolPage, toolRoute} from './tools';
 
-export type Page = 'bookshelf' | 'reading' | 'stats' | 'tools' | 'settings';
+export type Page = 'bookshelf' | 'reading' | 'tags' | 'stats' | 'tools' | 'settings';
 
 interface AppState {
   page: Page;
@@ -174,6 +175,8 @@ export default function App() {
   }, [loadBooks, loadTags, loadStats]);
 
   const lang = normalizeLang(st.settings.language);
+  // 当前页面若是「整页工具」（如 tags），渲染它自己的组件。
+  const PageTool = getToolPage(st.page)?.Page;
 
   // 豆瓣补全在后台继续跑：即使弹窗已关闭，完成后也要刷新书架并提示。
   useEffect(() => {
@@ -212,6 +215,25 @@ export default function App() {
     [toast, lang],
   );
 
+  // 工具入口统一走这里：整页工具（如「标签管理」）切页，其余弹窗。
+  const openTool = useCallback((id: string, b?: Book | null) => {
+    const route = toolRoute(getTool(id));
+    if (route) {
+      setSt((s) => ({...s, page: route as Page, tool: null}));
+      return;
+    }
+    setSt((s) => ({...s, tool: {id, book: b ?? null}}));
+  }, []);
+
+  // 标签页点数量 → 书架，并按该标签筛选。
+  const openTagShelf = useCallback(
+    (tagIDs: number[]) => {
+      setSt((s) => ({...s, page: 'bookshelf'}));
+      applyQuery({tagFilter: tagIDs});
+    },
+    [applyQuery],
+  );
+
   const openBook = useCallback((b: Book) => {
     setSt((s) => ({...s, reading: b, detailBook: null}));
     triggerAutoEnrich(b);
@@ -232,6 +254,7 @@ export default function App() {
               page={st.page}
               onNav={(page) => setSt((s) => ({...s, page}))}
               stats={st.stats}
+              tagCount={st.tags.length}
               collapsed={st.settings.sidebar_collapsed === '1'}
               onToggleCollapsed={(c) => {
                 setSt((s) => ({...s, settings: {...s.settings, sidebar_collapsed: c ? '1' : '0'}}));
@@ -258,11 +281,14 @@ export default function App() {
                   onDetail={(b) => setSt((s) => ({...s, detailBook: b}))}
                   onRefresh={refreshAll}
                   onScan={() => setSt((s) => ({...s, tool: {id: 'scan'}}))}
-                  onTags={() => setSt((s) => ({...s, tool: {id: 'tags'}}))}
-                  onOpenTool={(id, b) => setSt((s) => ({...s, tool: {id, book: b ?? null}}))}
+                  onTags={() => openTool('tags')}
+                  onOpenTool={(id, b) => openTool(id, b)}
                 />
               )}
               {st.page === 'reading' && <ReadingPage onOpen={openBook} />}
+              {PageTool && (
+                <PageTool tags={st.tags} onOpenShelf={openTagShelf} onChanged={refreshAll} />
+              )}
               {st.page === 'stats' && (
                 <StatsPage
                   stats={st.stats}
@@ -273,7 +299,7 @@ export default function App() {
               {st.page === 'tools' && (
                 <ToolsPage
                   badges={{misrecords: st.stats?.total_misrecords ?? 0}}
-                  onOpenTool={(id) => setSt((s) => ({...s, tool: {id}}))}
+                  onOpenTool={(id) => openTool(id)}
                 />
               )}
               {st.page === 'settings' && (
