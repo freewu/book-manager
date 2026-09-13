@@ -5,7 +5,7 @@ import React, {useMemo, useState} from 'react';
 import type {Tag} from '../../types';
 import {useI18n} from '../../i18n';
 import type {ToolPageProps} from '../types';
-import {createTag, deleteTag, freezeTag, updateTag} from './lib';
+import {createTag, deleteTag, freezeTag, randomTagColor, updateTag} from './lib';
 
 const DEFAULT_COLOR = '#5b7cfa';
 
@@ -205,6 +205,15 @@ export default function TagsPage({tags, onOpenShelf, onChanged}: ToolPageProps) 
               title={t('tag.colorTitle')}
               onChange={(e) => setColor(e.target.value)}
             />
+            <button
+              type="button"
+              data-testid="tag-random"
+              className="btn btn-soft btn-sm"
+              title={t('tag.randomTip')}
+              onClick={() => setColor(randomTagColor())}
+            >
+              {t('tag.randomColor')}
+            </button>
             <button className="btn btn-primary btn-sm" onClick={create} disabled={!name.trim() || busy}>
               {t('tag.add')}
             </button>

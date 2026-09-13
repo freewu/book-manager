@@ -16,7 +16,7 @@ import {useToast} from './components/Toast';
 import ToolHost, {type ActiveTool} from './tools/ToolHost';
 import {getTool, getToolPage, toolRoute} from './tools';
 
-export type Page = 'bookshelf' | 'reading' | 'tags' | 'stats' | 'tools' | 'settings';
+export type Page = 'bookshelf' | 'reading' | 'tags' | 'misrecords' | 'stats' | 'tools' | 'settings';
 
 interface AppState {
   page: Page;
@@ -293,7 +293,7 @@ export default function App() {
                 <StatsPage
                   stats={st.stats}
                   onOpen={openBook}
-                  onMisrecords={() => setSt((s) => ({...s, tool: {id: 'misrecords'}}))}
+                  onMisrecords={() => openTool('misrecords')}
                 />
               )}
               {st.page === 'tools' && (
