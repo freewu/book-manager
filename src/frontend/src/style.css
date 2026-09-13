@@ -194,6 +194,29 @@ textarea:focus {
   font-size: 12px;
   opacity: 0.6;
 }
+/* 搜索框有内容时右侧出现清空按钮 */
+.search-box.has-clear input {
+  padding-right: 28px;
+}
+.search-clear {
+  position: absolute;
+  right: 6px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 20px;
+  height: 20px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  font-size: 11px;
+  line-height: 1;
+  color: var(--text-3);
+}
+.search-clear:hover {
+  background: var(--panel-2);
+  color: var(--text);
+}
 
 .side-section {
   border-top: 1px solid var(--border);

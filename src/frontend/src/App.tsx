@@ -281,7 +281,6 @@ export default function App() {
                   onDetail={(b) => setSt((s) => ({...s, detailBook: b}))}
                   onRefresh={refreshAll}
                   onScan={() => setSt((s) => ({...s, tool: {id: 'scan'}}))}
-                  onTags={() => openTool('tags')}
                   onOpenTool={(id, b) => openTool(id, b)}
                 />
               )}

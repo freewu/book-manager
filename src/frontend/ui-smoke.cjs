@@ -75,7 +75,9 @@ window.__mkPdf = (n) => {
 };
 window.go = { main: { App: {
   GetBooks: async (q) => {
-    const all = window.__manyBooks ? ${JSON.stringify(MANY_BOOKS)} : ${JSON.stringify(BOOKS)};
+    let all = window.__manyBooks ? ${JSON.stringify(MANY_BOOKS)} : ${JSON.stringify(BOOKS)};
+    const kw = ((q && q.keyword) || '').trim().toLowerCase();
+    if (kw) all = all.filter((b) => (b.title || '').toLowerCase().includes(kw) || (b.author || '').toLowerCase().includes(kw));
     const ids = (q && q.tag_ids) || [];
     if (!ids.length) return all;
     return all.filter((b) => (b.tags || []).some((x) => ids.indexOf(x.id) >= 0));
@@ -389,6 +391,27 @@ async function main() {
   await page.evaluate(() => { document.querySelectorAll('.nav-item').forEach((b) => { if (b.textContent.includes('书架')) b.click(); }); });
   await page.waitForTimeout(300);
 
+  // ---- 书架搜索框：有内容时可以一键清空 ----
+  const searchInput = page.locator('.toolbar-search input');
+  check('搜索框默认没有清空按钮', (await page.locator('[data-testid="search-clear"]').count()) === 0);
+  await searchInput.fill('不存在的书');
+  await page.waitForTimeout(500);
+  check('搜索无结果时书架为空', (await page.locator('.book-card').count()) === 0, await page.locator('.book-card').count());
+  check('搜索有内容时出现清空按钮', (await page.locator('[data-testid="search-clear"]').count()) === 1);
+  await page.locator('[data-testid="search-clear"]').click();
+  await page.waitForTimeout(500);
+  check('点清空后输入框为空', (await searchInput.inputValue()) === '', await searchInput.inputValue());
+  check('清空后书全部回来', (await page.locator('.book-card').count()) === 2, await page.locator('.book-card').count());
+  check('清空后按钮消失', (await page.locator('[data-testid="search-clear"]').count()) === 0);
+
+  await searchInput.fill('三体');
+  await page.waitForTimeout(500);
+  check('搜索命中 1 本', (await page.locator('.book-card').count()) === 1, await page.locator('.book-card').count());
+  await searchInput.press('Escape');
+  await page.waitForTimeout(500);
+  check('Esc 也能清空搜索', (await searchInput.inputValue()) === '', await searchInput.inputValue());
+  check('Esc 清空后回到 2 本', (await page.locator('.book-card').count()) === 2, await page.locator('.book-card').count());
+
   // open scan dialog (工具栏「扫描」按钮)
   await page.evaluate(() => { document.querySelectorAll('.toolbar button').forEach(b => { if (b.textContent.includes('扫描')) b.click(); }); });
   await page.waitForTimeout(400);
@@ -482,11 +505,16 @@ async function main() {
   await page.waitForTimeout(400);
   check('清除筛选后回到 2 本', (await page.locator('.book-card').count()) === 2, await page.locator('.book-card').count());
 
-  // 书架工具栏「标签管理」也进同一个页面
-  await page.evaluate(() => { document.querySelectorAll('.toolbar button').forEach(b => { if (b.textContent.includes('标签')) b.click(); }); });
-  await page.waitForTimeout(400);
-  check('书架「标签管理」进入标签页', (await page.locator('.tags-page').count()) === 1);
-  check('书架入口不弹窗', (await page.locator('.modal').count()) === 0);
+  // 书架工具栏已经不放「标签管理」入口了（只留侧栏「标签」和工具页卡片）
+  check(
+    '书架工具栏没有「标签管理」按钮',
+    await page.evaluate(() =>
+      [...document.querySelectorAll('.toolbar button')].every((b) => !b.textContent.includes('标签管理')),
+    ),
+    await page.evaluate(() =>
+      [...document.querySelectorAll('.toolbar button')].map((b) => b.textContent).join('|'),
+    ),
+  );
 
   // 回到标签页继续：解冻 → 删除
   await nav('标签');

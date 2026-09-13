@@ -25,7 +25,6 @@ interface Props {
   onDetail: (b: Book) => void;
   onRefresh: () => void;
   onScan: () => void;
-  onTags: () => void;
   /** 打开某个工具（书架右键「<分类>工具」子菜单） */
   onOpenTool: (id: string, book?: Book | null) => void;
 }
@@ -78,7 +77,6 @@ export default function Bookshelf({
   onDetail,
   onRefresh,
   onScan,
-  onTags,
   onOpenTool,
 }: Props) {
   const {t} = useI18n();
@@ -309,12 +307,26 @@ export default function Bookshelf({
           {count > books.length ? t('bookshelf.total', {n: count}) : ''}
         </span>
         <span className="spacer" />
-        <div className="search-box toolbar-search">
+        <div className={`search-box toolbar-search ${keyword ? 'has-clear' : ''}`}>
           <input
             placeholder={t('bookshelf.searchPlaceholder')}
             value={keyword}
             onChange={(e) => onKeyword(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Escape' && keyword) onKeyword('');
+            }}
           />
+          {keyword && (
+            <button
+              type="button"
+              className="search-clear"
+              data-testid="search-clear"
+              title={t('bookshelf.searchClear')}
+              onClick={() => onKeyword('')}
+            >
+              ✕
+            </button>
+          )}
         </div>
         <select className="toolbar-select" value={sort} onChange={(e) => onSort(e.target.value, desc)}>
           {SORTS.map(([v, l]) => (
@@ -337,9 +349,6 @@ export default function Bookshelf({
           onClick={() => (selecting ? exitBatch() : setSelecting(true))}
         >
           {selecting ? t('batch.exit') : t('batch.manage')}
-        </button>
-        <button className="btn btn-soft btn-sm" onClick={onTags}>
-          {t('tag.manage')}
         </button>
         <button className="btn btn-soft btn-sm" onClick={onRefresh}>
           {t('btn.refresh')}
