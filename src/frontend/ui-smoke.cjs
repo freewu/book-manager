@@ -714,6 +714,65 @@ async function main() {
   });
   check('epub rendered', epubState.includes('第一章'), epubState);
 
+  // ---- 阅读器工具栏：显示当前字号 + 字号右侧的护眼模式开关 ----
+  const fsNum = (await page.locator('[data-testid="reader-fontsize"] .font-num').innerText()) || '';
+  check('阅读器显示当前字号', fsNum.trim() === '18', fsNum);
+  check(
+    '护眼按钮在字号选择右侧',
+    await page.evaluate(() => {
+      const fs = document.querySelector('[data-testid="reader-fontsize"]');
+      const eye = document.querySelector('[data-testid="reader-eyecare"]');
+      if (!fs || !eye) return false;
+      const a = fs.getBoundingClientRect();
+      const b = eye.getBoundingClientRect();
+      return b.left >= a.right - 1 && Math.abs(b.top - a.top) < 12;
+    }),
+  );
+  check('护眼按钮默认关闭', (await page.locator('.reader-root.eyecare').count()) === 0);
+
+  await page.locator('[data-testid="reader-eyecare"]').click();
+  await page.waitForTimeout(350);
+  check('点击开启护眼模式', (await page.locator('.reader-root.eyecare').count()) === 1);
+  check('护眼按钮高亮', (await page.locator('[data-testid="reader-eyecare"].on').count()) === 1);
+  check(
+    '护眼模式阅读区变羊皮纸色',
+    (await page.evaluate(() => getComputedStyle(document.querySelector('.reader-body')).backgroundColor)) ===
+      'rgb(243, 234, 216)',
+    await page.evaluate(() => getComputedStyle(document.querySelector('.reader-body')).backgroundColor),
+  );
+  check(
+    '护眼模式正文也是羊皮纸色（epub 主题生效）',
+    await page.evaluate(() => {
+      const doc = document.querySelector('#epub-view iframe')?.contentDocument;
+      if (!doc) return false;
+      return getComputedStyle(doc.body).backgroundColor === 'rgb(243, 234, 216)';
+    }),
+  );
+  await page.screenshot({path: 'screens/reader-eyecare.png'});
+  await page.locator('[data-testid="reader-eyecare"]').click();
+  await page.waitForTimeout(300);
+  check('再点关闭护眼模式', (await page.locator('.reader-root.eyecare').count()) === 0);
+
+  // 面板里改字号 → 工具栏上的数字同步
+  await page.locator('[data-testid="reader-fontsize"]').click();
+  await page.waitForTimeout(300);
+  check('字号面板打开', (await page.locator('.reader-settings-panel').count()) === 1);
+  check(
+    '面板里也有护眼模式开关',
+    (await page.locator('[data-testid="panel-eyecare"]').count()) === 1,
+  );
+  await page.locator('.reader-settings-panel input[type="range"]').evaluate((el) => {
+    // React 会拦截 value 的 setter，必须走原生 setter 才能触发 onChange
+    const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set;
+    setter.call(el, '24');
+    el.dispatchEvent(new Event('input', {bubbles: true}));
+  });
+  await page.waitForTimeout(350);
+  const fsNum2 = (await page.locator('[data-testid="reader-fontsize"] .font-num').innerText()) || '';
+  check('字号变化后工具栏数字同步', fsNum2.trim() === '24', fsNum2);
+  await page.locator('[data-testid="reader-fontsize"]').click();
+  await page.waitForTimeout(250);
+
   await page.screenshot({path: 'screens/reader.png'});
   await page.evaluate(() => { const b = document.querySelector('.reader-toolbar button:last-child'); b?.click(); });
 
@@ -2037,6 +2096,18 @@ async function main() {
     });
   });
   check('pdf 解密后渲染页面', pdfState.includes('"canvasW":280') && pdfState.includes('"overlayStillThere":false'), pdfState);
+
+  // PDF 也要能开护眼模式：给页面加暖色滤镜
+  await page.locator('[data-testid="reader-eyecare"]').click();
+  await page.waitForTimeout(350);
+  const pdfFilter = await page.evaluate(() => {
+    const c = document.querySelector('.pdf-page-wrap canvas');
+    return c ? getComputedStyle(c).filter : 'none';
+  });
+  check('PDF 护眼模式给页面加暖色滤镜', pdfFilter.includes('sepia'), pdfFilter);
+  await page.screenshot({path: 'screens/reader-pdf-eyecare.png'});
+  await page.locator('[data-testid="reader-eyecare"]').click();
+  await page.waitForTimeout(250);
   await page.screenshot({path: 'screens/reader-pdf.png'});
 
   const errs = [...new Set(errors)];

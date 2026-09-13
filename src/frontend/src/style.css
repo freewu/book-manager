@@ -990,6 +990,23 @@ textarea:focus {
   justify-content: center;
   font-size: 15px;
 }
+/* 字号按钮：把当前字号直接写在按钮上，打开书就能看到 */
+.reader-toolbar .font-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 6px 10px;
+  font-weight: 600;
+}
+.reader-toolbar .font-num {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-3);
+}
+.reader-toolbar .eye-btn.on {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
 
 .reader-body {
   flex: 1;
@@ -1021,6 +1038,22 @@ textarea:focus {
 .reader-settings-panel label {
   font-size: 12px;
   color: var(--text-2);
+}
+.reader-settings-panel .btn {
+  align-self: flex-start;
+}
+
+/* 护眼模式（羊皮纸配色）：阅读区变暖，PDF 页面也做同样的暖色处理，
+   工具栏保持应用主题的配色，避免深色主题下文字对比度失效。 */
+.reader-root.eyecare {
+  background: #f3ead8;
+  color: #4a3b2a;
+}
+.reader-root.eyecare .reader-body {
+  background: #f3ead8;
+}
+.reader-root.eyecare .pdf-page-wrap canvas {
+  filter: sepia(0.22) saturate(0.9) brightness(0.97);
 }
 .reader-settings-panel input[type="range"] {
   width: 100%;

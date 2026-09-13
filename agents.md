@@ -216,12 +216,23 @@ src/frontend/src/tools/<tool-id>/
   SQLite 的 `foreign_keys(1)` pragma 在 `db.Open` 里已开）。
   失败一律整体回滚：`ErrNoBooks`（空选择）/ `ErrTagMode`（未知方式）/ `ErrBookGone` / `ErrTagGone`
   （传进来的书或标签已被删，前端直接弹后端文案）。批量标签弹窗只列非冻结标签（和书籍详情选择器一致）。
+- 阅读器（`components/Reader.tsx`）工具栏里，「Aa」按钮直接把当前字号写在按钮上（`Aa 18`，`.font-num`），
+  打开书就能看到当前字号，按钮仍然负责展开/收起字号面板（面板里是字号滑杆 + 闲置上限）。
+  紧挨着字号按钮右侧是护眼模式开关（`.eye-btn`，`data-testid="reader-eyecare"`，👁，开启时加 `.on` 高亮），
+  面板里也有一个同状态的「护眼模式」按钮。
+  **护眼模式 = 本次阅读内切到羊皮纸配色（`theme='sepia'`），不改全局主题设置**：
+  状态是 `eyeCareOverride: boolean | null`，`null` 表示跟随全局设置（全局本来就是羊皮纸时开关默认打开），
+  点击后才写死；关闭时若全局主题是羊皮纸则退回浅色，否则开关看起来像没反应。
+  生效范围：`.reader-root.eyecare` 给阅读区铺羊皮纸底色，EPUB / MOBI 靠已有的 `theme='sepia'`
+  分支（epubjs `themes.override` / 文本阅读器内联样式）自动跟着变，
+  PDF 页面是 canvas，额外用 `filter: sepia(0.22) saturate(0.9) brightness(0.97)` 做暖色处理。
+  工具栏底色刻意不跟着变（深色应用主题下会把文字对比度搞坏）。
 - 书架（`components/Bookshelf.tsx`）的滚动位置在会话内记住：打开阅读器时整个书架会被卸载，
   重新挂载后用 `useLayoutEffect` 把 `.shelf` 的 `scrollTop` 放回去（搜索/筛选/排序变化则回到顶部）。
   改这块注意两点：① 保存位置用 `scroll` 监听 + 卸载清理，且清理里只在 `el.isConnected` 时读
   `scrollTop`（passive effect 的清理可能晚于 DOM 摘除，此时读到的是 0）；② 卡片封面用
   `aspect-ratio` 固定高度，网格高度不依赖图片加载，所以挂载即可恢复、不会跳。
-- UI 改动后跑 `just ui-test`：它用 playwright-core 加载 `dist/` 并对 `window.go` 打桩，覆盖书架（含滚动位置恢复、批量管理：勾选/全选/批量打标签三种方式/批量删除与取消/冻结标签不进选择器）/统计/扫描/标签页（三个入口、新建/随机颜色/改名换色/冻结解冻/删除、点数量跳筛选）、误录管理页（统计页入口与工具卡片都进整页、逐条恢复、全部清除后回到空状态）/设置/书籍详情/EPUB 与加密 PDF 阅读器/工具页（分类分组 + 类型筛选）与 PDF 设置·清除密码·转存 EPUB·转存 PDF·合并 PDF·提取页面·转存图片·修改文档·压缩文档 弹窗（含书架右键 EPUB 工具子菜单、合并列表顺序调整与加密文件密码、提取页面的 20 页分组/跨组选择/放大查看、转存图片的页码范围解析/DPI 像素数/JPEG 质量与中途停止、修改文档的原值预填/改动汇总与还原/另存与覆盖两种保存方式/加密文件密码流程、压缩文档的 Ghostscript 检测与手动指定/档位与自定义分辨率/自动退回 pdfcpu/加密文件密码流程）。
+- UI 改动后跑 `just ui-test`：它用 playwright-core 加载 `dist/` 并对 `window.go` 打桩，覆盖书架（含滚动位置恢复、批量管理：勾选/全选/批量打标签三种方式/批量删除与取消/冻结标签不进选择器）/统计/扫描/标签页（三个入口、新建/随机颜色/改名换色/冻结解冻/删除、点数量跳筛选）、误录管理页（统计页入口与工具卡片都进整页、逐条恢复、全部清除后回到空状态）/设置/书籍详情/EPUB 阅读器（当前字号显示、字号右侧的护眼模式开关、字号改动后工具栏数字同步）与加密 PDF 阅读器（含护眼模式的页面滤镜）/工具页（分类分组 + 类型筛选）与 PDF 设置·清除密码·转存 EPUB·转存 PDF·合并 PDF·提取页面·转存图片·修改文档·压缩文档 弹窗（含书架右键 EPUB 工具子菜单、合并列表顺序调整与加密文件密码、提取页面的 20 页分组/跨组选择/放大查看、转存图片的页码范围解析/DPI 像素数/JPEG 质量与中途停止、修改文档的原值预填/改动汇总与还原/另存与覆盖两种保存方式/加密文件密码流程、压缩文档的 Ghostscript 检测与手动指定/档位与自定义分辨率/自动退回 pdfcpu/加密文件密码流程）。
   mock 里没有的绑定会回退成空操作（Proxy），所以新增绑定不会直接弄坏冒烟；
   `pdf2epub:progress` / `epub2pdf:progress` / `pdfmerge:progress` 这类事件由 mock 自己塞进 `window.__events` 触发（`EventsOn` 实际调的是 `window.runtime.EventsOnMultiple`）。
   mock 的 `ReadPdfData` 用文件里的 `window.__mkPdf(23)` 现场造一份 23 页的最小 PDF（够真实渲染缩略图，也够测「翻到第二组只剩 3 页」）。

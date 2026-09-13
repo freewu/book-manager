@@ -27,12 +27,18 @@ export interface ReaderHandle {
 export default function Reader({book, settings, onClose}: Props) {
   const {t} = useI18n();
   const idleLimit = Math.max(10, parseInt(settings.idle_seconds || '60') || 60);
-  const theme = settings.theme || 'light';
+  const globalTheme = settings.theme || 'light';
 
   const [data, setData] = useState<string | null>(null);
   const [error, setError] = useState('');
   const [fontSize, setFontSize] = useState(18);
   const [showSettings, setShowSettings] = useState(false);
+  // 护眼模式：阅读器里的快捷开关，只影响本次阅读，不动全局主题设置。
+  // null = 跟随全局设置（全局主题本来就是羊皮纸时按钮默认是开的）。
+  const [eyeCareOverride, setEyeCareOverride] = useState<boolean | null>(null);
+  const eyeCare = eyeCareOverride ?? globalTheme === 'sepia';
+  // 关掉护眼模式时如果全局主题就是羊皮纸，就退回浅色，否则开关看起来会「没反应」。
+  const theme = eyeCare ? 'sepia' : globalTheme === 'sepia' ? 'light' : globalTheme;
   const [progress, setProgress] = useState(book.read_progress || 0);
   const [pageInfo, setPageInfo] = useState({page: 0, total: 0});
   const [sessionSeconds, setSessionSeconds] = useState(0);
@@ -186,7 +192,7 @@ export default function Reader({book, settings, onClose}: Props) {
 
   return (
     <div
-      className={`reader-root ${theme === 'dark' ? 'dark' : ''}`}
+      className={`reader-root ${theme === 'dark' ? 'dark' : ''} ${eyeCare ? 'eyecare' : ''}`}
       onPointerDown={markActivity}
       onKeyDown={markActivity}
       tabIndex={-1}
@@ -200,7 +206,22 @@ export default function Reader({book, settings, onClose}: Props) {
         </span>
         <span className="t-progress">{t('reader.session', {m: Math.round(sessionSeconds / 60)})}</span>
         <span className="spacer" />
-        <button onClick={() => setShowSettings((v) => !v)}>Aa</button>
+        <button
+          className="font-btn"
+          data-testid="reader-fontsize"
+          title={t('reader.fontSize', {n: fontSize})}
+          onClick={() => setShowSettings((v) => !v)}
+        >
+          Aa<span className="font-num">{fontSize}</span>
+        </button>
+        <button
+          className={`icon-btn eye-btn ${eyeCare ? 'on' : ''}`}
+          data-testid="reader-eyecare"
+          title={eyeCare ? t('reader.eyeCareOff') : t('reader.eyeCareOn')}
+          onClick={() => setEyeCareOverride(!eyeCare)}
+        >
+          👁
+        </button>
         <button onClick={onClose}>{t('reader.close')}</button>
       </div>
 
@@ -250,6 +271,14 @@ export default function Reader({book, settings, onClose}: Props) {
               onChange={(e) => setFontSize(parseInt(e.target.value))}
             />
           </label>
+          <button
+            className={`btn btn-soft btn-sm ${eyeCare ? 'active' : ''}`}
+            data-testid="panel-eyecare"
+            onClick={() => setEyeCareOverride(!eyeCare)}
+          >
+            {t('reader.eyeCare')}
+            {eyeCare ? ' ✓' : ''}
+          </button>
           <label>{t('reader.idleLimit', {n: idleLimit})}</label>
         </div>
       )}
