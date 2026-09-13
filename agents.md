@@ -225,7 +225,9 @@ src/frontend/src/tools/<tool-id>/
   点击后才写死；关闭时若全局主题是羊皮纸则退回浅色，否则开关看起来像没反应。
   生效范围：`.reader-root.eyecare` 给阅读区铺羊皮纸底色，EPUB / MOBI 靠已有的 `theme='sepia'`
   分支（epubjs `themes.override` / 文本阅读器内联样式）自动跟着变，
-  PDF 页面是 canvas，额外用 `filter: sepia(0.22) saturate(0.9) brightness(0.97)` 做暖色处理。
+  PDF 页面是 canvas，额外用 `filter: sepia(0.22) saturate(0.9) brightness(0.97)` 做暖色处理，
+  连 `.pdf-container` 那块硬编码的深灰底衬（`#525659`）也换成暖色纸衬（`#e8dcc2`），
+  否则正文是暖的、周围一圈还是冷的深灰。
   工具栏底色刻意不跟着变（深色应用主题下会把文字对比度搞坏）。
 - 书架（`components/Bookshelf.tsx`）的滚动位置在会话内记住：打开阅读器时整个书架会被卸载，
   重新挂载后用 `useLayoutEffect` 把 `.shelf` 的 `scrollTop` 放回去（搜索/筛选/排序变化则回到顶部）。

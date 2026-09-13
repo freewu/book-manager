@@ -1055,6 +1055,10 @@ textarea:focus {
 .reader-root.eyecare .pdf-page-wrap canvas {
   filter: sepia(0.22) saturate(0.9) brightness(0.97);
 }
+/* PDF 阅读器的深灰底衬（.pdf-container 是硬编码的 #525659）也换成暖色纸衬 */
+.reader-root.eyecare .pdf-container {
+  background: #e8dcc2;
+}
 .reader-settings-panel input[type="range"] {
   width: 100%;
   accent-color: var(--accent);

@@ -2105,6 +2105,10 @@ async function main() {
     return c ? getComputedStyle(c).filter : 'none';
   });
   check('PDF 护眼模式给页面加暖色滤镜', pdfFilter.includes('sepia'), pdfFilter);
+  const pdfBackdrop = await page.evaluate(() =>
+    getComputedStyle(document.querySelector('.pdf-container')).backgroundColor,
+  );
+  check('PDF 护眼模式底衬也变暖色', pdfBackdrop === 'rgb(232, 220, 194)', pdfBackdrop);
   await page.screenshot({path: 'screens/reader-pdf-eyecare.png'});
   await page.locator('[data-testid="reader-eyecare"]').click();
   await page.waitForTimeout(250);
