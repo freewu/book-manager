@@ -196,12 +196,23 @@ src/frontend/src/tools/<tool-id>/
   书架工具栏「标签管理」、工具页「标签管理」卡片）都走 `openTool('tags')`；
   页面支持新建 / 改名换色（行内编辑）/ 冻结解冻 / 删除（`window.confirm`），
   点标签的书籍数量调用 `onOpenShelf([id])` → 书架按 `tag_ids` 过滤。
+- 书架支持批量管理（`components/Bookshelf.tsx` 的 `batch-toggle`）：进入批量模式后卡片上出现勾选框，
+  点卡片变成勾选（不再打开阅读器）、右键菜单不再弹出；操作条按钮为 全选/取消全选、设置标签、批量删除、退出批量。
+  选中集合会在 `books` 变化后自动去掉已经不存在的 id（`useEffect` + 返回原数组避免多余渲染），
+  所以删除/刷新后不会残留幽灵选中。后端一次事务处理整批，避免逐本请求：
+  `db.SetBooksTags(bookIDs, tagIDs, mode)`（`add` 追加 / `remove` 移除 / `replace` 整组替换，
+  常量 `db.TagModeAdd/Remove/Replace`）+ 绑定 `App.SetBooksTags(bookIDs, tagIDs, mode)`；
+  `db.DeleteBooks(ids)` 返回真正删掉的行数 + 绑定 `App.DeleteBooks(ids)`（和单本删除一样只删库记录，
+  不动磁盘文件，确认文案里写明；`book_tags`/`notes`/`reading_sessions` 靠外键 `ON DELETE CASCADE` 清理，
+  SQLite 的 `foreign_keys(1)` pragma 在 `db.Open` 里已开）。
+  失败一律整体回滚：`ErrNoBooks`（空选择）/ `ErrTagMode`（未知方式）/ `ErrBookGone` / `ErrTagGone`
+  （传进来的书或标签已被删，前端直接弹后端文案）。批量标签弹窗只列非冻结标签（和书籍详情选择器一致）。
 - 书架（`components/Bookshelf.tsx`）的滚动位置在会话内记住：打开阅读器时整个书架会被卸载，
   重新挂载后用 `useLayoutEffect` 把 `.shelf` 的 `scrollTop` 放回去（搜索/筛选/排序变化则回到顶部）。
   改这块注意两点：① 保存位置用 `scroll` 监听 + 卸载清理，且清理里只在 `el.isConnected` 时读
   `scrollTop`（passive effect 的清理可能晚于 DOM 摘除，此时读到的是 0）；② 卡片封面用
   `aspect-ratio` 固定高度，网格高度不依赖图片加载，所以挂载即可恢复、不会跳。
-- UI 改动后跑 `just ui-test`：它用 playwright-core 加载 `dist/` 并对 `window.go` 打桩，覆盖书架（含滚动位置恢复）/统计/扫描/标签页（三个入口、新建/改名换色/冻结解冻/删除、点数量跳筛选）/设置/书籍详情/EPUB 与加密 PDF 阅读器/工具页（分类分组 + 类型筛选）与 PDF 设置·清除密码·转存 EPUB·转存 PDF·合并 PDF·提取页面·转存图片·修改文档·压缩文档 弹窗（含书架右键 EPUB 工具子菜单、合并列表顺序调整与加密文件密码、提取页面的 20 页分组/跨组选择/放大查看、转存图片的页码范围解析/DPI 像素数/JPEG 质量与中途停止、修改文档的原值预填/改动汇总与还原/另存与覆盖两种保存方式/加密文件密码流程、压缩文档的 Ghostscript 检测与手动指定/档位与自定义分辨率/自动退回 pdfcpu/加密文件密码流程）。
+- UI 改动后跑 `just ui-test`：它用 playwright-core 加载 `dist/` 并对 `window.go` 打桩，覆盖书架（含滚动位置恢复、批量管理：勾选/全选/批量打标签三种方式/批量删除与取消/冻结标签不进选择器）/统计/扫描/标签页（三个入口、新建/改名换色/冻结解冻/删除、点数量跳筛选）/设置/书籍详情/EPUB 与加密 PDF 阅读器/工具页（分类分组 + 类型筛选）与 PDF 设置·清除密码·转存 EPUB·转存 PDF·合并 PDF·提取页面·转存图片·修改文档·压缩文档 弹窗（含书架右键 EPUB 工具子菜单、合并列表顺序调整与加密文件密码、提取页面的 20 页分组/跨组选择/放大查看、转存图片的页码范围解析/DPI 像素数/JPEG 质量与中途停止、修改文档的原值预填/改动汇总与还原/另存与覆盖两种保存方式/加密文件密码流程、压缩文档的 Ghostscript 检测与手动指定/档位与自定义分辨率/自动退回 pdfcpu/加密文件密码流程）。
   mock 里没有的绑定会回退成空操作（Proxy），所以新增绑定不会直接弄坏冒烟；
   `pdf2epub:progress` / `epub2pdf:progress` / `pdfmerge:progress` 这类事件由 mock 自己塞进 `window.__events` 触发（`EventsOn` 实际调的是 `window.runtime.EventsOnMultiple`）。
   mock 的 `ReadPdfData` 用文件里的 `window.__mkPdf(23)` 现场造一份 23 页的最小 PDF（够真实渲染缩略图，也够测「翻到第二组只剩 3 页」）。

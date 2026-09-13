@@ -5,9 +5,11 @@ import (
 	"database/sql"
 	"os"
 	"path/filepath"
+	"sort"
 	"testing"
 
 	"bookmanager/internal/db"
+	"bookmanager/internal/models"
 	"bookmanager/internal/scanner"
 )
 
@@ -314,5 +316,208 @@ func TestTagFrozenMigration(t *testing.T) {
 	}
 	if err := store.SetTagFrozen(tags[0].ID, true); err != nil {
 		t.Fatal(err)
+	}
+}
+
+// seedBooks 造 n 本书（内容相同、路径不同），批量操作测试用。
+func seedBooks(t *testing.T, store *db.Store, dir string, n int) []int64 {
+	t.Helper()
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	sc := &scanner.Scanner{}
+	for i := 0; i < n; i++ {
+		if err := makeTestEpub(filepath.Join(dir, "b"+string(rune('0'+i))+".epub")); err != nil {
+			t.Fatal(err)
+		}
+	}
+	files := sc.Collect([]string{dir})
+	if len(files) != n {
+		t.Fatalf("收集到 %d 个文件，期望 %d", len(files), n)
+	}
+	sort.Slice(files, func(i, j int) bool { return files[i].Path < files[j].Path })
+	ids := make([]int64, 0, n)
+	for _, f := range files {
+		b, err := sc.Process(f, dir)
+		if err != nil {
+			t.Fatal(err)
+		}
+		id, _, err := store.UpsertScannedBook(b)
+		if err != nil {
+			t.Fatal(err)
+		}
+		ids = append(ids, id)
+	}
+	return ids
+}
+
+func hasID(ids []int64, id int64) bool {
+	for _, x := range ids {
+		if x == id {
+			return true
+		}
+	}
+	return false
+}
+
+func TestSetBooksTagsBatch(t *testing.T) {
+	tmp := t.TempDir()
+	store, err := db.Open(filepath.Join(tmp, "data", "book.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer store.Close()
+	books := seedBooks(t, store, filepath.Join(tmp, "books"), 3)
+
+	tagID := map[string]int64{}
+	for _, name := range []string{"科幻", "小说", "待读"} {
+		id, err := store.CreateTag(name, "#123456")
+		if err != nil {
+			t.Fatal(err)
+		}
+		tagID[name] = id
+	}
+
+	// 第一本先带上「小说」，用来验证 add 不会动原有标签
+	if err := store.SetBookTags(books[0], []int64{tagID["小说"]}); err != nil {
+		t.Fatal(err)
+	}
+
+	// 追加：3 本都拿到「科幻」，第一本保留「小说」
+	if err := store.SetBooksTags(books, []int64{tagID["科幻"]}, db.TagModeAdd); err != nil {
+		t.Fatal(err)
+	}
+	for _, bid := range books {
+		ids, _ := store.BookTagIDs(bid)
+		if !hasID(ids, tagID["科幻"]) {
+			t.Fatalf("book %d 缺少追加的标签: %v", bid, ids)
+		}
+	}
+	if ids, _ := store.BookTagIDs(books[0]); len(ids) != 2 || !hasID(ids, tagID["小说"]) {
+		t.Fatalf("追加不应丢掉原有标签: %v", ids)
+	}
+
+	// 重复追加不产生重复关联
+	if err := store.SetBooksTags(books, []int64{tagID["科幻"], tagID["科幻"]}, db.TagModeAdd); err != nil {
+		t.Fatal(err)
+	}
+	if ids, _ := store.BookTagIDs(books[0]); len(ids) != 2 {
+		t.Fatalf("重复追加产生了多余关联: %v", ids)
+	}
+
+	// 移除：只影响传进来的书
+	if err := store.SetBooksTags(books[1:], []int64{tagID["科幻"]}, db.TagModeRemove); err != nil {
+		t.Fatal(err)
+	}
+	if ids, _ := store.BookTagIDs(books[1]); hasID(ids, tagID["科幻"]) {
+		t.Fatalf("移除失败: %v", ids)
+	}
+	if ids, _ := store.BookTagIDs(books[0]); !hasID(ids, tagID["科幻"]) {
+		t.Fatalf("没参与移除的书不该被改: %v", ids)
+	}
+	for _, tg := range mustTags(t, store) {
+		if tg.ID == tagID["科幻"] && tg.BookCount != 1 {
+			t.Fatalf("标签计数: %+v", tg)
+		}
+	}
+
+	// 替换：整组换成选中的标签
+	if err := store.SetBooksTags([]int64{books[0]}, []int64{tagID["待读"]}, db.TagModeReplace); err != nil {
+		t.Fatal(err)
+	}
+	if ids, _ := store.BookTagIDs(books[0]); len(ids) != 1 || ids[0] != tagID["待读"] {
+		t.Fatalf("替换结果: %v", ids)
+	}
+
+	// 替换成空 = 清空标签
+	if err := store.SetBooksTags(books, nil, db.TagModeReplace); err != nil {
+		t.Fatal(err)
+	}
+	for _, bid := range books {
+		if ids, _ := store.BookTagIDs(bid); len(ids) != 0 {
+			t.Fatalf("清空失败: %v", ids)
+		}
+	}
+
+	// 参数与脏数据
+	if err := store.SetBooksTags(nil, []int64{tagID["科幻"]}, db.TagModeAdd); err != db.ErrNoBooks {
+		t.Fatalf("空书籍列表: %v", err)
+	}
+	if err := store.SetBooksTags([]int64{0, -1}, []int64{tagID["科幻"]}, db.TagModeAdd); err != db.ErrNoBooks {
+		t.Fatalf("非法 id 应被过滤成空列表: %v", err)
+	}
+	if err := store.SetBooksTags(books, nil, "bogus"); err != db.ErrTagMode {
+		t.Fatalf("未知方式: %v", err)
+	}
+	if err := store.SetBooksTags([]int64{999999}, nil, db.TagModeAdd); err != db.ErrBookGone {
+		t.Fatalf("书籍不存在: %v", err)
+	}
+	if err := store.SetBooksTags(books, []int64{999999}, db.TagModeReplace); err != db.ErrTagGone {
+		t.Fatalf("标签不存在: %v", err)
+	}
+	// 失败整批回滚：上面那次 replace 失败后，之前的关联要还在
+	if err := store.SetBooksTags([]int64{books[0]}, []int64{tagID["科幻"]}, db.TagModeAdd); err != nil {
+		t.Fatal(err)
+	}
+	if err := store.SetBooksTags([]int64{books[0]}, []int64{tagID["科幻"], 999999}, db.TagModeReplace); err != db.ErrTagGone {
+		t.Fatalf("标签不存在（带合法标签）: %v", err)
+	}
+	if ids, _ := store.BookTagIDs(books[0]); len(ids) != 1 || ids[0] != tagID["科幻"] {
+		t.Fatalf("失败的批量操作应该整体回滚: %v", ids)
+	}
+}
+
+func mustTags(t *testing.T, store *db.Store) []models.Tag {
+	t.Helper()
+	tags, err := store.ListTags()
+	if err != nil {
+		t.Fatal(err)
+	}
+	return tags
+}
+
+func TestDeleteBooksBatch(t *testing.T) {
+	tmp := t.TempDir()
+	store, err := db.Open(filepath.Join(tmp, "data", "book.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer store.Close()
+	books := seedBooks(t, store, filepath.Join(tmp, "books"), 3)
+
+	tid, err := store.CreateTag("科幻", "#ff0000")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := store.SetBooksTags(books, []int64{tid}, db.TagModeAdd); err != nil {
+		t.Fatal(err)
+	}
+
+	n, err := store.DeleteBooks(books[:2])
+	if err != nil || n != 2 {
+		t.Fatalf("批量删除: n=%d err=%v", n, err)
+	}
+	if _, err := store.GetBook(books[0]); err == nil {
+		t.Fatal("被删的书还能查到")
+	}
+	if ids, _ := store.BookTagIDs(books[0]); len(ids) != 0 {
+		t.Fatalf("级联没清掉标签关联: %v", ids)
+	}
+	left, _ := store.ListBooks(db.BookQuery{})
+	if len(left) != 1 || left[0].ID != books[2] {
+		t.Fatalf("剩余书籍: %+v", left)
+	}
+	for _, tg := range mustTags(t, store) {
+		if tg.ID == tid && tg.BookCount != 1 {
+			t.Fatalf("标签计数应随删除减少: %+v", tg)
+		}
+	}
+
+	// 空列表报错；不存在的 id 不算错，返回 0 行
+	if _, err := store.DeleteBooks(nil); err != db.ErrNoBooks {
+		t.Fatalf("空列表: %v", err)
+	}
+	if k, err := store.DeleteBooks([]int64{999999}); err != nil || k != 0 {
+		t.Fatalf("删除不存在的书: k=%d err=%v", k, err)
 	}
 }

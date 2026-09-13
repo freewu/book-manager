@@ -255,6 +255,34 @@ func (s *Store) DeleteBook(id int64) error {
 	return err
 }
 
+// DeleteBooks removes several book rows in one transaction (the files are NOT
+// deleted, same as DeleteBook). Returns how many rows actually went away.
+func (s *Store) DeleteBooks(ids []int64) (int64, error) {
+	ids = uniqIDs(ids)
+	if len(ids) == 0 {
+		return 0, ErrNoBooks
+	}
+	tx, err := s.db.Begin()
+	if err != nil {
+		return 0, err
+	}
+	defer tx.Rollback()
+	var n int64
+	for _, id := range ids {
+		res, err := tx.Exec("DELETE FROM books WHERE id=?", id)
+		if err != nil {
+			return 0, err
+		}
+		if k, err := res.RowsAffected(); err == nil {
+			n += k
+		}
+	}
+	if err := tx.Commit(); err != nil {
+		return 0, err
+	}
+	return n, nil
+}
+
 // CountBooks counts non-misrecorded books.
 func (s *Store) CountBooks() (int64, error) {
 	var n int64

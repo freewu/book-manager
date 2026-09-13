@@ -23,6 +23,8 @@ export function DataDir():Promise<string>;
 
 export function DeleteBook(arg1:number):Promise<void>;
 
+export function DeleteBooks(arg1:Array<number>):Promise<number>;
+
 export function DeleteNote(arg1:number):Promise<void>;
 
 export function DeleteTag(arg1:number):Promise<void>;
@@ -132,6 +134,8 @@ export function ScanStart(arg1:Array<string>):Promise<void>;
 export function ScanStatus():Promise<boolean>;
 
 export function SetBookTags(arg1:number,arg2:Array<number>):Promise<void>;
+
+export function SetBooksTags(arg1:Array<number>,arg2:Array<number>,arg3:string):Promise<void>;
 
 export function SetKKFileAddr(arg1:string):Promise<void>;
 

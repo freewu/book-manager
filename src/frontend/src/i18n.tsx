@@ -898,6 +898,29 @@ const DICT: Dict = {
   'tag.errExists': {'zh-CN': '已经有同名标签了', 'zh-TW': '已經有同名標籤了', 'en': 'A tag with this name already exists'},
   'tag.errEmpty': {'zh-CN': '标签名不能为空', 'zh-TW': '標籤名稱不能為空', 'en': 'Tag name is required'},
 
+  // ---- 书架批量管理 ----
+  'batch.manage': {'zh-CN': '批量管理', 'zh-TW': '批次管理', 'en': 'Batch'},
+  'batch.exit': {'zh-CN': '退出批量', 'zh-TW': '結束批次', 'en': 'Done'},
+  'batch.selected': {'zh-CN': '已选 {n} 本', 'zh-TW': '已選 {n} 本', 'en': '{n} selected'},
+  'batch.selectAll': {'zh-CN': '全选（{n} 本）', 'zh-TW': '全選（{n} 本）', 'en': 'Select all ({n})'},
+  'batch.clearSel': {'zh-CN': '取消全选', 'zh-TW': '取消全選', 'en': 'Clear selection'},
+  'batch.pickHint': {'zh-CN': '点卡片勾选，可滚动后继续选', 'zh-TW': '點卡片勾選，可捲動後繼續選', 'en': 'Click cards to select; keep selecting as you scroll'},
+  'batch.setTags': {'zh-CN': '设置标签', 'zh-TW': '設定標籤', 'en': 'Set tags'},
+  'batch.delete': {'zh-CN': '批量删除', 'zh-TW': '批次刪除', 'en': 'Delete'},
+  'batch.deleteConfirm': {'zh-CN': '从书架移除选中的 {n} 本书？只删除书架记录，磁盘上的文件不会被删除。', 'zh-TW': '從書架移除選中的 {n} 本書？只刪除書架記錄，磁碟上的檔案不會被刪除。', 'en': 'Remove {n} books from the shelf? Only the library records are deleted; the files on disk stay.'},
+  'batch.deleteOk': {'zh-CN': '已从书架移除 {n} 本', 'zh-TW': '已從書架移除 {n} 本', 'en': 'Removed {n} books'},
+  'batch.tagTitle': {'zh-CN': '批量设置标签', 'zh-TW': '批次設定標籤', 'en': 'Batch set tags'},
+  'batch.tagHint': {'zh-CN': '将应用于选中的 {n} 本书', 'zh-TW': '將套用於選中的 {n} 本書', 'en': 'Applies to the {n} selected books'},
+  'batch.tagOk': {'zh-CN': '已更新 {n} 本书的标签', 'zh-TW': '已更新 {n} 本書的標籤', 'en': 'Tags updated for {n} books'},
+  'batch.modeAdd': {'zh-CN': '追加标签', 'zh-TW': '追加標籤', 'en': 'Add'},
+  'batch.modeAddHint': {'zh-CN': '给选中的书补上这些标签，原有的标签保留。', 'zh-TW': '給選中的書補上這些標籤，原有的標籤保留。', 'en': 'Adds these tags while keeping the existing ones.'},
+  'batch.modeRemove': {'zh-CN': '移除标签', 'zh-TW': '移除標籤', 'en': 'Remove'},
+  'batch.modeRemoveHint': {'zh-CN': '只从选中的书上去掉这些标签，其余标签保留。', 'zh-TW': '只從選中的書上去掉這些標籤，其餘標籤保留。', 'en': 'Removes only these tags from the selected books.'},
+  'batch.modeReplace': {'zh-CN': '替换标签', 'zh-TW': '替換標籤', 'en': 'Replace'},
+  'batch.modeReplaceHint': {'zh-CN': '把这些书的标签整组换成选中的标签，原有标签会被清掉。', 'zh-TW': '把這些書的標籤整組換成選中的標籤，原有標籤會被清掉。', 'en': 'Replaces the whole tag set of these books with the selected tags.'},
+  'batch.noTags': {'zh-CN': '还没有标签，先到「标签管理」新建', 'zh-TW': '還沒有標籤，先到「標籤管理」新建', 'en': 'No tags yet — create one in Tag manager first'},
+  'batch.apply': {'zh-CN': '应用', 'zh-TW': '套用', 'en': 'Apply'},
+
   // ---- misrecord manager ----
   'mis.title': {'zh-CN': '🚫 误录管理', 'zh-TW': '🚫 誤錄管理', 'en': '🚫 Misrecord manager'},
   'mis.intro': {

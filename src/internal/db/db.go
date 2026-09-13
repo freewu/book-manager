@@ -18,6 +18,18 @@ import (
 var (
 	ErrTagNameEmpty = errors.New("标签名不能为空")
 	ErrTagExists    = errors.New("标签名已存在")
+	// 批量操作
+	ErrNoBooks  = errors.New("请先选择书籍")
+	ErrTagMode  = errors.New("未知的标签操作方式")
+	ErrBookGone = errors.New("选中的书籍已不存在，请刷新后重试")
+	ErrTagGone  = errors.New("选中的标签已不存在，请刷新后重试")
+)
+
+// 批量设置标签的方式（前端直接把字符串传过来）。
+const (
+	TagModeAdd     = "add"     // 追加：保留原有标签
+	TagModeRemove  = "remove"  // 移除：只去掉选中的标签
+	TagModeReplace = "replace" // 替换：整组换成选中的标签
 )
 
 // defaultTagColor is used when a tag is created without an explicit color.
@@ -450,6 +462,94 @@ func (s *Store) SetBookTags(bookID int64, tagIDs []int64) error {
 		}
 	}
 	return tx.Commit()
+}
+
+// SetBooksTags applies one tag operation to many books in a single transaction:
+//
+//	add     - 给每本书加上这些标签（原有标签保留）
+//	remove  - 从每本书去掉这些标签
+//	replace - 把这些书的标签整组换成这些标签
+//
+// bookIDs 为空返回 ErrNoBooks；mode 不认识返回 ErrTagMode；
+// 传进来的书/标签已经不存在时返回 ErrBookGone / ErrTagGone（整体回滚）。
+func (s *Store) SetBooksTags(bookIDs, tagIDs []int64, mode string) error {
+	bookIDs = uniqIDs(bookIDs)
+	if len(bookIDs) == 0 {
+		return ErrNoBooks
+	}
+	switch mode {
+	case TagModeAdd, TagModeRemove, TagModeReplace:
+	default:
+		return ErrTagMode
+	}
+	tagIDs = uniqIDs(tagIDs)
+
+	tx, err := s.db.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	if err := checkIDsExist(tx, "books", bookIDs, ErrBookGone); err != nil {
+		return err
+	}
+	if err := checkIDsExist(tx, "tags", tagIDs, ErrTagGone); err != nil {
+		return err
+	}
+
+	for _, bid := range bookIDs {
+		if mode == TagModeReplace {
+			if _, err := tx.Exec("DELETE FROM book_tags WHERE book_id=?", bid); err != nil {
+				return err
+			}
+		}
+		for _, tid := range tagIDs {
+			if mode == TagModeRemove {
+				if _, err := tx.Exec("DELETE FROM book_tags WHERE book_id=? AND tag_id=?", bid, tid); err != nil {
+					return err
+				}
+				continue
+			}
+			if _, err := tx.Exec("INSERT OR IGNORE INTO book_tags(book_id,tag_id) VALUES(?,?)", bid, tid); err != nil {
+				return err
+			}
+		}
+	}
+	return tx.Commit()
+}
+
+// uniqIDs 去重（保持顺序），批量操作里 IN 查询和计数都要靠它。
+func uniqIDs(ids []int64) []int64 {
+	out := make([]int64, 0, len(ids))
+	seen := make(map[int64]bool, len(ids))
+	for _, id := range ids {
+		if id <= 0 || seen[id] {
+			continue
+		}
+		seen[id] = true
+		out = append(out, id)
+	}
+	return out
+}
+
+// checkIDsExist 确认 ids 在表里都存在，否则返回 missing 错误（整批回滚）。
+func checkIDsExist(tx *sql.Tx, table string, ids []int64, missing error) error {
+	if len(ids) == 0 {
+		return nil
+	}
+	ph := strings.TrimSuffix(strings.Repeat("?,", len(ids)), ",")
+	args := make([]any, len(ids))
+	for i, id := range ids {
+		args[i] = id
+	}
+	var n int
+	if err := tx.QueryRow("SELECT COUNT(*) FROM "+table+" WHERE id IN ("+ph+")", args...).Scan(&n); err != nil {
+		return err
+	}
+	if n != len(ids) {
+		return missing
+	}
+	return nil
 }
 
 // BookTagIDs returns tag ids for a book.

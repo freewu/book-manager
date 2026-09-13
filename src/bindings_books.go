@@ -51,6 +51,14 @@ func (a *App) DeleteBook(id int64) error {
 	return a.store.DeleteBook(id)
 }
 
+// DeleteBooks 批量从书架移除（同样不删磁盘文件），返回真正删掉的行数。
+func (a *App) DeleteBooks(ids []int64) (int64, error) {
+	if a.store == nil {
+		return 0, errors.New("database not ready")
+	}
+	return a.store.DeleteBooks(ids)
+}
+
 // MarkMisrecord flags a book as incorrectly scanned; it will be hidden from
 // the shelf and its file skipped on future imports.
 func (a *App) MarkMisrecord(id int64, reason string) error {

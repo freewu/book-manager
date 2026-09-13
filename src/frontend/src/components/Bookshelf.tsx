@@ -38,6 +38,15 @@ const FORMATS = [
   {key: 'kepub', label: 'KEPUB'},
 ];
 
+/** 批量设置标签的三种方式（与后端 db.TagMode* 一致） */
+type BatchTagMode = 'add' | 'remove' | 'replace';
+
+const BATCH_MODES: {key: BatchTagMode; labelKey: string; hintKey: string}[] = [
+  {key: 'add', labelKey: 'batch.modeAdd', hintKey: 'batch.modeAddHint'},
+  {key: 'remove', labelKey: 'batch.modeRemove', hintKey: 'batch.modeRemoveHint'},
+  {key: 'replace', labelKey: 'batch.modeReplace', hintKey: 'batch.modeReplaceHint'},
+];
+
 const SORTS: [string, string][] = [
   ['created', 'sort.created'],
   ['title', 'sort.title'],
@@ -85,6 +94,14 @@ export default function Bookshelf({
   const [ctx, setCtx] = useState<{x: number; y: number; book: Book} | null>(null);
   // Tag picker dialog opened from the context menu
   const [tagFor, setTagFor] = useState<Book | null>(null);
+  // 批量管理：开着的时候点卡片是勾选而不是打开阅读器
+  const [selecting, setSelecting] = useState(false);
+  const [sel, setSel] = useState<number[]>([]);
+  // 批量设置标签弹窗
+  const [batch, setBatch] = useState(false);
+  const [picked, setPicked] = useState<number[]>([]);
+  const [mode, setMode] = useState<BatchTagMode>('add');
+  const [busy, setBusy] = useState(false);
   // timeStamp of the right-click that opened the current menu
   const ctxOpenedAt = useRef(0);
   // 「<分类>工具」子菜单（例如 PDF → 设置密码），只显示适用于该格式的工具
@@ -160,10 +177,72 @@ export default function Bookshelf({
   };
 
   const activeFilterCount = formats.length + tagFilter.length;
+  // 批量打标签也不提供冻结的标签（和书籍详情里的选择器保持一致）
+  const availableTags = tags.filter((tg) => !tg.frozen);
+
+  // ---------- 批量管理 ----------
+  // 列表变化后把已经不存在的书从选择里去掉（删除 / 筛选刷新都靠它）
+  useEffect(() => {
+    setSel((prev) => {
+      const next = prev.filter((id) => books.some((b) => b.id === id));
+      return next.length === prev.length ? prev : next;
+    });
+  }, [books]);
+
+  const allSelected = books.length > 0 && books.every((b) => sel.includes(b.id));
+
+  const toggleSelect = (id: number) => {
+    setSel((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
+  };
+
+  const exitBatch = () => {
+    setSelecting(false);
+    setSel([]);
+    setBatch(false);
+  };
+
+  const openBatch = () => {
+    setPicked([]);
+    setMode('add');
+    setBatch(true);
+  };
+
+  const applyBatchTags = async () => {
+    if (!sel.length || !picked.length || busy) return;
+    setBusy(true);
+    try {
+      await App.SetBooksTags(sel, picked, mode);
+      toast.ok(t('batch.tagOk', {n: sel.length}));
+      setPicked([]);
+      setBatch(false);
+      onRefresh();
+    } catch (e) {
+      toast.err(String(e));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const removeSelected = async () => {
+    if (!sel.length || busy) return;
+    if (!confirm(t('batch.deleteConfirm', {n: sel.length}))) return;
+    setBusy(true);
+    try {
+      const n = await App.DeleteBooks(sel);
+      toast.ok(t('batch.deleteOk', {n}));
+      exitBatch();
+      onRefresh();
+    } catch (e) {
+      toast.err(String(e));
+    } finally {
+      setBusy(false);
+    }
+  };
 
   const openCtx = (e: React.MouseEvent, book: Book) => {
     e.preventDefault();
     e.stopPropagation();
+    if (selecting) return; // 批量模式下右键不弹菜单，避免和勾选混淆
     ctxOpenedAt.current = e.timeStamp;
     setCtx({x: e.clientX, y: e.clientY, book});
   };
@@ -251,6 +330,14 @@ export default function Bookshelf({
         >
           {desc ? t('sort.descShort') : t('sort.ascShort')}
         </button>
+        <button
+          data-testid="batch-toggle"
+          className={`btn btn-soft btn-sm ${selecting ? 'active' : ''}`}
+          disabled={books.length === 0 && !selecting}
+          onClick={() => (selecting ? exitBatch() : setSelecting(true))}
+        >
+          {selecting ? t('batch.exit') : t('batch.manage')}
+        </button>
         <button className="btn btn-soft btn-sm" onClick={onTags}>
           {t('tag.manage')}
         </button>
@@ -261,6 +348,41 @@ export default function Bookshelf({
           {t('btn.scan')}
         </button>
       </div>
+
+      {selecting && (
+        <div className="batch-bar">
+          <span className="batch-count">{t('batch.selected', {n: sel.length})}</span>
+          <button
+            data-testid="batch-all"
+            className="btn btn-soft btn-sm"
+            disabled={books.length === 0}
+            onClick={() => setSel(allSelected ? [] : books.map((b) => b.id))}
+          >
+            {allSelected ? t('batch.clearSel') : t('batch.selectAll', {n: books.length})}
+          </button>
+          <span className="batch-hint">{t('batch.pickHint')}</span>
+          <span className="spacer" />
+          <button
+            data-testid="batch-tags"
+            className="btn btn-soft btn-sm"
+            disabled={!sel.length || busy}
+            onClick={openBatch}
+          >
+            {t('batch.setTags')}
+          </button>
+          <button
+            data-testid="batch-del"
+            className="btn btn-danger btn-sm"
+            disabled={!sel.length || busy}
+            onClick={removeSelected}
+          >
+            {t('batch.delete')}
+          </button>
+          <button data-testid="batch-exit" className="btn btn-ghost btn-sm" onClick={exitBatch}>
+            {t('batch.exit')}
+          </button>
+        </div>
+      )}
 
       <div className="filter-bar">
         <span className="filter-label">{t('filter.format')}</span>
@@ -336,7 +458,9 @@ export default function Bookshelf({
                 key={b.id}
                 book={b}
                 cover={covers[b.id] ?? null}
-                onOpen={() => onOpen(b)}
+                selecting={selecting}
+                selected={sel.includes(b.id)}
+                onOpen={() => (selecting ? toggleSelect(b.id) : onOpen(b))}
                 onCtx={(e) => openCtx(e, b)}
               />
             ))}
@@ -419,6 +543,68 @@ export default function Bookshelf({
         </div>
       )}
 
+      {batch && (
+        <div className="modal-mask" onClick={() => !busy && setBatch(false)}>
+          <div className="modal" style={{width: 500}} onClick={(e) => e.stopPropagation()}>
+            <div className="modal-head">
+              <h2>{t('batch.tagTitle')}</h2>
+              <button className="modal-close" onClick={() => setBatch(false)} disabled={busy}>
+                ✕
+              </button>
+            </div>
+            <div className="modal-body">
+              <div className="sub" style={{marginBottom: 10}}>
+                {t('batch.tagHint', {n: sel.length})}
+              </div>
+              <div className="chip-row" data-field="mode">
+                {BATCH_MODES.map((m) => (
+                  <button
+                    key={m.key}
+                    data-mode={m.key}
+                    className={`chip ${mode === m.key ? 'active' : ''}`}
+                    onClick={() => setMode(m.key)}
+                  >
+                    {t(m.labelKey)}
+                  </button>
+                ))}
+              </div>
+              <div className="hint" style={{margin: '8px 0 12px'}}>
+                {t(BATCH_MODES.find((m) => m.key === mode)!.hintKey)}
+              </div>
+              <div className="tag-picker" data-field="tags">
+                {availableTags.map((tg) => (
+                  <span
+                    key={tg.id}
+                    data-tag-id={tg.id}
+                    className={`tag-choice ${picked.includes(tg.id) ? 'on' : ''}`}
+                    style={picked.includes(tg.id) ? {background: tg.color, borderColor: tg.color} : {}}
+                    onClick={() =>
+                      setPicked((prev) => (prev.includes(tg.id) ? prev.filter((x) => x !== tg.id) : [...prev, tg.id]))
+                    }
+                  >
+                    {tg.name}
+                  </span>
+                ))}
+                {availableTags.length === 0 && <span className="filter-empty">{t('batch.noTags')}</span>}
+              </div>
+            </div>
+            <div className="modal-foot">
+              <button className="btn btn-soft" onClick={() => setBatch(false)} disabled={busy}>
+                {t('tag.cancel')}
+              </button>
+              <button
+                className="btn btn-primary"
+                data-testid="batch-apply"
+                disabled={!picked.length || busy}
+                onClick={applyBatchTags}
+              >
+                {t('batch.apply')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {tagFor && (
         <div className="modal-mask" onClick={() => setTagFor(null)}>
           <div className="modal" style={{width: 430}} onClick={(e) => e.stopPropagation()}>
@@ -465,11 +651,15 @@ function groupByCategory(tools: ToolModule[]): [ToolCategory, ToolModule[]][] {
 function BookCard({
   book,
   cover,
+  selecting,
+  selected,
   onOpen,
   onCtx,
 }: {
   book: Book;
   cover: string | null;
+  selecting: boolean;
+  selected: boolean;
   onOpen: () => void;
   onCtx: (e: React.MouseEvent) => void;
 }) {
@@ -478,8 +668,17 @@ function BookCard({
   const progress = Math.round(book.read_progress * 10) / 10;
 
   return (
-    <div className="book-card" onClick={onOpen} onContextMenu={(e) => onCtx(e)}>
+    <div
+      className={`book-card${selecting ? ' selecting' : ''}${selected ? ' picked' : ''}`}
+      onClick={onOpen}
+      onContextMenu={(e) => onCtx(e)}
+    >
       <div className="book-cover">
+        {selecting && (
+          <span className="pick-box" data-picked={selected ? '1' : '0'}>
+            {selected ? '✓' : ''}
+          </span>
+        )}
         <span className="fmt-badge">{fmt}</span>
         {cover ? (
           <img src={cover} alt={book.title} loading="lazy" />

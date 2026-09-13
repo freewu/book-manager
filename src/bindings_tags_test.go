@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"bookmanager/internal/db"
@@ -162,4 +163,124 @@ func TestTagsJSONContract(t *testing.T) {
 	if m["frozen"] != true {
 		t.Fatalf("frozen 值：%v", m["frozen"])
 	}
+}
+
+// seedBindingBooks 造 n 本书，只关心 id（批量绑定测试用）。
+func seedBindingBooks(t *testing.T, a *App, n int) []int64 {
+	t.Helper()
+	ids := make([]int64, 0, n)
+	for i := 0; i < n; i++ {
+		id, _, err := a.store.UpsertScannedBook(&models.Book{
+			Path:     filepath.Join("E:", "Books", "batch"+string(rune('0'+i))+".epub"),
+			FileName: "batch" + string(rune('0'+i)) + ".epub",
+			Format:   "epub",
+			Title:    "批量书" + string(rune('0'+i)),
+			Size:     1024,
+			Hash:     "hash" + string(rune('0'+i)),
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+		ids = append(ids, id)
+	}
+	return ids
+}
+
+func TestSetBooksTagsBinding(t *testing.T) {
+	a := tagApp(t)
+	books := seedBindingBooks(t, a, 3)
+
+	tid, err := a.CreateTag("科幻", "#ff0000")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := a.SetBooksTags(books, []int64{tid}, db.TagModeAdd); err != nil {
+		t.Fatalf("add: %v", err)
+	}
+	for _, bid := range books {
+		ids, _ := a.store.BookTagIDs(bid)
+		if len(ids) != 1 || ids[0] != tid {
+			t.Fatalf("book %d tags=%v", bid, ids)
+		}
+	}
+	if err := a.SetBooksTags(books[1:], []int64{tid}, db.TagModeRemove); err != nil {
+		t.Fatalf("remove: %v", err)
+	}
+	if ids, _ := a.store.BookTagIDs(books[1]); len(ids) != 0 {
+		t.Fatalf("remove 没生效: %v", ids)
+	}
+	if err := a.SetBooksTags(books, []int64{tid}, db.TagModeReplace); err != nil {
+		t.Fatalf("replace: %v", err)
+	}
+
+	// 错误透传（前端按文案区分）
+	if err := a.SetBooksTags(nil, []int64{tid}, db.TagModeAdd); err != db.ErrNoBooks {
+		t.Fatalf("空列表: %v", err)
+	}
+	if err := a.SetBooksTags(books, nil, "nope"); err != db.ErrTagMode {
+		t.Fatalf("未知方式: %v", err)
+	}
+	if err := a.SetBooksTags([]int64{999999}, nil, db.TagModeAdd); err != db.ErrBookGone {
+		t.Fatalf("书不存在: %v", err)
+	}
+	if err := a.SetBooksTags(books, []int64{999999}, db.TagModeAdd); err != db.ErrTagGone {
+		t.Fatalf("标签不存在: %v", err)
+	}
+}
+
+func TestSetBooksTagsBindingNilStore(t *testing.T) {
+	a := &App{}
+	if err := a.SetBooksTags([]int64{1}, []int64{2}, db.TagModeAdd); err == nil {
+		t.Fatal("store 为空应该报错")
+	}
+	if _, err := a.DeleteBooks([]int64{1}); err == nil {
+		t.Fatal("store 为空应该报错")
+	}
+}
+
+// TestBatchJSONContract 固定批量相关的 JSON 字段名（前端按这些名字取值）。
+func TestBatchJSONContract(t *testing.T) {
+	a := tagApp(t)
+	books := seedBindingBooks(t, a, 2)
+	tid, _ := a.CreateTag("科幻", "#ff0000")
+	if err := a.SetBooksTags(books, []int64{tid}, db.TagModeAdd); err != nil {
+		t.Fatal(err)
+	}
+
+	// DeleteBooks 返回纯数字（行数）
+	raw, err := json.Marshal(mustJSON(t, func() (any, error) { return a.DeleteBooks(books[:1]) }))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(raw) != "1" {
+		t.Fatalf("DeleteBooks JSON: %s", raw)
+	}
+
+	// 批量设置标签的入参结构（前端传 {book_ids, tag_ids, mode} 展开成三个位置参数）
+	in := struct {
+		BookIDs []int64 `json:"book_ids"`
+		TagIDs  []int64 `json:"tag_ids"`
+		Mode    string  `json:"mode"`
+	}{BookIDs: books[1:], TagIDs: []int64{tid}, Mode: db.TagModeRemove}
+	rawIn, _ := json.Marshal(in)
+	for _, key := range []string{`"book_ids"`, `"tag_ids"`, `"mode"`} {
+		if !strings.Contains(string(rawIn), key) {
+			t.Fatalf("入参缺少 %s: %s", key, rawIn)
+		}
+	}
+	if err := a.SetBooksTags(in.BookIDs, in.TagIDs, in.Mode); err != nil {
+		t.Fatal(err)
+	}
+	if ids, _ := a.store.BookTagIDs(books[1]); len(ids) != 0 {
+		t.Fatalf("remove 没生效: %v", ids)
+	}
+}
+
+func mustJSON(t *testing.T, fn func() (any, error)) any {
+	t.Helper()
+	v, err := fn()
+	if err != nil {
+		t.Fatal(err)
+	}
+	return v
 }

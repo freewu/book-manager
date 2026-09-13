@@ -42,6 +42,10 @@ export function DeleteBook(arg1) {
   return window['go']['main']['App']['DeleteBook'](arg1);
 }
 
+export function DeleteBooks(arg1) {
+  return window['go']['main']['App']['DeleteBooks'](arg1);
+}
+
 export function DeleteNote(arg1) {
   return window['go']['main']['App']['DeleteNote'](arg1);
 }
@@ -260,6 +264,10 @@ export function ScanStatus() {
 
 export function SetBookTags(arg1, arg2) {
   return window['go']['main']['App']['SetBookTags'](arg1, arg2);
+}
+
+export function SetBooksTags(arg1, arg2, arg3) {
+  return window['go']['main']['App']['SetBooksTags'](arg1, arg2, arg3);
 }
 
 export function SetKKFileAddr(arg1) {

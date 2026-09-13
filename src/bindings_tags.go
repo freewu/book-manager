@@ -59,3 +59,12 @@ func (a *App) SetBookTags(bookID int64, tagIDs []int64) error {
 	}
 	return a.store.SetBookTags(bookID, tagIDs)
 }
+
+// SetBooksTags 批量设置标签：mode 取 "add"（追加）/ "remove"（移除）/ "replace"（替换），
+// 整批一个事务，失败全部回滚。
+func (a *App) SetBooksTags(bookIDs []int64, tagIDs []int64, mode string) error {
+	if a.store == nil {
+		return errors.New("database not ready")
+	}
+	return a.store.SetBooksTags(bookIDs, tagIDs, mode)
+}

@@ -82,6 +82,8 @@ window.go = { main: { App: {
   ListNotes: async () => [], CreateNote: async () => 1, UpdateNote: async () => {}, DeleteNote: async () => {},
   DeleteBook: async () => {}, UpdateBookMeta: async () => {}, MarkMisrecord: async () => {}, UnmarkMisrecord: async () => {},
   SetBookTags: async (id, ids) => { window.__lastBookTags = {id: id, ids: ids}; },
+  SetBooksTags: async (ids, tagIDs, mode) => { window.__lastTagAction = {op: 'batchTags', ids: ids, tagIDs: tagIDs, mode: mode}; },
+  DeleteBooks: async (ids) => { window.__lastTagAction = {op: 'batchDelete', ids: ids}; return ids.length; },
   CreateTag: async (name, color) => {
     if (window.__tags.some((x) => x.name === name)) throw new Error('标签名已存在');
     const id = window.__tags.reduce((m, x) => Math.max(m, x.id), 0) + 1;
@@ -483,6 +485,130 @@ async function main() {
   await nav('书架');
   await page.waitForTimeout(350);
   check('回到书架', (await page.locator('.book-card').count()) === 2);
+
+  // ---- 书架批量管理：勾选 / 批量打标签 / 批量删除 ----
+  const batchToggle = page.locator('[data-testid="batch-toggle"]');
+  check('批量按钮初始文案', (await batchToggle.innerText()).includes('批量管理'), await batchToggle.innerText());
+  await batchToggle.click();
+  await page.waitForTimeout(300);
+  check('批量操作条出现', (await page.locator('.batch-bar').count()) === 1);
+  check('批量按钮变退出', (await batchToggle.innerText()).includes('退出批量'), await batchToggle.innerText());
+  check('每本书都有勾选框', (await page.locator('.book-card .pick-box').count()) === 2, await page.locator('.book-card .pick-box').count());
+  check('未选时从 0 本开始', (await page.locator('.batch-count').innerText()).includes('0'), await page.locator('.batch-count').innerText());
+  check('未选时设置标签禁用', await page.locator('[data-testid="batch-tags"]').isDisabled());
+  check('未选时删除禁用', await page.locator('[data-testid="batch-del"]').isDisabled());
+
+  // 点卡片 = 勾选，不再打开阅读器
+  await page.locator('.book-card').first().click();
+  await page.waitForTimeout(250);
+  check('点卡片变成勾选', (await page.locator('.book-card.picked').count()) === 1);
+  check('点卡片不再进阅读器', (await page.locator('.reader-root').count()) === 0);
+  check('已选 1 本', (await page.locator('.batch-count').innerText()).includes('1'), await page.locator('.batch-count').innerText());
+  check('已选后按钮可用', !(await page.locator('[data-testid="batch-tags"]').isDisabled()) && !(await page.locator('[data-testid="batch-del"]').isDisabled()));
+  check('勾选标记', (await page.locator('.book-card.picked .pick-box[data-picked="1"]').count()) === 1);
+
+  // 全选 / 取消全选
+  await page.locator('[data-testid="batch-all"]').click();
+  await page.waitForTimeout(200);
+  check('全选 2 本', (await page.locator('.book-card.picked').count()) === 2);
+  check('全选后按钮变取消', (await page.locator('[data-testid="batch-all"]').innerText()).includes('取消全选'));
+  await page.locator('[data-testid="batch-all"]').click();
+  await page.waitForTimeout(200);
+  check('取消全选', (await page.locator('.book-card.picked').count()) === 0);
+  await page.locator('[data-testid="batch-all"]').click();
+  await page.waitForTimeout(200);
+
+  // 批量设置标签：追加
+  await page.locator('[data-testid="batch-tags"]').click();
+  await page.waitForTimeout(350);
+  check('批量标签弹窗', (await page.locator('.modal .modal-head h2', {hasText: '批量设置标签'}).count()) === 1);
+  check('弹窗提示 2 本书', (await page.locator('.modal .sub').innerText()).includes('2'), await page.locator('.modal .sub').innerText());
+  check('三种方式 chip', (await page.locator('.modal .chip-row .chip').count()) === 3, await page.locator('.modal .chip-row .chip').count());
+  check('默认追加方式', (await page.locator('.modal .chip-row .chip.active').innerText()).includes('追加'));
+  check('可选标签 2 个', (await page.locator('.modal .tag-picker .tag-choice').count()) === 2);
+  check('没选标签时应用禁用', await page.locator('[data-testid="batch-apply"]').isDisabled());
+  await page.locator('.modal .tag-choice').first().click();
+  await page.waitForTimeout(200);
+  check('标签选中高亮', (await page.locator('.modal .tag-choice.on').count()) === 1);
+  check('选了标签后应用可用', !(await page.locator('[data-testid="batch-apply"]').isDisabled()));
+  await page.screenshot({path: 'screens/batch-tags.png'});
+  await page.locator('[data-testid="batch-apply"]').click();
+  await page.waitForTimeout(500);
+  check('追加标签的参数', await page.evaluate(() => {
+    const a = window.__lastTagAction;
+    return !!a && a.op === 'batchTags' && a.mode === 'add' && a.ids.length === 2 && a.tagIDs.length === 1 && a.ids[0] === 1 && a.ids[1] === 2;
+  }), JSON.stringify(await page.evaluate(() => window.__lastTagAction)));
+  check('弹窗已关闭', (await page.locator('.modal').count()) === 0);
+  check('打标签后保持选择', (await page.locator('.book-card.picked').count()) === 2);
+
+  // 移除方式
+  await page.locator('[data-testid="batch-tags"]').click();
+  await page.waitForTimeout(350);
+  check('重开弹窗不残留选择', (await page.locator('.modal .tag-choice.on').count()) === 0);
+  await page.locator('.modal .chip-row .chip', {hasText: '移除'}).click();
+  await page.waitForTimeout(200);
+  check('切到移除方式', (await page.locator('.modal .chip-row .chip.active').innerText()).includes('移除'));
+  await page.locator('.modal .tag-choice').nth(1).click();
+  await page.locator('[data-testid="batch-apply"]').click();
+  await page.waitForTimeout(500);
+  check('移除标签的参数', await page.evaluate(() => {
+    const a = window.__lastTagAction;
+    return !!a && a.op === 'batchTags' && a.mode === 'remove' && a.tagIDs.length === 1 && a.tagIDs[0] === 2;
+  }), JSON.stringify(await page.evaluate(() => window.__lastTagAction)));
+
+  // 替换方式 + 冻结标签不进选择器
+  await page.evaluate(() => { window.__tags[1].frozen = true; });
+  await page.evaluate(() => { document.querySelectorAll('.toolbar button').forEach((b) => { if (b.textContent.includes('刷新')) b.click(); }); });
+  await page.waitForTimeout(500);
+  await page.locator('[data-testid="batch-tags"]').click();
+  await page.waitForTimeout(350);
+  check('冻结标签不出现在批量选择器', (await page.locator('.modal .tag-picker .tag-choice').count()) === 1, await page.locator('.modal .tag-picker .tag-choice').count());
+  await page.locator('.modal .chip-row .chip', {hasText: '替换'}).click();
+  await page.waitForTimeout(200);
+  await page.locator('.modal .tag-choice').first().click();
+  await page.locator('[data-testid="batch-apply"]').click();
+  await page.waitForTimeout(500);
+  check('替换标签的参数', await page.evaluate(() => {
+    const a = window.__lastTagAction;
+    return !!a && a.op === 'batchTags' && a.mode === 'replace' && a.tagIDs.length === 1 && a.tagIDs[0] === 1;
+  }), JSON.stringify(await page.evaluate(() => window.__lastTagAction)));
+  await page.evaluate(() => { window.__tags[1].frozen = false; });
+  await page.evaluate(() => { document.querySelectorAll('.toolbar button').forEach((b) => { if (b.textContent.includes('刷新')) b.click(); }); });
+  await page.waitForTimeout(500);
+  check('还原后筛选标签 chip = 2', (await page.locator('.tag-chips .chip').count()) === 2, await page.locator('.tag-chips .chip').count());
+  check('刷新后选择还在', (await page.locator('.book-card.picked').count()) === 2);
+
+  // 批量删除：取消 → 不删、留在批量模式
+  page.once('dialog', (d) => d.dismiss());
+  await page.locator('[data-testid="batch-del"]').click();
+  await page.waitForTimeout(400);
+  check('取消删除留在批量模式', (await page.locator('.batch-bar').count()) === 1 && (await page.locator('.book-card.picked').count()) === 2);
+  check('取消删除不调后端', await page.evaluate(() => {
+    const a = window.__lastTagAction;
+    return !a || a.op !== 'batchDelete';
+  }));
+  await page.locator('[data-testid="batch-exit"]').click();
+  await page.waitForTimeout(250);
+  check('退出批量后操作条消失', (await page.locator('.batch-bar').count()) === 0);
+  check('退出后勾选框消失', (await page.locator('.book-card .pick-box').count()) === 0);
+  check('退出后文案还原', (await batchToggle.innerText()).includes('批量管理'));
+
+  // 批量删除：确认 → 调用后端并退出批量
+  await batchToggle.click();
+  await page.waitForTimeout(250);
+  await page.locator('.book-card').nth(1).click();
+  await page.waitForTimeout(200);
+  check('重新批量后只有 1 本', (await page.locator('.book-card.picked').count()) === 1);
+  page.once('dialog', (d) => d.accept());
+  await page.locator('[data-testid="batch-del"]').click();
+  await page.waitForTimeout(600);
+  check('批量删除的参数', await page.evaluate(() => {
+    const a = window.__lastTagAction;
+    return !!a && a.op === 'batchDelete' && a.ids.length === 1 && a.ids[0] === 2;
+  }), JSON.stringify(await page.evaluate(() => window.__lastTagAction)));
+  check('删除后自动退出批量', (await page.locator('.batch-bar').count()) === 0 && (await page.locator('.book-card .pick-box').count()) === 0);
+  check('删除后书还在（mock 不删列表）', (await page.locator('.book-card').count()) === 2);
+  await page.screenshot({path: 'screens/shelf.png'});
 
   // 设置页（侧栏导航）
   await page.evaluate(() => { document.querySelectorAll('.nav-item').forEach((b) => { if (b.textContent.includes('设置')) b.click(); }); });
