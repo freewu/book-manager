@@ -5,7 +5,7 @@ import {App as Backend} from './api';
 import {EventsOn} from '../wailsjs/runtime/runtime';
 import {I18nProvider, normalizeLang, translate} from './i18n';
 import Sidebar from './components/Sidebar';
-import Bookshelf from './components/Bookshelf';
+import Bookshelf, {type TagFilterMode} from './components/Bookshelf';
 import ReadingPage from './components/ReadingPage';
 import StatsPage from './components/StatsPage';
 import ToolsPage from './components/ToolsPage';
@@ -25,6 +25,8 @@ interface AppState {
   keyword: string;
   formats: string[];
   tagFilter: number[];
+  /** 书架多标签筛选的匹配方式（默认值来自设置里的「标签匹配方式」） */
+  tagMode: TagFilterMode;
   sort: string;
   desc: boolean;
   tags: Tag[];
@@ -45,6 +47,7 @@ export default function App() {
     keyword: '',
     formats: [],
     tagFilter: [],
+    tagMode: 'or',
     sort: 'created',
     desc: true,
     tags: [],
@@ -54,13 +57,24 @@ export default function App() {
     detailBook: null,
     reading: null,
   });
-  const queryRef = useRef<{keyword: string; formats: string[]; tagFilter: number[]; sort: string; desc: boolean}>({
+  const queryRef = useRef<{
+    keyword: string;
+    formats: string[];
+    tagFilter: number[];
+    tagMode: TagFilterMode;
+    sort: string;
+    desc: boolean;
+  }>({
     keyword: '',
     formats: [],
     tagFilter: [],
+    tagMode: 'or',
     sort: 'created',
     desc: true,
   });
+  // 记住上一次生效过的设置值：设置里的「标签匹配方式」一变（含首次加载）就
+  // 覆盖书架当前的选择；书架自己切的时候设置没变，所以手选不会被冲掉。
+  const appliedTagModeSetting = useRef<string | null>(null);
   // 工具弹窗状态的最新值（给事件监听器读取，避免重新订阅）
   const toolRef = useRef<ActiveTool | null>(null);
   toolRef.current = st.tool;
@@ -72,6 +86,7 @@ export default function App() {
         keyword: q.keyword,
         formats: q.formats,
         tag_ids: q.tagFilter,
+        tag_mode: q.tagMode,
         sort: q.sort,
         desc: q.desc,
         misrecord: false,
@@ -127,6 +142,19 @@ export default function App() {
     };
   }, [loadBooks, loadTags, loadStats, loadSettings]);
 
+  // 书架默认的「或 / 且」来自设置，默认为「或」。
+  useEffect(() => {
+    const raw = st.settings.tag_mode;
+    if (raw === undefined) return; // 设置还没加载完
+    if (appliedTagModeSetting.current === raw) return;
+    appliedTagModeSetting.current = raw;
+    const m: TagFilterMode = raw === 'and' ? 'and' : 'or';
+    if (queryRef.current.tagMode === m) return;
+    queryRef.current = {...queryRef.current, tagMode: m};
+    setSt((s) => ({...s, tagMode: m}));
+    loadBooks();
+  }, [st.settings.tag_mode, loadBooks]);
+
   // Apply the app-wide UI theme (light / dark / follow-system).
   useEffect(() => {
     const mode = st.settings.ui_theme || 'system';
@@ -154,13 +182,14 @@ export default function App() {
     }
   }, [st.settings.ui_theme]);
 
-  const applyQuery = useCallback((patch: Partial<{keyword: string; formats: string[]; tagFilter: number[]; sort: string; desc: boolean}>) => {
+  const applyQuery = useCallback((patch: Partial<{keyword: string; formats: string[]; tagFilter: number[]; tagMode: TagFilterMode; sort: string; desc: boolean}>) => {
     queryRef.current = {...queryRef.current, ...patch};
     setSt((s) => ({
       ...s,
       keyword: queryRef.current.keyword,
       formats: queryRef.current.formats,
       tagFilter: queryRef.current.tagFilter,
+      tagMode: queryRef.current.tagMode,
       sort: queryRef.current.sort,
       desc: queryRef.current.desc,
       loading: true,
@@ -270,12 +299,14 @@ export default function App() {
                   keyword={st.keyword}
                   formats={st.formats}
                   tagFilter={st.tagFilter}
+                  tagMode={st.tagMode}
                   sort={st.sort}
                   desc={st.desc}
                   tags={st.tags}
                   onKeyword={(v) => applyQuery({keyword: v})}
                   onFormats={(v) => applyQuery({formats: v})}
                   onTagFilter={(v) => applyQuery({tagFilter: v})}
+                  onTagMode={(v) => applyQuery({tagMode: v})}
                   onSort={(v, desc) => applyQuery({sort: v, desc})}
                   onOpen={openBook}
                   onDetail={(b) => setSt((s) => ({...s, detailBook: b}))}

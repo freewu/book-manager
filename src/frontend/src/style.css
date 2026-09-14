@@ -178,6 +178,14 @@ textarea:focus {
   color: var(--text-3);
 }
 
+.chip-more {
+  font-weight: 700;
+  letter-spacing: 1px;
+}
+.tag-mode-select {
+  flex: none;
+  padding: 3px 6px;
+}
 .search-box {
   position: relative;
 }
@@ -2332,6 +2340,74 @@ textarea:focus {
 .tag-count-arrow {
   font-size: 13px;
   line-height: 1;
+}
+/* 标签页的 tab（复用详情页的 detail-tabs 样式，只是位置在工具栏里） */
+.tag-tabs {
+  margin: 0 0 0 14px;
+  border-bottom: none;
+  align-self: center;
+}
+.tag-tabs button {
+  padding: 5px 12px;
+  border-radius: 8px;
+  border-bottom: none;
+  margin-bottom: 0;
+}
+.tag-tabs button.active {
+  background: var(--accent-soft);
+}
+/* 拖拽排序手柄 + 落点高亮 */
+.tag-drag {
+  cursor: grab;
+  color: var(--text-3);
+  font-size: 14px;
+  line-height: 1;
+  letter-spacing: -1px;
+  touch-action: none;
+  user-select: none;
+  padding: 2px 2px 2px 0;
+}
+.tag-drag:active {
+  cursor: grabbing;
+}
+.tag-row.dragging {
+  opacity: 0.55;
+  border-color: var(--accent);
+}
+.tag-row.drop-target {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent-soft);
+}
+/* 标签云 */
+.tag-cloud {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 10px 16px;
+  padding: 6px 2px 14px;
+  max-width: 760px;
+}
+.cloud-tag {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 4px;
+  font-weight: 700;
+  line-height: 1.2;
+  padding: 2px 4px;
+  border-radius: 8px;
+  transition: transform 0.12s, background 0.12s;
+}
+.cloud-tag:hover {
+  background: var(--panel-2);
+  transform: scale(1.05);
+}
+.cloud-tag.frozen {
+  text-decoration: line-through;
+}
+.cloud-cnt {
+  font-size: 0.6em;
+  font-weight: 500;
+  color: var(--text-3);
 }
 .tag-group-count {
   margin-left: 8px;

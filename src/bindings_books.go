@@ -12,6 +12,7 @@ type BookQueryInput struct {
 	Keyword   string   `json:"keyword"`
 	Formats   []string `json:"formats"`
 	TagIDs    []int64  `json:"tag_ids"`
+	TagMode   string   `json:"tag_mode"`
 	Sort      string   `json:"sort"`
 	Desc      bool     `json:"desc"`
 	Misrecord bool     `json:"misrecord"`
@@ -28,6 +29,7 @@ func (a *App) GetBooks(q BookQueryInput) ([]models.Book, error) {
 		Keyword:   q.Keyword,
 		Formats:   q.Formats,
 		TagIDs:    q.TagIDs,
+		TagMode:   q.TagMode,
 		Sort:      q.Sort,
 		Desc:      q.Desc,
 		Misrecord: q.Misrecord,

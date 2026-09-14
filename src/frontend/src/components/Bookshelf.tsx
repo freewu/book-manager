@@ -14,12 +14,15 @@ interface Props {
   keyword: string;
   formats: string[];
   tagFilter: number[];
+  /** 多标签匹配方式：或（默认）/ 且，默认值可在设置里改 */
+  tagMode: TagFilterMode;
   sort: string;
   desc: boolean;
   tags: Tag[];
   onKeyword: (v: string) => void;
   onFormats: (v: string[]) => void;
   onTagFilter: (v: number[]) => void;
+  onTagMode: (v: TagFilterMode) => void;
   onSort: (v: string, desc: boolean) => void;
   onOpen: (b: Book) => void;
   onDetail: (b: Book) => void;
@@ -46,6 +49,12 @@ const BATCH_MODES: {key: BatchTagMode; labelKey: string; hintKey: string}[] = [
   {key: 'replace', labelKey: 'batch.modeReplace', hintKey: 'batch.modeReplaceHint'},
 ];
 
+/** 多标签筛选的匹配方式（与后端 db.TagFilter* 一致） */
+export type TagFilterMode = 'or' | 'and';
+
+/** 筛选条上直接展示的标签数量，多出来的收进「⋯」弹窗 */
+const TAG_CHIP_LIMIT = 5;
+
 const SORTS: [string, string][] = [
   ['created', 'sort.created'],
   ['title', 'sort.title'],
@@ -66,12 +75,14 @@ export default function Bookshelf({
   keyword,
   formats,
   tagFilter,
+  tagMode,
   sort,
   desc,
   tags,
   onKeyword,
   onFormats,
   onTagFilter,
+  onTagMode,
   onSort,
   onOpen,
   onDetail,
@@ -100,6 +111,9 @@ export default function Bookshelf({
   const [picked, setPicked] = useState<number[]>([]);
   const [mode, setMode] = useState<BatchTagMode>('add');
   const [busy, setBusy] = useState(false);
+  // 标签筛选条上的「⋯」：展示不下的标签在弹窗里挑
+  const [moreTags, setMoreTags] = useState(false);
+  const [morePicked, setMorePicked] = useState<number[]>([]);
   // timeStamp of the right-click that opened the current menu
   const ctxOpenedAt = useRef(0);
   // 「<分类>工具」子菜单（例如 PDF → 设置密码），只显示适用于该格式的工具
@@ -177,6 +191,28 @@ export default function Bookshelf({
   const activeFilterCount = formats.length + tagFilter.length;
   // 批量打标签也不提供冻结的标签（和书籍详情里的选择器保持一致）
   const availableTags = tags.filter((tg) => !tg.frozen);
+
+  // ---------- 标签筛选条 ----------
+  // 冻结的标签默认不展示，只有它已被选中时保留（否则筛选条件会看不见）
+  const chipSource = tags.filter((tg) => !tg.frozen || tagFilter.includes(tg.id));
+  // 只展示前 5 个；已选中但排在后面的也要露出来，不然用户看不见自己选了什么
+  const chipTags = [...chipSource.slice(0, TAG_CHIP_LIMIT)];
+  chipSource.slice(TAG_CHIP_LIMIT).forEach((tg) => {
+    if (tagFilter.includes(tg.id)) chipTags.push(tg);
+  });
+  const hiddenTagCount = chipSource.length - chipTags.length;
+
+  const openMoreTags = () => {
+    setMorePicked(tagFilter);
+    setMoreTags(true);
+  };
+  const toggleMorePicked = (id: number) => {
+    setMorePicked((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
+  };
+  const applyMoreTags = () => {
+    setMoreTags(false);
+    onTagFilter(morePicked);
+  };
 
   // ---------- 批量管理 ----------
   // 列表变化后把已经不存在的书从选择里去掉（删除 / 筛选刷新都靠它）
@@ -412,21 +448,45 @@ export default function Bookshelf({
           {tags.length === 0 ? (
             <span className="filter-empty">{t('filter.noTags')}</span>
           ) : (
-            <div className="chip-row tag-chips">
-              {/* 冻结的标签默认不展示，只有它已被选中时保留（否则筛选条件会看不见） */}
-              {tags.filter((tg) => !tg.frozen || tagFilter.includes(tg.id)).map((tg) => (
-                <button
-                  key={tg.id}
-                  className={`chip ${tagFilter.includes(tg.id) ? 'active' : ''}`}
-                  onClick={() => toggleTag(tg.id)}
-                >
-                  <span className="tag-dot" style={{background: tg.color}} />
-                  {tg.name}
-                  {tg.frozen && <span className="chip-frozen" title={t('tag.frozenBadge')}>❄</span>}
-                  <span className="chip-cnt">{tg.book_count}</span>
-                </button>
-              ))}
-            </div>
+            <>
+              {/* 多个标签之间的匹配方式：或（默认）/ 且 */}
+              <select
+                className="toolbar-select tag-mode-select"
+                data-testid="tag-mode"
+                value={tagMode}
+                title={t('filter.tagModeTip')}
+                onChange={(e) => onTagMode(e.target.value === 'and' ? 'and' : 'or')}
+              >
+                <option value="or">{t('filter.or')}</option>
+                <option value="and">{t('filter.and')}</option>
+              </select>
+              <div className="chip-row tag-chips">
+                {chipTags.map((tg) => (
+                  <button
+                    key={tg.id}
+                    className={`chip ${tagFilter.includes(tg.id) ? 'active' : ''}`}
+                    onClick={() => toggleTag(tg.id)}
+                  >
+                    <span className="tag-dot" style={{background: tg.color}} />
+                    {tg.name}
+                    {tg.frozen && <span className="chip-frozen" title={t('tag.frozenBadge')}>❄</span>}
+                    <span className="chip-cnt">{tg.book_count}</span>
+                  </button>
+                ))}
+                {hiddenTagCount > 0 && (
+                  <button
+                    className="chip chip-more"
+                    data-testid="tag-more"
+                    title={t('filter.moreTagsTip')}
+                    aria-label={t('filter.moreTagsTip')}
+                    onClick={openMoreTags}
+                  >
+                    ⋯
+                    <span className="chip-cnt">{hiddenTagCount}</span>
+                  </button>
+                )}
+              </div>
+            </>
           )}
           {activeFilterCount > 0 && (
             <button
@@ -549,6 +609,54 @@ export default function Bookshelf({
               </div>
             </div>
           ))}
+        </div>
+      )}
+
+      {moreTags && (
+        <div className="modal-mask" onClick={() => setMoreTags(false)}>
+          <div className="modal tag-more-modal" style={{width: 480}} onClick={(e) => e.stopPropagation()}>
+            <div className="modal-head">
+              <h2>{t('filter.moreTagsTip')}</h2>
+              <button className="modal-close" onClick={() => setMoreTags(false)}>
+                ✕
+              </button>
+            </div>
+            <div className="modal-body">
+              <div className="sub" style={{marginBottom: 10}}>
+                {t('filter.picked', {n: morePicked.length})}
+              </div>
+              <div className="chip-row tag-chips" data-field="more-tags">
+                {chipSource.map((tg) => (
+                  <button
+                    key={tg.id}
+                    data-tag-id={tg.id}
+                    className={`chip ${morePicked.includes(tg.id) ? 'active' : ''}`}
+                    onClick={() => toggleMorePicked(tg.id)}
+                  >
+                    <span className="tag-dot" style={{background: tg.color}} />
+                    {tg.name}
+                    {tg.frozen && <span className="chip-frozen" title={t('tag.frozenBadge')}>❄</span>}
+                    <span className="chip-cnt">{tg.book_count}</span>
+                  </button>
+                ))}
+              </div>
+              <div className="hint" style={{marginTop: 10}}>
+                {t('filter.moreTagsHint')}
+              </div>
+            </div>
+            <div className="modal-foot">
+              <button className="btn btn-ghost" disabled={!morePicked.length} onClick={() => setMorePicked([])}>
+                {t('filter.clearTags')}
+              </button>
+              <span className="spacer" />
+              <button className="btn btn-soft" onClick={() => setMoreTags(false)}>
+                {t('tag.cancel')}
+              </button>
+              <button className="btn btn-primary" data-testid="tag-more-apply" onClick={applyMoreTags}>
+                {t('filter.apply')}
+              </button>
+            </div>
+          </div>
         </div>
       )}
 

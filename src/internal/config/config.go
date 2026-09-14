@@ -11,13 +11,14 @@ import (
 
 // Defaults for every known setting key.
 var Defaults = map[string]string{
-	"idle_seconds":     "60",
-	"formats":          "epub,pdf,mobi,azw3,kepub",
-	"douban_auto":      "0",
-	"theme":            "light",
-	"ui_theme":         "system",
-	"language":         "zh-CN",
+	"idle_seconds":      "60",
+	"formats":           "epub,pdf,mobi,azw3,kepub",
+	"douban_auto":       "0",
+	"theme":             "light",
+	"ui_theme":          "system",
+	"language":          "zh-CN",
 	"sidebar_collapsed": "0",
+	"tag_mode":          "or",
 }
 
 // Config is a thread-safe key/value settings store backed by a JSON file.

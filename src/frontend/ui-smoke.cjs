@@ -42,6 +42,9 @@ window.__tags = [
   {id: 2, name: '待读', color: '#22c55e', frozen: false, book_count: 0, created_at: ''},
 ];
 window.__lastTagAction = null;
+window.__lastBooksQuery = null;
+window.__lastSettings = null;
+window.__tagModeSetting = null;
 // 误录管理页用的记录表（GetMisrecords / RemoveMisrecord / ClearMisrecords 共享）
 window.__misrecords = [
   {id: 1, path: 'E:\\\\Books\\\\broken1.epub', file_name: 'broken1.epub', reason: '解析失败：缺少 OPF', created_at: '2026-03-01 10:00:00'},
@@ -75,17 +78,25 @@ window.__mkPdf = (n) => {
 };
 window.go = { main: { App: {
   GetBooks: async (q) => {
+    window.__lastBooksQuery = q;
     let all = window.__manyBooks ? ${JSON.stringify(MANY_BOOKS)} : ${JSON.stringify(BOOKS)};
     const kw = ((q && q.keyword) || '').trim().toLowerCase();
     if (kw) all = all.filter((b) => (b.title || '').toLowerCase().includes(kw) || (b.author || '').toLowerCase().includes(kw));
     const ids = (q && q.tag_ids) || [];
     if (!ids.length) return all;
+    // tag_mode: and = 每本书要同时带齐所有标签，其他（含空）= 或
+    if ((q && q.tag_mode) === 'and') {
+      return all.filter((b) => ids.every((id) => (b.tags || []).some((x) => x.id === id)));
+    }
     return all.filter((b) => (b.tags || []).some((x) => ids.indexOf(x.id) >= 0));
   },
   GetBook: async (id) => ${JSON.stringify(BOOKS)}.find(b => b.id === id) || ${JSON.stringify(BOOKS)}[0],
   GetCoverData: async (id) => id === 1 ? 'data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEASABIAAD/2wBDAP//////////////////////////////////////////////////////////////////////////////////////2wBDAf//////////////////////////////////////////////////////////////////////////////////////wAARCAABAAEDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAX/xAAUEAEAAAAAAAAAAAAAAAAAAAAA/9oADAMBAAIQAxAAAAH/xAAUEAEAAAAAAAAAAAAAAAAAAAAA/9oACAEBAAEFAqf/xAAUEQEAAAAAAAAAAAAAAAAAAAAA/9oACAEDAQE/AV//xAAUEQEAAAAAAAAAAAAAAAAAAAAA/9oACAECAQE/AV//xAAUEAEAAAAAAAAAAAAAAAAAAAAA/9oACAEBAAY/Aqf/xAAUEAEAAAAAAAAAAAAAAAAAAAAA/9oACAEBAAE/IV//2gAMAwEAAgADAAAAEP/EABQRAQAAAAAAAAAAAAAAAAAAABD/2gAIAQMBAT8QH//EABQRAQAAAAAAAAAAAAAAAAAAABD/2gAIAQIBAT8QH//EABQQAQAAAAAAAAAAAAAAAAAAABD/2gAIAQEAAT8QH//Z' : '', GetBookData: async (id) => id === 1 ? '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' : ${JSON.stringify(PDF_ENC_B64)}, GetStats: async () => ({total_books: 2, total_size: 6291456, total_read_seconds: 3600, total_notes: 2, total_tags: 1, total_misrecords: window.__misrecords.length, reading_books: 1, finished_books: 0, unread_books: 1, format_counts: {epub: 1, pdf: 1}}),
-  GetSettings: async () => ({idle_seconds: '60', formats: 'epub,pdf,mobi,azw3,kepub', douban_auto: '0', theme: 'light'}),
-  SetSettings: async () => {}, ListTags: async () => window.__tags.map((x) => Object.assign({}, x)),
+  GetSettings: async () => ({idle_seconds: '60', formats: 'epub,pdf,mobi,azw3,kepub', douban_auto: '0', theme: 'light', tag_mode: window.__tagModeSetting || 'or'}),
+  SetSettings: async (v) => {
+    window.__lastSettings = v;
+    if (v && v.tag_mode) window.__tagModeSetting = v.tag_mode;
+  }, ListTags: async () => window.__tags.map((x) => Object.assign({}, x)),
   ListScanDirs: async () => ['E:\\\\Books'], AddScanDir: async () => {}, RemoveScanDir: async () => {}, PickScanDir: async () => '', ScanStart: async () => {}, ScanStatus: async () => false,
   ListNotes: async () => [], CreateNote: async () => 1, UpdateNote: async () => {}, DeleteNote: async () => {},
   DeleteBook: async () => {}, UpdateBookMeta: async () => {}, MarkMisrecord: async () => {}, UnmarkMisrecord: async () => {},
@@ -112,6 +123,15 @@ window.go = { main: { App: {
   DeleteTag: async (id) => {
     window.__tags = window.__tags.filter((x) => x.id !== id);
     window.__lastTagAction = {op: 'delete', id: id};
+  },
+  ReorderTags: async (ids) => {
+    window.__lastTagAction = {op: 'reorder', ids: ids};
+    const byId = {};
+    window.__tags.forEach((x) => { byId[x.id] = x; });
+    const next = [];
+    ids.forEach((id) => { if (byId[id]) next.push(byId[id]); });
+    window.__tags.forEach((x) => { if (ids.indexOf(x.id) < 0) next.push(x); });
+    window.__tags = next;
   },
   GetMisrecords: async () => window.__misrecords.map((x) => Object.assign({}, x)),
   RemoveMisrecord: async (id) => {
@@ -431,6 +451,64 @@ async function main() {
   check('标签显示书籍数量', firstCount.includes('1 本书'), firstCount);
   check('使用中分组存在', (await page.locator('.page-section-title').allTextContents()).some((x) => x.includes('使用中')));
 
+  // ---- 标签拖拽排序 ----
+  const dragFrom = await page.locator('.tag-row').nth(1).locator('[data-testid="tag-drag"]').boundingBox();
+  const dragTo = await page.locator('.tag-row').nth(0).boundingBox();
+  await page.mouse.move(dragFrom.x + dragFrom.width / 2, dragFrom.y + dragFrom.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(dragTo.x + dragTo.width / 2, dragTo.y + dragTo.height / 2, {steps: 12});
+  await page.waitForTimeout(120);
+  check('拖拽过程中目标行高亮', (await page.locator('.tag-row.drop-target').count()) === 1);
+  await page.mouse.up();
+  await page.waitForTimeout(500);
+  check('拖拽排序调用参数', await page.evaluate(() => {
+    const a = window.__lastTagAction;
+    return !!a && a.op === 'reorder' && a.ids.length === 2 && a.ids[0] === 2;
+  }), await page.evaluate(() => JSON.stringify(window.__lastTagAction)));
+  const firstRowText = (await page.locator('.tag-row').first().textContent()) || '';
+  check('拖拽后顺序已更新', firstRowText.includes('待读'), firstRowText.replace(/\s+/g, ' '));
+  // 拖回去，后面的用例还按原顺序假设（科幻在前）
+  const backFrom = await page.locator('.tag-row').nth(1).locator('[data-testid="tag-drag"]').boundingBox();
+  const backTo = await page.locator('.tag-row').nth(0).boundingBox();
+  await page.mouse.move(backFrom.x + backFrom.width / 2, backFrom.y + backFrom.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(backTo.x + backTo.width / 2, backTo.y + backTo.height / 2, {steps: 12});
+  await page.mouse.up();
+  await page.waitForTimeout(500);
+  check('拖回去恢复原顺序', ((await page.locator('.tag-row').first().textContent()) || '').includes('科幻'));
+
+  // ---- 标签云 tab ----
+  await page.locator('[data-testid="tag-tab-cloud"]').click();
+  await page.waitForTimeout(350);
+  check('标签云 tab 打开', (await page.locator('[data-testid="tag-cloud"]').count()) === 1);
+  check('标签云条目数 = 标签数', (await page.locator('.cloud-tag').count()) === 2, await page.locator('.cloud-tag').count());
+  const cloud = await page.evaluate(() =>
+    [...document.querySelectorAll('.cloud-tag')].map((el) => ({
+      txt: el.textContent,
+      fs: parseFloat(getComputedStyle(el).fontSize),
+      op: parseFloat(getComputedStyle(el).opacity),
+      cnt: Number(el.dataset.cloudCount),
+    })),
+  );
+  check('标签云列表 tab 内容已隐藏', (await page.locator('.tag-list').count()) === 0);
+  check(
+    '标签云：数量多的字更大更不透明',
+    cloud.length === 2 && cloud[0].cnt > cloud[1].cnt && cloud[0].fs > cloud[1].fs && cloud[0].op > cloud[1].op,
+    JSON.stringify(cloud),
+  );
+  check('标签云最小不透明度不低于 0.42', cloud.length === 2 && cloud[1].op >= 0.42, cloud[1] && String(cloud[1].op));
+  await page.screenshot({path: 'screens/tags-cloud.png'});
+  await page.locator('.cloud-tag').first().click();
+  await page.waitForTimeout(500);
+  check('标签云点击跳到书架筛选', (await page.locator('.book-card').count()) === 1, await page.locator('.book-card').count());
+  await page.locator('.filter-bar .btn-ghost').click(); // 清除筛选
+  await page.waitForTimeout(400);
+  await nav('标签');
+  await page.waitForTimeout(350);
+  await page.locator('[data-testid="tag-tab-list"]').click();
+  await page.waitForTimeout(250);
+  check('切回标签列表 tab', (await page.locator('.tag-list').count()) === 1);
+
   // 随机颜色按钮：点一下换一个合法的 #rrggbb（且不等于默认色）
   const colorInput = page.locator('.tag-new-row .tag-color-input');
   const beforeColor = await colorInput.inputValue();
@@ -504,6 +582,58 @@ async function main() {
   await page.locator('.filter-bar .btn-ghost').click(); // 清除筛选
   await page.waitForTimeout(400);
   check('清除筛选后回到 2 本', (await page.locator('.book-card').count()) === 2, await page.locator('.book-card').count());
+
+  // ---- 书架多标签筛选：或 / 且 ----
+  const tagModeSel = page.locator('[data-testid="tag-mode"]');
+  check('标签匹配方式默认是「或」', (await tagModeSel.inputValue()) === 'or', await tagModeSel.inputValue());
+  check('标签匹配方式的提示', (await tagModeSel.getAttribute('title')) === '多选标签时的匹配方式：或 = 满足任意一个，且 = 全部满足');
+  check(
+    '标签匹配方式只有 或/且 两项',
+    JSON.stringify(await tagModeSel.locator('option').allTextContents()) === JSON.stringify(['或', '且']),
+    JSON.stringify(await tagModeSel.locator('option').allTextContents()),
+  );
+  await page.locator('.tag-chips .chip').nth(0).click();
+  await page.locator('.tag-chips .chip').nth(1).click();
+  await page.waitForTimeout(450);
+  check('两个标签都选中', (await page.locator('.tag-chips .chip.active').count()) === 2);
+  check('或：命中任意一个标签即算', (await page.locator('.book-card').count()) === 1, await page.locator('.book-card').count());
+  check('查询参数带 tag_mode=or', await page.evaluate(() => window.__lastBooksQuery && window.__lastBooksQuery.tag_mode === 'or'), await page.evaluate(() => JSON.stringify(window.__lastBooksQuery)));
+  await tagModeSel.selectOption('and');
+  await page.waitForTimeout(450);
+  check('且：必须同时命中所有标签', (await page.locator('.book-card').count()) === 0, await page.locator('.book-card').count());
+  check('查询参数带 tag_mode=and', await page.evaluate(() => window.__lastBooksQuery && window.__lastBooksQuery.tag_mode === 'and'));
+  await page.screenshot({path: 'screens/shelf-tag-and.png'});
+  await tagModeSel.selectOption('or');
+  await page.waitForTimeout(400);
+  await page.locator('.filter-bar .btn-ghost').click(); // 清除筛选
+  await page.waitForTimeout(400);
+  check('切换回或 + 清除筛选后回到 2 本', (await page.locator('.book-card').count()) === 2, await page.locator('.book-card').count());
+
+  // ---- 设置页：标签匹配方式作为默认值 ----
+  await nav('设置');
+  await page.waitForTimeout(400);
+  const setTagMode = page.locator('[data-testid="settings-tag-mode"]');
+  check('设置页有标签匹配方式', (await setTagMode.count()) === 1);
+  check('设置页默认「或」', (await setTagMode.inputValue()) === 'or', await setTagMode.inputValue());
+  await setTagMode.selectOption('and');
+  await page.waitForTimeout(400);
+  check('设置保存 tag_mode=and', await page.evaluate(() => window.__lastSettings && window.__lastSettings.tag_mode === 'and'), await page.evaluate(() => JSON.stringify(window.__lastSettings)));
+  await page.screenshot({path: 'screens/settings-tag-mode.png'});
+  await nav('书架');
+  await page.waitForTimeout(500);
+  check('书架跟随设置的默认值', (await page.locator('[data-testid="tag-mode"]').inputValue()) === 'and', await page.locator('[data-testid="tag-mode"]').inputValue());
+  // 书架自己切一下不该改设置，也不该被设置冲掉
+  await page.locator('[data-testid="tag-mode"]').selectOption('or');
+  await page.waitForTimeout(350);
+  check('书架手选不改设置', await page.evaluate(() => window.__lastSettings && window.__lastSettings.tag_mode === 'and'));
+  await nav('设置');
+  await page.waitForTimeout(400);
+  check('设置页仍是 and', (await setTagMode.inputValue()) === 'and', await setTagMode.inputValue());
+  await setTagMode.selectOption('or');
+  await page.waitForTimeout(400);
+  await nav('书架');
+  await page.waitForTimeout(500);
+  check('设置改回 or 后书架同步', (await page.locator('[data-testid="tag-mode"]').inputValue()) === 'or', await page.locator('[data-testid="tag-mode"]').inputValue());
 
   // 书架工具栏已经不放「标签管理」入口了（只留侧栏「标签」和工具页卡片）
   check(
@@ -741,6 +871,89 @@ async function main() {
     } catch (e) { return 'err: ' + e.message; }
   });
   check('epub rendered', epubState.includes('第一章'), epubState);
+
+  // ---- 书架标签筛选条：最多直显 5 个 +「⋯」弹窗挑更多 ----
+  // 阅读器是整页视图，先退出来再回书架
+  await page.evaluate(() => { document.querySelector('.reader-toolbar button:last-child')?.click(); });
+  await page.waitForTimeout(500);
+  check('从阅读器退回书架', (await page.locator('.book-grid').count()) === 1);
+  await page.evaluate(() => {
+    for (let i = 0; i < 6; i++) {
+      window.__tags.push({id: 100 + i, name: '临时标签' + (i + 1), color: '#3366cc', frozen: false, book_count: 0, created_at: ''});
+    }
+  });
+  await page.locator('.toolbar button', {hasText: '刷新'}).click();
+  await page.waitForTimeout(500);
+  check('筛选条最多直显 5 个标签', (await page.locator('.tag-chips .chip:not(.chip-more)').count()) === 5, await page.locator('.tag-chips .chip:not(.chip-more)').count());
+  const moreChip = page.locator('[data-testid="tag-more"]');
+  check('⋯ 按钮存在（5 + 1 个）', (await page.locator('.tag-chips .chip').count()) === 6, await page.locator('.tag-chips .chip').count());
+  check('⋯ 的提示是「选择更多标签」', (await moreChip.getAttribute('title')) === '选择更多标签', await moreChip.getAttribute('title'));
+  check('⋯ 无障碍标签', (await moreChip.getAttribute('aria-label')) === '选择更多标签');
+  check('⋯ 显示被收起的数量', ((await moreChip.innerText()) || '').includes('3'), await moreChip.innerText());
+  await page.screenshot({path: 'screens/shelf-tag-chips.png'});
+  await moreChip.click();
+  await page.waitForTimeout(300);
+  check('⋯ 打开多选弹窗', (await page.locator('.tag-more-modal').count()) === 1);
+  check(
+    '⋯ 弹窗不溢出、按钮在框内',
+    await page.evaluate(() => {
+      const m = document.querySelector('.tag-more-modal');
+      if (!m) return false;
+      const r = m.getBoundingClientRect();
+      const fr = m.querySelector('.modal-foot')?.getBoundingClientRect();
+      return r.left >= 0 && r.right <= window.innerWidth && r.top >= 0 && r.bottom <= window.innerHeight && (!fr || fr.bottom <= r.bottom + 1);
+    }),
+    await page.evaluate(() => {
+      const m = document.querySelector('.tag-more-modal');
+      const r = m.getBoundingClientRect();
+      return JSON.stringify({left: Math.round(r.left), right: Math.round(r.right), inner: window.innerWidth});
+    }),
+  );
+  check(
+    '筛选条不横向溢出',
+    await page.evaluate(() => {
+      const e = document.querySelector('.tag-chips');
+      return !e || e.scrollWidth <= e.clientWidth + 1;
+    }),
+    await page.evaluate(() => {
+      const e = document.querySelector('.tag-chips');
+      return e && e.scrollWidth + '/' + e.clientWidth;
+    }),
+  );
+  check('弹窗列出全部标签', (await page.locator('.tag-more-modal .chip').count()) === 8, await page.locator('.tag-more-modal .chip').count());
+  check('弹窗里没有 ⋯', (await page.locator('.tag-more-modal .chip-more').count()) === 0);
+  check('弹窗初始已选 0 个', ((await page.locator('.tag-more-modal .sub').innerText()) || '').includes('0'), await page.locator('.tag-more-modal .sub').innerText());
+  await page.locator('.tag-more-modal .chip').filter({hasText: '临时标签3'}).click();
+  await page.waitForTimeout(200);
+  check('弹窗已选计数跟着变', ((await page.locator('.tag-more-modal .sub').innerText()) || '').includes('1'), await page.locator('.tag-more-modal .sub').innerText());
+  check('弹窗里选中项高亮', (await page.locator('.tag-more-modal .chip.active').count()) === 1);
+  await page.screenshot({path: 'screens/shelf-more-tags.png'});
+  await page.locator('[data-testid="tag-more-apply"]').click();
+  await page.waitForTimeout(500);
+  check('应用后弹窗关闭', (await page.locator('.tag-more-modal').count()) === 0);
+  check('应用后筛选条选中该标签', (await page.locator('.tag-chips .chip.active').count()) === 1);
+  check('应用后按它筛选（没有书）', (await page.locator('.book-card').count()) === 0, await page.locator('.book-card').count());
+  // 再打开一次，检查「清空选择」
+  await page.locator('[data-testid="tag-more"]').click();
+  await page.waitForTimeout(300);
+  check('重开弹窗带上当前选择', (await page.locator('.tag-more-modal .chip.active').count()) === 1);
+  await page.locator('.tag-more-modal button', {hasText: '清空选择'}).click();
+  await page.waitForTimeout(200);
+  check('清空后弹窗已选 0 个', ((await page.locator('.tag-more-modal .sub').innerText()) || '').includes('0'));
+  await page.locator('.tag-more-modal button', {hasText: '取消'}).click();
+  await page.waitForTimeout(250);
+  check('取消不改筛选', (await page.locator('.tag-chips .chip.active').count()) === 1);
+  // 恢复：清筛选 + 去掉临时标签
+  await page.locator('.filter-bar .btn-ghost').click();
+  await page.waitForTimeout(400);
+  await page.evaluate(() => { window.__tags = window.__tags.filter((x) => x.id < 100); });
+  await page.locator('.toolbar button', {hasText: '刷新'}).click();
+  await page.waitForTimeout(500);
+  check('去掉临时标签后恢复 2 个筛选标签', (await page.locator('.tag-chips .chip').count()) === 2, await page.locator('.tag-chips .chip').count());
+  check('恢复后书架 2 本', (await page.locator('.book-card').count()) === 2, await page.locator('.book-card').count());
+  // 重新打开阅读器（epub 需要等 iframe 渲染完，后面的护眼断言依赖它）
+  await page.locator('.book-card').first().click();
+  await page.waitForTimeout(2600);
 
   // ---- 阅读器工具栏：显示当前字号 + 字号右侧的护眼模式开关 ----
   const fsNum = (await page.locator('[data-testid="reader-fontsize"] .font-num').innerText()) || '';

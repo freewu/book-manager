@@ -200,6 +200,14 @@ src/frontend/src/tools/<tool-id>/
   新建行上有「🎲 随机颜色」按钮（`lib.ts` 的 `randomTagColor()`：色相全随机，
   饱和 55%~74%、明度 44%~55%，避免随出近乎白/黑的颜色，内部 `hslToHex` 转 `#rrggbb`，
   冒烟里断言生成的是合法十六进制色且与默认色不同）。
+  **展示顺序可拖拽**：`tags` 表有 `sort_order`（`ALTER TABLE` 幂等迁移，回填 `sort_order = id`），
+  `CreateTag` 取 `MAX(sort_order)+1`，`ListTags` 按 `frozen, sort_order, id` 排；
+  行首的 `⠿` 手柄（`.tag-drag`）用指针事件自己实现（拖过的行记成落点、松手换位），
+  松手后调 `App.ReorderTags(ids)`（一个事务里按数组下标写 `sort_order`，校验空数组/不存在的 id）
+  再 `onChanged()` 拉回新顺序 —— 不依赖 HTML5 dnd，也不做乐观更新。
+  **标签云**在同一个页面的第二个 tab（`tag-tab-list` / `tag-tab-cloud`）：
+  字号 14~30px、不透明度 0.42~1 都按 `book_count / max(book_count)` 线性插值，
+  文字用标签自己的颜色，点一下同样 `onOpenShelf([id])`。
 - 误录管理也是整页工具 `tools/misrecords/`（`page: 'misrecords'`，order 30，无 `tools.tsx`），
   入口是统计页工具栏的「🚫 误录管理」按钮（带 `.mis-badge` 角标）和工具页卡片，
   两个都走 `openTool('misrecords')`。**注意别再写成 `setSt({tool: {id: 'misrecords'}})`**：
@@ -217,6 +225,19 @@ src/frontend/src/tools/<tool-id>/
   SQLite 的 `foreign_keys(1)` pragma 在 `db.Open` 里已开）。
   失败一律整体回滚：`ErrNoBooks`（空选择）/ `ErrTagMode`（未知方式）/ `ErrBookGone` / `ErrTagGone`
   （传进来的书或标签已被删，前端直接弹后端文案）。批量标签弹窗只列非冻结标签（和书籍详情选择器一致）。
+- 书架多标签筛选有「或 / 且」两种匹配方式（`.tag-mode-select`，`data-testid="tag-mode"`，
+  选项只有 `filter.or` / `filter.and`）：`or` 用一条 `EXISTS … tag_id IN (…)`（命中任意一个），
+  `and` 仍是每个标签一条 `EXISTS`（必须全部命中）；前端 `BookQueryInput.tag_mode` → `db.BookQuery.TagMode`
+  （常量 `db.TagFilterOr/TagFilterAnd`，空值按 `or` 处理）。
+  **默认值来自设置**：设置页「书架 ‹ 标签匹配方式」存 `settings.tag_mode`（`config.Defaults` 里默认 `"or"`），
+  `App.tsx` 用 `appliedTagModeSetting` 记住上次生效过的设置值 —— 设置一变（含首次加载）就覆盖书架当前选择，
+  书架自己切换时不写设置、也不被冲掉。
+- 书架筛选条最多直接显示 5 个标签（`TAG_CHIP_LIMIT`），超出的收进「⋯」按钮
+  （`.chip-more`，`data-testid="tag-more"`，`title`/`aria-label` 都是 `filter.moreTagsTip`「选择更多标签」，
+  按钮上带被收起的数量）；点它开 `tag-more-modal` 多选弹窗（列出全部标签含冻结项、带已选计数、
+  「清空选择」/「取消」/「应用筛选」），应用后走同一个 `onTagFilter`。
+  已经在筛选里的标签即使排在第 6 个以后也仍然留在筛选条上（否则看不到筛选条件）。
+
 - 书架工具栏的搜索框（`.toolbar-search`）在有关键字时右侧出现清空按钮（`.search-clear`，
   `data-testid="search-clear"`，✕），点它 `onKeyword('')` 直接清空；输入框里按 Esc 同样清空。
   按钮只在有内容时渲染，`.search-box.has-clear input` 会补右内边距避免文字压到按钮上。
@@ -238,7 +259,7 @@ src/frontend/src/tools/<tool-id>/
   改这块注意两点：① 保存位置用 `scroll` 监听 + 卸载清理，且清理里只在 `el.isConnected` 时读
   `scrollTop`（passive effect 的清理可能晚于 DOM 摘除，此时读到的是 0）；② 卡片封面用
   `aspect-ratio` 固定高度，网格高度不依赖图片加载，所以挂载即可恢复、不会跳。
-- UI 改动后跑 `just ui-test`：它用 playwright-core 加载 `dist/` 并对 `window.go` 打桩，覆盖书架（含搜索框清空按钮与 Esc 清空、滚动位置恢复、批量管理：勾选/全选/批量打标签三种方式/批量删除与取消/冻结标签不进选择器）/统计/扫描/标签页（侧栏与工具卡片两个入口、书架工具栏没有入口、新建/随机颜色/改名换色/冻结解冻/删除、点数量跳筛选）、误录管理页（统计页入口与工具卡片都进整页、逐条恢复、全部清除后回到空状态）/设置/书籍详情/EPUB 阅读器（当前字号显示、字号右侧的护眼模式开关、字号改动后工具栏数字同步）与加密 PDF 阅读器（含护眼模式的页面滤镜）/工具页（分类分组 + 类型筛选）与 PDF 设置·清除密码·转存 EPUB·转存 PDF·合并 PDF·提取页面·转存图片·修改文档·压缩文档 弹窗（含书架右键 EPUB 工具子菜单、合并列表顺序调整与加密文件密码、提取页面的 20 页分组/跨组选择/放大查看、转存图片的页码范围解析/DPI 像素数/JPEG 质量与中途停止、修改文档的原值预填/改动汇总与还原/另存与覆盖两种保存方式/加密文件密码流程、压缩文档的 Ghostscript 检测与手动指定/档位与自定义分辨率/自动退回 pdfcpu/加密文件密码流程）。
+- UI 改动后跑 `just ui-test`：它用 playwright-core 加载 `dist/` 并对 `window.go` 打桩，覆盖书架（含搜索框清空按钮与 Esc 清空、滚动位置恢复、多标签筛选的或/且切换与查询参数、筛选条最多直显 5 个 +「⋯」多选弹窗、批量管理：勾选/全选/批量打标签三种方式/批量删除与取消/冻结标签不进选择器）/统计/扫描/标签页（侧栏与工具卡片两个入口、书架工具栏没有入口、新建/随机颜色/改名换色/冻结解冻/删除、拖拽排序调用参数与顺序落库、标签云 tab 的字号/不透明度随数量变化、点数量跳筛选）、误录管理页（统计页入口与工具卡片都进整页、逐条恢复、全部清除后回到空状态）/设置（含标签匹配方式默认值 → 书架跟随、书架手选不写设置）/书籍详情/EPUB 阅读器（当前字号显示、字号右侧的护眼模式开关、字号改动后工具栏数字同步）与加密 PDF 阅读器（含护眼模式的页面滤镜）/工具页（分类分组 + 类型筛选）与 PDF 设置·清除密码·转存 EPUB·转存 PDF·合并 PDF·提取页面·转存图片·修改文档·压缩文档 弹窗（含书架右键 EPUB 工具子菜单、合并列表顺序调整与加密文件密码、提取页面的 20 页分组/跨组选择/放大查看、转存图片的页码范围解析/DPI 像素数/JPEG 质量与中途停止、修改文档的原值预填/改动汇总与还原/另存与覆盖两种保存方式/加密文件密码流程、压缩文档的 Ghostscript 检测与手动指定/档位与自定义分辨率/自动退回 pdfcpu/加密文件密码流程）。
   mock 里没有的绑定会回退成空操作（Proxy），所以新增绑定不会直接弄坏冒烟；
   `pdf2epub:progress` / `epub2pdf:progress` / `pdfmerge:progress` 这类事件由 mock 自己塞进 `window.__events` 触发（`EventsOn` 实际调的是 `window.runtime.EventsOnMultiple`）。
   mock 的 `ReadPdfData` 用文件里的 `window.__mkPdf(23)` 现场造一份 23 页的最小 PDF（够真实渲染缩略图，也够测「翻到第二组只剩 3 页」）。

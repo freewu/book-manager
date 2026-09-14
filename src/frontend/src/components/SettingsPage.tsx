@@ -22,6 +22,7 @@ export default function SettingsPage({settings, onSaved}: Props) {
   const [readerTheme, setReaderTheme] = useState(settings.theme || 'light');
   const [uiTheme, setUiTheme] = useState(settings.ui_theme || 'system');
   const [language, setLanguage] = useState(settings.language || 'zh-CN');
+  const [tagMode, setTagMode] = useState(settings.tag_mode === 'and' ? 'and' : 'or');
   const [dataDir, setDataDir] = useState('');
   const [version, setVersion] = useState('');
   const [kkfile, setKkfile] = useState(settings.kkfile_addr || 'http://127.0.0.1:8012');
@@ -117,6 +118,11 @@ export default function SettingsPage({settings, onSaved}: Props) {
     setLanguage(v);
     persist({language: v});
   };
+  const saveTagMode = (v: string) => {
+    const mode = v === 'and' ? 'and' : 'or';
+    setTagMode(mode);
+    persist({tag_mode: mode});
+  };
 
   return (
     <div className="main">
@@ -164,6 +170,24 @@ export default function SettingsPage({settings, onSaved}: Props) {
               <option value="sepia">{t('theme.sepia')}</option>
             </select>
             <div className="hint">{t('settings.readerThemeHint')}</div>
+          </div>
+
+          <h2 className="page-section-title" style={{marginTop: 26}}>
+            {t('settings.bookshelf')}
+          </h2>
+
+          <div className="form-row">
+            <label>{t('settings.tagMode')}</label>
+            <select
+              value={tagMode}
+              data-testid="settings-tag-mode"
+              onChange={(e) => saveTagMode(e.target.value)}
+              style={{maxWidth: 220}}
+            >
+              <option value="or">{t('filter.or')}</option>
+              <option value="and">{t('filter.and')}</option>
+            </select>
+            <div className="hint">{t('settings.tagModeHint')}</div>
           </div>
 
           <h2 className="page-section-title" style={{marginTop: 26}}>

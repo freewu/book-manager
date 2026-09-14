@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strings"
 	"testing"
 
 	"bookmanager/internal/db"
@@ -316,6 +317,149 @@ func TestTagFrozenMigration(t *testing.T) {
 	}
 	if err := store.SetTagFrozen(tags[0].ID, true); err != nil {
 		t.Fatal(err)
+	}
+}
+
+// 多个标签筛选：默认「或」（命中任一），tag_mode=and 时要求同时命中。
+func TestListBooksTagMode(t *testing.T) {
+	tmp := t.TempDir()
+	store, err := db.Open(filepath.Join(tmp, "data", "book.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer store.Close()
+	books := seedBooks(t, store, filepath.Join(tmp, "books"), 3)
+
+	sf, _ := store.CreateTag("科幻", "#111111")
+	xs, _ := store.CreateTag("小说", "#222222")
+	// 第 1 本：科幻 + 小说；第 2 本：只有科幻；第 3 本：无标签
+	if err := store.SetBookTags(books[0], []int64{sf, xs}); err != nil {
+		t.Fatal(err)
+	}
+	if err := store.SetBookTags(books[1], []int64{sf}); err != nil {
+		t.Fatal(err)
+	}
+
+	idsOf := func(list []models.Book) []int64 {
+		out := []int64{}
+		for _, b := range list {
+			out = append(out, b.ID)
+		}
+		return out
+	}
+	sorted := func(v []int64) []int64 {
+		sort.Slice(v, func(i, j int) bool { return v[i] < v[j] })
+		return v
+	}
+
+	// 默认（TagMode 空）= 或
+	orList, err := store.ListBooks(db.BookQuery{TagIDs: []int64{sf, xs}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := sorted(idsOf(orList)); len(got) != 2 || got[0] != books[0] || got[1] != books[1] {
+		t.Fatalf("默认应为「或」，期望前两本，得到 %v", got)
+	}
+	// 显式 or 一样
+	orList, err = store.ListBooks(db.BookQuery{TagIDs: []int64{sf, xs}, TagMode: db.TagFilterOr})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(orList) != 2 {
+		t.Fatalf("or 应为 2 本，得到 %d", len(orList))
+	}
+
+	// 且：只有第 1 本同时有科幻 + 小说
+	andList, err := store.ListBooks(db.BookQuery{TagIDs: []int64{sf, xs}, TagMode: db.TagFilterAnd})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(andList) != 1 || andList[0].ID != books[0] {
+		t.Fatalf("and 应只剩第 1 本，得到 %v", idsOf(andList))
+	}
+	// 单个标签时两种模式结果一致
+	for _, mode := range []string{db.TagFilterOr, db.TagFilterAnd} {
+		l, err := store.ListBooks(db.BookQuery{TagIDs: []int64{sf}, TagMode: mode})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(l) != 2 {
+			t.Fatalf("单标签 %s 应为 2 本，得到 %d", mode, len(l))
+		}
+	}
+	// 或 + 关键字叠加：仍然只匹配有标签的书
+	l, err := store.ListBooks(db.BookQuery{TagIDs: []int64{xs}, TagMode: db.TagFilterOr, Keyword: "集成测试书"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(l) != 1 {
+		t.Fatalf("标签 + 关键字应为 1 本，得到 %d", len(l))
+	}
+}
+
+// 拖拽排序：ReorderTags 按传入顺序写 sort_order，ListTags 会按它返回。
+func TestReorderTags(t *testing.T) {
+	tmp := t.TempDir()
+	store, err := db.Open(filepath.Join(tmp, "data", "book.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer store.Close()
+
+	names := []string{"甲", "乙", "丙"}
+	ids := map[string]int64{}
+	for _, n := range names {
+		id, err := store.CreateTag(n, "#123456")
+		if err != nil {
+			t.Fatal(err)
+		}
+		ids[n] = id
+	}
+	listNames := func() []string {
+		tags, err := store.ListTags()
+		if err != nil {
+			t.Fatal(err)
+		}
+		out := []string{}
+		for _, tg := range tags {
+			out = append(out, tg.Name)
+		}
+		return out
+	}
+	// 新建的标签按创建顺序排在后面
+	if got := listNames(); strings.Join(got, ",") != "甲,乙,丙" {
+		t.Fatalf("初始顺序应为 甲,乙,丙，得到 %v", got)
+	}
+
+	// 把「丙」拖到最前面
+	if err := store.ReorderTags([]int64{ids["丙"], ids["甲"], ids["乙"]}); err != nil {
+		t.Fatal(err)
+	}
+	if got := listNames(); strings.Join(got, ",") != "丙,甲,乙" {
+		t.Fatalf("拖拽后应为 丙,甲,乙，得到 %v", got)
+	}
+
+	// 冻结的标签单独排在后面（组内仍按 sort_order）
+	if err := store.SetTagFrozen(ids["甲"], true); err != nil {
+		t.Fatal(err)
+	}
+	if got := listNames(); strings.Join(got, ",") != "丙,乙,甲" {
+		t.Fatalf("冻结分组后应为 丙,乙,甲，得到 %v", got)
+	}
+
+	// 空 / 非法 id 的处理
+	if err := store.ReorderTags(nil); err != db.ErrNoBooks {
+		t.Fatalf("空列表应返回 ErrNoBooks，得到 %v", err)
+	}
+	if err := store.ReorderTags([]int64{0, -1}); err != db.ErrNoBooks {
+		t.Fatalf("全是非法 id 应返回 ErrNoBooks，得到 %v", err)
+	}
+	// 不存在的 id 忽略掉，不报错
+	if err := store.ReorderTags([]int64{ids["乙"], 999999, ids["丙"]}); err != nil {
+		t.Fatal(err)
+	}
+	if got := listNames(); strings.Join(got, ",") != "乙,丙,甲" {
+		t.Fatalf("忽略未知 id 后应为 乙,丙,甲，得到 %v", got)
 	}
 }
 

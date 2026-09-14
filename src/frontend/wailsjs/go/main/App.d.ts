@@ -121,6 +121,8 @@ export function RemovePdfPassword(arg1:models.PdfProtectOptions):Promise<models.
 
 export function RemoveScanDir(arg1:string):Promise<void>;
 
+export function ReorderTags(arg1:Array<number>):Promise<void>;
+
 export function ReportReading(arg1:number,arg2:number,arg3:number):Promise<number>;
 
 export function SavePdfImage(arg1:models.PdfImageOptions):Promise<models.PdfImageResult>;

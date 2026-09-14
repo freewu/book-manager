@@ -52,6 +52,14 @@ func (a *App) DeleteTag(id int64) error {
 	return a.store.DeleteTag(id)
 }
 
+// ReorderTags 拖拽排序：按传入的 id 顺序重写标签顺序（标签页里拖拽触发）。
+func (a *App) ReorderTags(ids []int64) error {
+	if a.store == nil {
+		return errors.New("database not ready")
+	}
+	return a.store.ReorderTags(ids)
+}
+
 // SetBookTags replaces a book's tag set.
 func (a *App) SetBookTags(bookID int64, tagIDs []int64) error {
 	if a.store == nil {

@@ -238,6 +238,10 @@ export function RemoveScanDir(arg1) {
   return window['go']['main']['App']['RemoveScanDir'](arg1);
 }
 
+export function ReorderTags(arg1) {
+  return window['go']['main']['App']['ReorderTags'](arg1);
+}
+
 export function ReportReading(arg1, arg2, arg3) {
   return window['go']['main']['App']['ReportReading'](arg1, arg2, arg3);
 }

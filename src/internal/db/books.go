@@ -12,7 +12,8 @@ import (
 type BookQuery struct {
 	Keyword   string   // search title/author/publisher/file_name
 	Formats   []string // restrict to these formats (empty = all)
-	TagIDs    []int64  // books must have ALL these tags
+	TagIDs    []int64  // tags to filter by (see TagMode)
+	TagMode   string   // "" | "or"（满足任一） | "and"（同时满足）
 	Sort      string   // title | author | created | updated | last_read | rating | size
 	Desc      bool
 	Misrecord bool // include misrecorded books only (used by misrecord manager)
@@ -68,9 +69,21 @@ func (s *Store) ListBooks(q BookQuery) ([]models.Book, error) {
 		}
 	}
 	if len(q.TagIDs) > 0 {
-		for _, tid := range q.TagIDs {
-			conds = append(conds, "EXISTS (SELECT 1 FROM book_tags bt WHERE bt.book_id=b.id AND bt.tag_id=?)")
-			args = append(args, tid)
+		if q.TagMode == TagFilterAnd {
+			// 且：每个标签各一个 EXISTS
+			for _, tid := range q.TagIDs {
+				conds = append(conds, "EXISTS (SELECT 1 FROM book_tags bt WHERE bt.book_id=b.id AND bt.tag_id=?)")
+				args = append(args, tid)
+			}
+		} else {
+			// 或（默认）：命中任意一个标签即可
+			placeholders := strings.Repeat("?,", len(q.TagIDs))
+			placeholders = placeholders[:len(placeholders)-1]
+			conds = append(conds, fmt.Sprintf(
+				"EXISTS (SELECT 1 FROM book_tags bt WHERE bt.book_id=b.id AND bt.tag_id IN (%s))", placeholders))
+			for _, tid := range q.TagIDs {
+				args = append(args, tid)
+			}
 		}
 	}
 	where := ""

@@ -32,6 +32,12 @@ const (
 	TagModeReplace = "replace" // 替换：整组换成选中的标签
 )
 
+// 多个标签筛选时的匹配方式（书架「或 / 且」下拉，可在设置里改默认值）。
+const (
+	TagFilterOr  = "or"  // 满足任意一个标签（默认）
+	TagFilterAnd = "and" // 必须同时满足所有标签
+)
+
 // defaultTagColor is used when a tag is created without an explicit color.
 const defaultTagColor = "#6c8cff"
 
@@ -105,6 +111,7 @@ CREATE TABLE IF NOT EXISTS tags (
     name TEXT NOT NULL UNIQUE,
     color TEXT NOT NULL DEFAULT '#6c8cff',
     frozen INTEGER NOT NULL DEFAULT 0,
+    sort_order INTEGER NOT NULL DEFAULT 0,
     created_at TEXT NOT NULL DEFAULT (datetime('now','localtime'))
 );
 
@@ -164,6 +171,10 @@ func (s *Store) migrate() error {
 	// migrations for pre-existing databases (idempotent, ignore "duplicate column")
 	_, _ = s.db.Exec(`ALTER TABLE books ADD COLUMN douban_fail_count INTEGER NOT NULL DEFAULT 0`)
 	_, _ = s.db.Exec(`ALTER TABLE tags ADD COLUMN frozen INTEGER NOT NULL DEFAULT 0`)
+	_, _ = s.db.Exec(`ALTER TABLE tags ADD COLUMN sort_order INTEGER NOT NULL DEFAULT 0`)
+	// 老库的标签没有排序值：用 id 兜底，保持「先建的在前」的原有观感；
+	// 之后由标签页拖拽写入真实顺序（>0），所以这条只在 0 值上跑一次。
+	_, _ = s.db.Exec(`UPDATE tags SET sort_order=id WHERE sort_order=0`)
 	return nil
 }
 
@@ -392,7 +403,10 @@ func (s *Store) CreateTag(name, color string) (int64, error) {
 	if color == "" {
 		color = defaultTagColor
 	}
-	res, err := s.db.Exec("INSERT INTO tags(name,color) VALUES(?,?)", n, color)
+	// 新标签排在最后（拖拽排序用 sort_order）
+	res, err := s.db.Exec(
+		"INSERT INTO tags(name,color,sort_order) VALUES(?,?,(SELECT COALESCE(MAX(sort_order),0)+1 FROM tags))",
+		n, color)
 	if err != nil {
 		return 0, tagErr(err)
 	}
@@ -427,11 +441,31 @@ func (s *Store) DeleteTag(id int64) error {
 	return err
 }
 
+// ReorderTags 按传入顺序重写标签的 sort_order（标签页拖拽排序）。
+// 不在表里的 id 直接忽略；整批一个事务。
+func (s *Store) ReorderTags(ids []int64) error {
+	ids = uniqIDs(ids)
+	if len(ids) == 0 {
+		return ErrNoBooks
+	}
+	tx, err := s.db.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+	for i, id := range ids {
+		if _, err := tx.Exec("UPDATE tags SET sort_order=? WHERE id=?", i+1, id); err != nil {
+			return err
+		}
+	}
+	return tx.Commit()
+}
+
 func (s *Store) ListTags() ([]models.Tag, error) {
 	rows, err := s.db.Query(`
 		SELECT t.id, t.name, t.color, t.frozen, t.created_at,
 	       (SELECT COUNT(*) FROM book_tags bt WHERE bt.tag_id=t.id) AS cnt
-		FROM tags t ORDER BY t.frozen, t.name`)
+		FROM tags t ORDER BY t.frozen, t.sort_order, t.id`)
 	if err != nil {
 		return nil, err
 	}

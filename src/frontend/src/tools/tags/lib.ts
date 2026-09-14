@@ -23,6 +23,11 @@ export function deleteTag(id: number): Promise<void> {
   return App.DeleteTag(id);
 }
 
+/** 拖拽排序：按传入的标签 id 顺序重写顺序（整批一个事务）。 */
+export function reorderTags(ids: number[]): Promise<void> {
+  return App.ReorderTags(ids);
+}
+
 /**
  * 随机生成一个标签颜色。
  * 色相全随机，饱和度 / 明度限制在偏中间的区间，避免随机到

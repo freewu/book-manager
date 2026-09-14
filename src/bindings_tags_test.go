@@ -276,6 +276,77 @@ func TestBatchJSONContract(t *testing.T) {
 	}
 }
 
+// ReorderTags 绑定：按传入顺序落库，store 未初始化时报错。
+func TestReorderTagsBinding(t *testing.T) {
+	a := tagApp(t)
+	first, _ := a.CreateTag("甲", "#111111")
+	second, _ := a.CreateTag("乙", "#222222")
+	third, _ := a.CreateTag("丙", "#333333")
+
+	if err := a.ReorderTags([]int64{third, first, second}); err != nil {
+		t.Fatal(err)
+	}
+	tags, err := a.ListTags()
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := []string{}
+	for _, tg := range tags {
+		got = append(got, tg.Name)
+	}
+	if strings.Join(got, ",") != "丙,甲,乙" {
+		t.Fatalf("排序结果: %v", got)
+	}
+
+	var nilApp App
+	if err := nilApp.ReorderTags([]int64{first}); err == nil {
+		t.Fatal("store 未初始化应该报错")
+	}
+}
+
+// GetBooks 的入参 JSON 契约（前端传 tag_ids / tag_mode）。
+func TestBookQueryTagModeJSONContract(t *testing.T) {
+	raw, err := json.Marshal(BookQueryInput{
+		TagIDs:  []int64{1, 2},
+		TagMode: db.TagFilterAnd,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, key := range []string{`"tag_ids"`, `"tag_mode"`, `"and"`} {
+		if !strings.Contains(string(raw), key) {
+			t.Fatalf("入参缺少 %s: %s", key, raw)
+		}
+	}
+
+	// 端到端：默认（空 tag_mode）= 或，传 and 时要求同时命中
+	a := tagApp(t)
+	books := seedBindingBooks(t, a, 2)
+	tid, _ := a.CreateTag("科幻", "#111111")
+	other, _ := a.CreateTag("小说", "#222222")
+	if err := a.store.SetBookTags(books[0], []int64{tid, other}); err != nil {
+		t.Fatal(err)
+	}
+	if err := a.store.SetBookTags(books[1], []int64{tid}); err != nil {
+		t.Fatal(err)
+	}
+
+	orList, err := a.GetBooks(BookQueryInput{TagIDs: []int64{tid, other}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(orList) != 2 {
+		t.Fatalf("默认应为「或」，得到 %d 本", len(orList))
+	}
+	andList, err := a.GetBooks(BookQueryInput{TagIDs: []int64{tid, other}, TagMode: db.TagFilterAnd})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(andList) != 1 || andList[0].ID != books[0] {
+		t.Fatalf("and 应为 1 本（第 1 本），得到 %d 本", len(andList))
+	}
+}
+
 func mustJSON(t *testing.T, fn func() (any, error)) any {
 	t.Helper()
 	v, err := fn()

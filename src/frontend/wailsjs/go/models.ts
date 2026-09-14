@@ -4,6 +4,7 @@ export namespace main {
 	    keyword: string;
 	    formats: string[];
 	    tag_ids: number[];
+	    tag_mode: string;
 	    sort: string;
 	    desc: boolean;
 	    misrecord: boolean;
@@ -19,6 +20,7 @@ export namespace main {
 	        this.keyword = source["keyword"];
 	        this.formats = source["formats"];
 	        this.tag_ids = source["tag_ids"];
+	        this.tag_mode = source["tag_mode"];
 	        this.sort = source["sort"];
 	        this.desc = source["desc"];
 	        this.misrecord = source["misrecord"];

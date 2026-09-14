@@ -24,6 +24,7 @@ export default function StatsPage({stats, onOpen, onMisrecords}: Props) {
             keyword: '',
             formats: [],
             tag_ids: [],
+            tag_mode: '',
             sort: 'last_read',
             desc: true,
             misrecord: false,
