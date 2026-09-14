@@ -477,37 +477,109 @@ async function main() {
   await page.waitForTimeout(500);
   check('拖回去恢复原顺序', ((await page.locator('.tag-row').first().textContent()) || '').includes('科幻'));
 
-  // ---- 标签云 tab ----
-  await page.locator('[data-testid="tag-tab-cloud"]').click();
+  // ---- 标签云 tab（云状排布）----
+  // 只有 2 个标签看不出云团，临时补一批数量不同的标签（等下再删掉）
+  await page.evaluate(() => {
+    const counts = [9, 7, 5, 4, 4, 3, 3, 2, 2, 1, 1];
+    counts.forEach((n, i) =>
+      window.__tags.push({
+        id: 200 + i,
+        name: '云标签' + String.fromCharCode(65 + i),
+        color: '#5b7cfa',
+        frozen: false,
+        book_count: n,
+        created_at: '',
+      }),
+    );
+  });
+  // 标签页自己没有刷新按钮，借书架的「刷新」重新拉一次标签
+  await nav('书架');
+  await page.waitForTimeout(300);
+  await page.locator('.toolbar button', {hasText: '刷新'}).click();
+  await page.waitForTimeout(500);
+  await nav('标签');
   await page.waitForTimeout(350);
+  await page.locator('[data-testid="tag-tab-cloud"]').click();
+  await page.waitForTimeout(400);
   check('标签云 tab 打开', (await page.locator('[data-testid="tag-cloud"]').count()) === 1);
-  check('标签云条目数 = 标签数', (await page.locator('.cloud-tag').count()) === 2, await page.locator('.cloud-tag').count());
-  const cloud = await page.evaluate(() =>
-    [...document.querySelectorAll('.cloud-tag')].map((el) => ({
-      txt: el.textContent,
-      fs: parseFloat(getComputedStyle(el).fontSize),
-      op: parseFloat(getComputedStyle(el).opacity),
-      cnt: Number(el.dataset.cloudCount),
-    })),
-  );
+  check('标签云条目数 = 标签数', (await page.locator('.cloud-tag').count()) === 13, await page.locator('.cloud-tag').count());
   check('标签云列表 tab 内容已隐藏', (await page.locator('.tag-list').count()) === 0);
+  const cloud = await page.evaluate(() => {
+    const box = document.querySelector('.tag-cloud');
+    const cs = getComputedStyle(box);
+    const br = box.getBoundingClientRect();
+    const items = [...box.querySelectorAll('.cloud-tag')].map((el, i) => {
+      const st = getComputedStyle(el);
+      const r = el.getBoundingClientRect();
+      return {
+        i: i,
+        txt: el.textContent,
+        cnt: Number(el.dataset.cloudCount),
+        fs: parseFloat(st.fontSize),
+        op: parseFloat(st.opacity),
+        top: Math.round(r.top),
+        left: Math.round(r.left),
+        right: Math.round(r.right),
+        ty: st.transform,
+      };
+    });
+    return {
+      justify: cs.justifyContent,
+      align: cs.alignItems,
+      wrap: cs.flexWrap,
+      centerX: Math.round(br.left + br.width / 2),
+      items: items,
+    };
+  });
+  check(
+    '标签云是居中的云状排布',
+    cloud.justify === 'center' && cloud.align === 'center' && cloud.wrap === 'wrap',
+    JSON.stringify({justify: cloud.justify, align: cloud.align, wrap: cloud.wrap}),
+  );
+  const fsList = cloud.items.map((x) => x.fs);
+  const opList = cloud.items.map((x) => x.op);
   check(
     '标签云：数量多的字更大更不透明',
-    cloud.length === 2 && cloud[0].cnt > cloud[1].cnt && cloud[0].fs > cloud[1].fs && cloud[0].op > cloud[1].op,
-    JSON.stringify(cloud),
+    Math.max(...fsList) > Math.min(...fsList) && Math.max(...opList) > Math.min(...opList),
+    JSON.stringify(cloud.items.slice(0, 4).map((x) => [x.txt, x.fs, x.op])),
   );
-  check('标签云最小不透明度不低于 0.42', cloud.length === 2 && cloud[1].op >= 0.42, cloud[1] && String(cloud[1].op));
+  check('标签云最小不透明度不低于 0.42', Math.min(...opList) >= 0.42, String(Math.min(...opList)));
+  check('标签云字号上限 30px / 下限 14px', Math.max(...fsList) === 30 && Math.min(...fsList) === 14, Math.max(...fsList) + '/' + Math.min(...fsList));
+  check('云团排成多行', new Set(cloud.items.map((x) => x.top)).size >= 3, String(new Set(cloud.items.map((x) => x.top)).size));
+  check(
+    '云团上下错落（不是对齐的列表）',
+    new Set(cloud.items.map((x) => x.ty)).size >= 3 && cloud.items.some((x) => x.ty !== 'none' && !x.ty.endsWith(', 0)')),
+    JSON.stringify([...new Set(cloud.items.map((x) => x.ty))].slice(0, 3)),
+  );
+  const maxCntIdx = cloud.items.reduce((best, x) => (x.cnt > cloud.items[best].cnt ? x.i : best), 0);
+  check(
+    '数量最多的标签落在云团中间',
+    Math.abs(maxCntIdx - (cloud.items.length - 1) / 2) <= 1,
+    maxCntIdx + '/' + (cloud.items.length - 1),
+  );
+  const rowLeft = Math.min(...cloud.items.map((x) => x.left));
+  const rowRight = Math.max(...cloud.items.map((x) => x.right));
+  check(
+    '云团水平居中',
+    Math.abs(Math.round((rowLeft + rowRight) / 2) - cloud.centerX) <= 16,
+    Math.round((rowLeft + rowRight) / 2) + '/' + cloud.centerX,
+  );
   await page.screenshot({path: 'screens/tags-cloud.png'});
-  await page.locator('.cloud-tag').first().click();
+  await page.locator('.cloud-tag').filter({hasText: '科幻'}).click();
   await page.waitForTimeout(500);
   check('标签云点击跳到书架筛选', (await page.locator('.book-card').count()) === 1, await page.locator('.book-card').count());
   await page.locator('.filter-bar .btn-ghost').click(); // 清除筛选
   await page.waitForTimeout(400);
+  // 收拾临时标签，回到 2 个标签的状态继续后面的用例
+  await page.evaluate(() => { window.__tags = window.__tags.filter((x) => x.id < 200); });
+  await page.locator('.toolbar button', {hasText: '刷新'}).click();
+  await page.waitForTimeout(500);
   await nav('标签');
   await page.waitForTimeout(350);
   await page.locator('[data-testid="tag-tab-list"]').click();
   await page.waitForTimeout(250);
   check('切回标签列表 tab', (await page.locator('.tag-list').count()) === 1);
+  check('临时云标签已清理', (await page.locator('.tag-row').count()) === 2, await page.locator('.tag-row').count());
 
   // 随机颜色按钮：点一下换一个合法的 #rrggbb（且不等于默认色）
   const colorInput = page.locator('.tag-new-row .tag-color-input');
@@ -878,8 +950,9 @@ async function main() {
   await page.waitForTimeout(500);
   check('从阅读器退回书架', (await page.locator('.book-grid').count()) === 1);
   await page.evaluate(() => {
-    for (let i = 0; i < 6; i++) {
-      window.__tags.push({id: 100 + i, name: '临时标签' + (i + 1), color: '#3366cc', frozen: false, book_count: 0, created_at: ''});
+    for (let i = 0; i < 20; i++) {
+      // 名字里故意不带数字，好断言「标签不带数量」
+      window.__tags.push({id: 100 + i, name: '临时标签' + String.fromCharCode(65 + i), color: '#3366cc', frozen: false, book_count: 0, created_at: ''});
     }
   });
   await page.locator('.toolbar button', {hasText: '刷新'}).click();
@@ -889,7 +962,17 @@ async function main() {
   check('⋯ 按钮存在（5 + 1 个）', (await page.locator('.tag-chips .chip').count()) === 6, await page.locator('.tag-chips .chip').count());
   check('⋯ 的提示是「选择更多标签」', (await moreChip.getAttribute('title')) === '选择更多标签', await moreChip.getAttribute('title'));
   check('⋯ 无障碍标签', (await moreChip.getAttribute('aria-label')) === '选择更多标签');
-  check('⋯ 显示被收起的数量', ((await moreChip.innerText()) || '').includes('3'), await moreChip.innerText());
+  check('⋯ 显示被收起的数量', ((await moreChip.innerText()) || '').includes('17'), await moreChip.innerText());
+  check(
+    '书架筛选条的标签不带数量',
+    await page.evaluate(() => {
+      const box = document.querySelector('.tag-chips');
+      if (!box) return false;
+      const chips = [...box.querySelectorAll('.chip:not(.chip-more)')];
+      return chips.length > 0 && chips.every((c) => !c.querySelector('.chip-cnt') && !/[0-9]/.test(c.textContent));
+    }),
+    await page.evaluate(() => [...document.querySelectorAll('.tag-chips .chip')].map((c) => c.textContent).join('|')),
+  );
   await page.screenshot({path: 'screens/shelf-tag-chips.png'});
   await moreChip.click();
   await page.waitForTimeout(300);
@@ -920,13 +1003,54 @@ async function main() {
       return e && e.scrollWidth + '/' + e.clientWidth;
     }),
   );
-  check('弹窗列出全部标签', (await page.locator('.tag-more-modal .chip').count()) === 8, await page.locator('.tag-more-modal .chip').count());
+  check('弹窗列出全部标签', (await page.locator('.tag-more-modal .pick-tile').count()) === 22, await page.locator('.tag-more-modal .pick-tile').count());
   check('弹窗里没有 ⋯', (await page.locator('.tag-more-modal .chip-more').count()) === 0);
+  check(
+    '弹窗里的标签也不带数量',
+    await page.evaluate(() => {
+      const box = document.querySelector('.tag-pick-grid');
+      if (!box) return false;
+      if (box.querySelector('.chip-cnt')) return false;
+      return [...box.querySelectorAll('.pick-tile')].every((c) => !/[0-9]/.test(c.textContent));
+    }),
+    await page.evaluate(() => [...document.querySelectorAll('.tag-pick-grid .pick-tile')].slice(0, 3).map((c) => c.textContent).join('|')),
+  );
+  check(
+    '弹窗标签平铺成网格',
+    await page.evaluate(() => {
+      const box = document.querySelector('.tag-pick-grid');
+      if (!box) return false;
+      const cs = getComputedStyle(box);
+      const cols = new Set([...box.querySelectorAll('.pick-tile')].map((t) => Math.round(t.getBoundingClientRect().left)));
+      return cs.display === 'grid' && cols.size > 1;
+    }),
+    await page.evaluate(() => {
+      const box = document.querySelector('.tag-pick-grid');
+      const cols = new Set([...box.querySelectorAll('.pick-tile')].map((t) => Math.round(t.getBoundingClientRect().left)));
+      return getComputedStyle(box).display + ' 列数=' + cols.size;
+    }),
+  );
+  check(
+    '弹窗标签多了可以滚动',
+    await page.evaluate(() => {
+      const box = document.querySelector('.tag-pick-grid');
+      if (!box) return false;
+      const scrolls = getComputedStyle(box).overflowY === 'auto' && box.scrollHeight > box.clientHeight;
+      box.scrollTop = 200;
+      const moved = box.scrollTop > 0;
+      box.scrollTop = 0;
+      return scrolls && moved;
+    }),
+    await page.evaluate(() => {
+      const box = document.querySelector('.tag-pick-grid');
+      return box && box.scrollHeight + '/' + box.clientHeight;
+    }),
+  );
   check('弹窗初始已选 0 个', ((await page.locator('.tag-more-modal .sub').innerText()) || '').includes('0'), await page.locator('.tag-more-modal .sub').innerText());
-  await page.locator('.tag-more-modal .chip').filter({hasText: '临时标签3'}).click();
+  await page.locator('.tag-more-modal .pick-tile').filter({hasText: '临时标签C'}).click();
   await page.waitForTimeout(200);
   check('弹窗已选计数跟着变', ((await page.locator('.tag-more-modal .sub').innerText()) || '').includes('1'), await page.locator('.tag-more-modal .sub').innerText());
-  check('弹窗里选中项高亮', (await page.locator('.tag-more-modal .chip.active').count()) === 1);
+  check('弹窗里选中项高亮', (await page.locator('.tag-more-modal .pick-tile.active').count()) === 1);
   await page.screenshot({path: 'screens/shelf-more-tags.png'});
   await page.locator('[data-testid="tag-more-apply"]').click();
   await page.waitForTimeout(500);
@@ -936,7 +1060,7 @@ async function main() {
   // 再打开一次，检查「清空选择」
   await page.locator('[data-testid="tag-more"]').click();
   await page.waitForTimeout(300);
-  check('重开弹窗带上当前选择', (await page.locator('.tag-more-modal .chip.active').count()) === 1);
+  check('重开弹窗带上当前选择', (await page.locator('.tag-more-modal .pick-tile.active').count()) === 1);
   await page.locator('.tag-more-modal button', {hasText: '清空选择'}).click();
   await page.waitForTimeout(200);
   check('清空后弹窗已选 0 个', ((await page.locator('.tag-more-modal .sub').innerText()) || '').includes('0'));

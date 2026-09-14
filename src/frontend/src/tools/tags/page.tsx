@@ -13,6 +13,8 @@ const DEFAULT_COLOR = '#5b7cfa';
 const CLOUD_MIN_SIZE = 14;
 const CLOUD_MAX_SIZE = 30;
 const CLOUD_MIN_OPACITY = 0.42;
+/** 云状排布时每个标签上下抖动的最大像素（由 id 决定，固定不变） */
+const CLOUD_JITTER = 10;
 
 /** 分组顺序：使用中的在前，冻结的在后面单独一组。 */
 const GROUPS: {id: 'active' | 'frozen'; titleKey: string}[] = [
@@ -56,6 +58,26 @@ export default function TagsPage({tags, onOpenShelf, onChanged}: ToolPageProps) 
   // 整页的展示顺序就是后端给顺序（frozen 分组 + sort_order），拖拽也基于它换位
   const flatIDs = useMemo(() => tags.map((tg) => tg.id), [tags]);
   const maxCount = useMemo(() => Math.max(1, ...tags.map((tg) => tg.book_count)), [tags]);
+
+  /** 0~1 的固定散列：同一个标签每次渲染都落在同一个高度上。 */
+  const jitter = (id: number, salt: number) => {
+    const h = Math.sin(id * 12.9898 + salt * 78.233) * 43758.5453;
+    return h - Math.floor(h);
+  };
+
+  /** 云状排布：数量最多的摆在正中间，其余按大小往两边散（middle-out），
+   *  再给每个标签一个固定的上下抖动，整体是一团居中的云，而不是一行行对齐的列表。 */
+  const cloudTags = useMemo(() => {
+    const sorted = [...tags].sort((a, b) => b.book_count - a.book_count || a.id - b.id);
+    if (sorted.length === 0) return [] as Tag[];
+    const left: Tag[] = [];
+    const right: Tag[] = [];
+    sorted.slice(1).forEach((tg, i) => {
+      if (i % 2 === 0) left.push(tg);
+      else right.push(tg);
+    });
+    return [...left.reverse(), sorted[0], ...right];
+  }, [tags]);
 
   /** 标签云：数量占比 0~1，字号和不透明度都跟着它走。 */
   const cloudStyle = (tg: Tag): React.CSSProperties => {
@@ -295,13 +317,18 @@ export default function TagsPage({tags, onOpenShelf, onChanged}: ToolPageProps) 
             ) : (
               <>
                 <div className="tag-cloud" data-testid="tag-cloud">
-                  {tags.map((tg) => (
+                  {cloudTags.map((tg) => (
                     <button
                       key={tg.id}
                       data-cloud-id={tg.id}
                       data-cloud-count={tg.book_count}
                       className={`cloud-tag${tg.frozen ? ' frozen' : ''}`}
-                      style={cloudStyle(tg)}
+                      style={
+                        {
+                          ...cloudStyle(tg),
+                          '--cloud-jitter': `${Math.round((jitter(tg.id, 1) - 0.5) * 2 * CLOUD_JITTER)}px`,
+                        } as React.CSSProperties
+                      }
                       title={t('tag.cloudTip', {n: tg.book_count})}
                       onClick={() => onOpenShelf([tg.id])}
                     >

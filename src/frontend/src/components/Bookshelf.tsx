@@ -470,7 +470,6 @@ export default function Bookshelf({
                     <span className="tag-dot" style={{background: tg.color}} />
                     {tg.name}
                     {tg.frozen && <span className="chip-frozen" title={t('tag.frozenBadge')}>❄</span>}
-                    <span className="chip-cnt">{tg.book_count}</span>
                   </button>
                 ))}
                 {hiddenTagCount > 0 && (
@@ -625,18 +624,18 @@ export default function Bookshelf({
               <div className="sub" style={{marginBottom: 10}}>
                 {t('filter.picked', {n: morePicked.length})}
               </div>
-              <div className="chip-row tag-chips" data-field="more-tags">
+              {/* 平铺网格：标签多的时候自己出滚动条（不再显示每个标签的书籍数量） */}
+              <div className="tag-pick-grid" data-field="more-tags">
                 {chipSource.map((tg) => (
                   <button
                     key={tg.id}
                     data-tag-id={tg.id}
-                    className={`chip ${morePicked.includes(tg.id) ? 'active' : ''}`}
+                    className={`pick-tile ${morePicked.includes(tg.id) ? 'active' : ''}`}
                     onClick={() => toggleMorePicked(tg.id)}
                   >
                     <span className="tag-dot" style={{background: tg.color}} />
-                    {tg.name}
+                    <span className="pick-name">{tg.name}</span>
                     {tg.frozen && <span className="chip-frozen" title={t('tag.frozenBadge')}>❄</span>}
-                    <span className="chip-cnt">{tg.book_count}</span>
                   </button>
                 ))}
               </div>
