@@ -15,3 +15,7 @@ src/data/
 .DS_Store
 Thumbs.db
 screens/
+
+# python
+__pycache__/
+*.pyc
