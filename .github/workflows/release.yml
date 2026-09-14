@@ -135,6 +135,7 @@ jobs:
 
       - name: 构建（wails build）
         working-directory: src
+        shell: bash # Windows runner 默认 pwsh，下面用 bash 数组拼参数
         env:
           EXTRA_TAGS: ${{ matrix.extra_tags }}
         run: |
