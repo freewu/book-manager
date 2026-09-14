@@ -30,7 +30,7 @@ permissions:
 
 # 同一个版本不要并发发布（后触发的等前面的跑完）
 concurrency:
-  group: release-${{ github.ref }}
+  group: release # 全局串行：改版本号与推标签可能同时命中，后者会因已发布而跳过
   cancel-in-progress: false
 
 jobs:
@@ -113,12 +113,13 @@ jobs:
       - name: 安装 Node
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22'
           cache: npm
           cache-dependency-path: src/frontend/package-lock.json
 
       - name: 安装 Wails CLI（版本跟随 go.mod）
         working-directory: src
+        shell: bash # Windows runner 默认 pwsh，这里要 bash 的 $( )
         run: |
           V=$(go list -m -f '{{.Version}}' github.com/wailsapp/wails/v2)
           echo "wails $V"
@@ -129,7 +130,8 @@ jobs:
         run: |
           sudo apt-get update
           # Ubuntu 24.04 只有 webkit2gtk-4.1，配合 -tags webkit2_41 构建
-          sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.1-dev
+          # fonts-noto-cjk：EPUB → PDF 排版要有可嵌入的中文字体
+          sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.1-dev fonts-noto-cjk
 
       - name: 构建（wails build）
         working-directory: src

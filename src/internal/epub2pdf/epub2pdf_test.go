@@ -4,6 +4,7 @@ import (
 	"archive/zip"
 	"bytes"
 	"compress/zlib"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -321,6 +322,11 @@ func TestConvertWritesReadablePDF(t *testing.T) {
 }
 
 func TestConvertCJKTextKeepsReadingOrder(t *testing.T) {
+	// 没有中文字体的机器（比如干净的 CI 容器）跑不了这个用例：中文排版必须有
+	// 一个可嵌入的字体，缺字体是环境问题不是代码问题，跳过（CI 装了 fonts-noto-cjk）
+	if _, err := pickFont("中文测试"); errors.Is(err, ErrNoFont) {
+		t.Skip("本机没有中文字体，跳过中文排版用例")
+	}
 	dir := t.TempDir()
 	src := makeEPUB(t, dir, map[string]string{
 		"c1.xhtml": xhtmlDoc("第一章 疯狂年代", `<p>这是第一行
