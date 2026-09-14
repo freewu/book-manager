@@ -139,10 +139,14 @@ jobs:
         env:
           EXTRA_TAGS: ${{ matrix.extra_tags }}
         run: |
-          args=(-platform "${{ matrix.platform }}" -o book-manager -clean)
+          # -o 是「原样」当输出名（wails 不会再补 .exe / 平台后缀），Windows 必须自己带 .exe
+          out="book-manager"
+          if [ "$RUNNER_OS" = "Windows" ]; then out="book-manager.exe"; fi
+          args=(-platform "${{ matrix.platform }}" -o "$out" -clean)
           if [ -n "$EXTRA_TAGS" ]; then args+=(-tags "$EXTRA_TAGS"); fi
           echo "wails build ${args[*]}"
           wails build "${args[@]}"
+          ls -l build/bin/
 
       # 测试放在构建之后：`go test .` 要 embed frontend/dist 才能编译
       - name: Go 测试（Linux 顺带跑一遍，保证新平台能过测试）
