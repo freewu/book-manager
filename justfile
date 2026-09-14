@@ -66,6 +66,10 @@ docs:
 test-docs:
     python3 scripts/gen-docs/generate.py --check
 
+# 官网的浏览器校验（三语言渲染 / 链接 / 图片 / 语言切换；需 Edge + playwright-core）
+site-test:
+    {{node}} scripts/gen-docs/verify-site.cjs
+
 # 重新生成 logo 与各平台图标（logo.png → appicon.png / icon.ico）
 icon:
     cd {{app}} && {{go}} run ./cmd/genlogo

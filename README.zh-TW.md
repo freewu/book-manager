@@ -111,6 +111,7 @@ just ui-test           # 前端 UI 冒煙測試（需 Edge + playwright-core）
 just icon              # 從 asserts/logo.png 重新產生應用程式圖示
 just fmt               # Go 格式化 + 靜態檢查
 just docs              # 重新產生 README 與官網
+just site-test         # 用無頭瀏覽器渲染官網，檢查連結、圖片與語言切換
 just push "msg"        # 提交並推送（中文 message）
 ```
 

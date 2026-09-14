@@ -111,6 +111,7 @@ just ui-test           # 前端 UI 冒烟测试（需 Edge + playwright-core）
 just icon              # 从 asserts/logo.png 重新生成应用图标
 just fmt               # Go 格式化 + 静态检查
 just docs              # 重新生成 README 与官网
+just site-test         # 用无头浏览器渲染官网，检查链接、图片与语言切换
 just push "msg"        # 提交并推送（中文 message）
 ```
 

@@ -77,7 +77,10 @@ docs/                               # 官网（GitHub Pages 直接发布这个�
 - 截图统一放 `docs/images/`（文件名见 `content.py` 的 `SHOT_FILES`），官网与 README 共用同一批图。
 - `just test` 会跑 `just test-docs`（`generate.py --check`）：只要生成物和 `content.py` 不一致就会失败；
   `.github/workflows/pages.yml` 里也跑同一条检查，然后把 `docs/` 上传发布。
-- 首次启用 Pages：仓库 Settings → Pages → Build and deployment → Source 选 **GitHub Actions**。
+- 官网/README 的浏览器校验：`just site-test`（`scripts/gen-docs/verify-site.cjs`，headless Edge）会检查三语言页面
+  渲染、导航锚点、图片、页脚链接与 select 切换语言，截图落在 `screens/site-*.png`。改完文档跑一下。
+- 首次启用 Pages：仓库 Settings → Pages → Build and deployment → Source 选 **GitHub Actions**
+  （已通过 API 创建：`build_type=workflow`，站点 <https://freewu.github.io/book-manager/>）。
 
 ## 工具（Tools）插件结构
 

@@ -174,6 +174,7 @@ EN = dict(
         ("just icon", "regenerate the app icons from asserts/logo.png"),
         ("just fmt", "gofmt and go vet the backend"),
         ("just docs", "regenerate the READMEs and the docs site"),
+        ("just site-test", "render the docs site in a headless browser and check every link and image"),
         ('just push "msg"', "commit everything and push to main"),
     ],
     data=[
@@ -324,6 +325,7 @@ ZH_CN = dict(
         ("just icon", "从 asserts/logo.png 重新生成应用图标"),
         ("just fmt", "Go 格式化 + 静态检查"),
         ("just docs", "重新生成 README 与官网"),
+        ("just site-test", "用无头浏览器渲染官网，检查链接、图片与语言切换"),
         ('just push "msg"', "提交并推送（中文 message）"),
     ],
     data=[
@@ -471,6 +473,7 @@ ZH_TW = dict(
         ("just icon", "從 asserts/logo.png 重新產生應用程式圖示"),
         ("just fmt", "Go 格式化 + 靜態檢查"),
         ("just docs", "重新產生 README 與官網"),
+        ("just site-test", "用無頭瀏覽器渲染官網，檢查連結、圖片與語言切換"),
         ('just push "msg"', "提交並推送（中文 message）"),
     ],
     data=[

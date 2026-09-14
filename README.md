@@ -111,6 +111,7 @@ just ui-test           # headless browser smoke test of the UI (needs Edge + pla
 just icon              # regenerate the app icons from asserts/logo.png
 just fmt               # gofmt and go vet the backend
 just docs              # regenerate the READMEs and the docs site
+just site-test         # render the docs site in a headless browser and check every link and image
 just push "msg"        # commit everything and push to main
 ```
 
