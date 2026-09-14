@@ -504,6 +504,12 @@ async function main() {
   check('标签云 tab 打开', (await page.locator('[data-testid="tag-cloud"]').count()) === 1);
   check('标签云条目数 = 标签数', (await page.locator('.cloud-tag').count()) === 13, await page.locator('.cloud-tag').count());
   check('标签云列表 tab 内容已隐藏', (await page.locator('.tag-list').count()) === 0);
+  check(
+    '标签云下没有说明文字',
+    (await page.locator('.tags-page .hint').count()) === 0 &&
+      !((await page.locator('.page-scroll').innerText()) || '').includes('收录的书越多'),
+    ((await page.locator('.page-scroll').innerText()) || '').slice(0, 40),
+  );
   const cloud = await page.evaluate(() => {
     const box = document.querySelector('.tag-cloud');
     const cs = getComputedStyle(box);

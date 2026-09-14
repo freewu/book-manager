@@ -337,7 +337,6 @@ export default function TagsPage({tags, onOpenShelf, onChanged}: ToolPageProps) 
                     </button>
                   ))}
                 </div>
-                <div className="hint">{t('tag.cloudHint')}</div>
               </>
             )}
           </div>

@@ -919,11 +919,6 @@ const DICT: Dict = {
   'tag.tabCloud': {'zh-CN': '标签云', 'zh-TW': '標籤雲', 'en': 'Tag cloud'},
   'tag.dragTip': {'zh-CN': '按住拖拽调整顺序', 'zh-TW': '按住拖曳調整順序', 'en': 'Drag to reorder'},
   'tag.cloudTitle': {'zh-CN': '标签云', 'zh-TW': '標籤雲', 'en': 'Tag cloud'},
-  'tag.cloudHint': {
-    'zh-CN': '收录的书越多，字号越大、越不透明；点标签跳到书架的筛选结果。',
-    'zh-TW': '收錄的書越多，字號越大、越不透明；點標籤跳到書架的篩選結果。',
-    'en': 'More books means a bigger, more opaque tag. Click one to filter the shelf.',
-  },
   'tag.cloudTip': {'zh-CN': '{n} 本书，点击在书架中筛选', 'zh-TW': '{n} 本書，點擊在書架中篩選', 'en': '{n} books — click to filter the shelf'},
   'tag.jumpTip': {'zh-CN': '在书架中按这个标签筛选', 'zh-TW': '在書架中按這個標籤篩選', 'en': 'Filter the shelf by this tag'},
   'tag.colorTitle': {'zh-CN': '标签颜色', 'zh-TW': '標籤顏色', 'en': 'Tag color'},
