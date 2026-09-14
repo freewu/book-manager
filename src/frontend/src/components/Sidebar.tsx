@@ -51,9 +51,9 @@ export default function Sidebar({page, onNav, stats, tagCount, collapsed, onTogg
   return (
     <aside className={`sidebar${collapsed ? ' collapsed' : ''}`}>
       <div className="logo">
-        <img className="icon" src={logo} alt="book-manager" />
+        <img className="icon" src={logo} alt="Book Manager" />
         <div className="logo-text">
-          book-manager
+          Book Manager
           <small>{t('sidebar.subtitle')}</small>
         </div>
       </div>

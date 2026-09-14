@@ -830,7 +830,7 @@ const DICT: Dict = {
   'theme.system': {'zh-CN': '跟随系统', 'zh-TW': '跟隨系統', 'en': 'Follow system'},
   'theme.lightHint': {'zh-CN': '始终使用浅色界面', 'zh-TW': '始終使用淺色介面', 'en': 'Always light'},
   'theme.darkHint': {'zh-CN': '始终使用深色界面', 'zh-TW': '始終使用深色介面', 'en': 'Always dark'},
-  'theme.systemHint': {'zh-CN': '随 Windows 外观自动切换', 'zh-TW': '隨 Windows 外觀自動切換', 'en': 'Match Windows appearance'},
+  'theme.systemHint': {'zh-CN': '随系统外观自动切换', 'zh-TW': '隨系統外觀自動切換', 'en': 'Match the system appearance'},
   'settings.uiThemeHint': {
     'zh-CN': '设置整个应用（窗口、书架、统计等）的明暗外观，默认跟随系统。',
     'zh-TW': '設定整個應用（視窗、書架、統計等）的明暗外觀，預設跟隨系統。',

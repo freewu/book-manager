@@ -253,7 +253,7 @@ export default function SettingsPage({settings, onSaved}: Props) {
 
           <div className="form-row" style={{marginTop: 30}}>
             <span style={{fontSize: 12, color: 'var(--text-3)'}}>
-              book-manager{version ? ` v${version}` : ''} · {t('settings.about')}
+              Book Manager{version ? ` v${version}` : ''} · {t('settings.about')}
             </span>
           </div>
         </div>

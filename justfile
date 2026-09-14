@@ -1,4 +1,4 @@
-# 书架 · 本地电子书管理 — 开发脚本
+# Book Manager · 本地电子书管理 — 开发脚本
 # 用法: just <recipe>  (just 默认列出全部)
 
 set shell := ["bash", "-uc"]

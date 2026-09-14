@@ -25,7 +25,7 @@ func main() {
 	dataDir := resolveDataDir()
 
 	opts := &options.App{
-		Title:     "book-manager",
+		Title:     "Book Manager",
 		Width:     1280,
 		Height:    820,
 		MinWidth:  960,
