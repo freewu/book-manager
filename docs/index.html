@@ -59,9 +59,58 @@
       <li>Windows · macOS · Linux</li>
       <li>MIT</li>
         </ul>
-        <a class="shot-hero" href="images/book-shelf.png" target="_blank" rel="noopener">
-          <img src="images/book-shelf.png" alt="Bookshelf" />
-        </a>
+        <div class="carousel" data-interval="5200" role="group" aria-roledescription="carousel" aria-label="Screenshots">
+          <div class="car-viewport">
+            <ul class="car-track">
+          <li class="slide active" data-slide="0">
+            <a href="images/book-shelf.png" target="_blank" rel="noopener">
+              <img src="images/book-shelf.png" alt="Bookshelf" width="2880" height="1728" />
+            </a>
+            <span class="slide-cap"><strong>Bookshelf</strong><span>Cover grid, search, format and tag filters, batch actions.</span></span>
+          </li>
+          <li class="slide" data-slide="1">
+            <a href="images/reading-log.png" target="_blank" rel="noopener">
+              <img src="images/reading-log.png" alt="Reading" width="2880" height="1728" loading="lazy" />
+            </a>
+            <span class="slide-cap"><strong>Reading</strong><span>Unfinished and finished books, one click to continue.</span></span>
+          </li>
+          <li class="slide" data-slide="2">
+            <a href="images/tag-manage.png" target="_blank" rel="noopener">
+              <img src="images/tag-manage.png" alt="Tags" width="2880" height="1728" loading="lazy" />
+            </a>
+            <span class="slide-cap"><strong>Tags</strong><span>Drag to reorder the list, or switch to the tag cloud.</span></span>
+          </li>
+          <li class="slide" data-slide="3">
+            <a href="images/stats.png" target="_blank" rel="noopener">
+              <img src="images/stats.png" alt="Stats" width="2880" height="1728" loading="lazy" />
+            </a>
+            <span class="slide-cap"><strong>Stats</strong><span>Reading time, format breakdown and the session log.</span></span>
+          </li>
+          <li class="slide" data-slide="4">
+            <a href="images/tools.png" target="_blank" rel="noopener">
+              <img src="images/tools.png" alt="Tools" width="2880" height="1728" loading="lazy" />
+            </a>
+            <span class="slide-cap"><strong>Tools</strong><span>Fourteen utilities on one page.</span></span>
+          </li>
+          <li class="slide" data-slide="5">
+            <a href="images/settings.png" target="_blank" rel="noopener">
+              <img src="images/settings.png" alt="Settings" width="2880" height="1728" loading="lazy" />
+            </a>
+            <span class="slide-cap"><strong>Settings</strong><span>Shelf defaults, idle cap, language and data location.</span></span>
+          </li>
+            </ul>
+            <button class="car-btn car-prev" type="button" aria-label="Previous screenshot" title="Previous screenshot">‹</button>
+            <button class="car-btn car-next" type="button" aria-label="Next screenshot" title="Next screenshot">›</button>
+          </div>
+          <div class="car-dots">
+          <button class="car-dot active" type="button" data-goto="0" aria-label="Bookshelf"></button>
+          <button class="car-dot" type="button" data-goto="1" aria-label="Reading"></button>
+          <button class="car-dot" type="button" data-goto="2" aria-label="Tags"></button>
+          <button class="car-dot" type="button" data-goto="3" aria-label="Stats"></button>
+          <button class="car-dot" type="button" data-goto="4" aria-label="Tools"></button>
+          <button class="car-dot" type="button" data-goto="5" aria-label="Settings"></button>
+          </div>
+        </div>
       </section>
 
       <section class="sec" id="features">
@@ -313,7 +362,7 @@
         <li>The data directory is resolved next to the executable first (release/data), then the working directory, then the user config directory.</li>
         <li>No user data is committed: src/data/, src/build/bin and release/ are git-ignored.</li>
         </ul>
-        <h3>Known issue: blank window (WebView2 stops repainting)</h3>
+        <h3>Known issue (Windows only): blank window (WebView2 stops repainting)</h3>
         <p class="muted">In production builds (with the assets embedded) some WebView2 + GPU combinations stop repainting because of the Wails hide / show visibility workaround — the window shows nothing but its background colour. The workaround lives in src/platform_windows.go:</p>
         <pre class="code"><code>app.Windows = &amp;windows.Options{
     WebviewGpuIsDisabled: true, // --disable-gpu; harmless for a text app

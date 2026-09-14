@@ -1,4 +1,4 @@
-# 书架 · 本地电子书管理（Windows / macOS / Linux）
+# Book Manager · 本地电子书管理（Windows / macOS / Linux）
 
 [English](README.md) · **[简体中文](README.zh-CN.md)** · [繁體中文](README.zh-TW.md)
 
@@ -126,7 +126,7 @@ just push "msg"        # 提交并推送（中文 message）
 - 数据目录的查找顺序：exe 旁边的 data/（release/data）→ 当前工作目录 → 用户配置目录。
 - Git 中不保留任何用户数据：src/data/、src/build/bin 与 release/ 都已忽略。
 
-## 已知问题：白屏（WebView2 不重绘）
+## 已知问题（仅 Windows）：白屏（WebView2 不重绘）
 
 在生产构建（内嵌资源）模式下，新版 WebView2 与本机 GPU 组合可能因 Wails 的 Hide / Show 可见性 workaround 触发不重绘问题：窗口只显示背景色。规避方案内置在 src/platform_windows.go：
 

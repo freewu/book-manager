@@ -39,7 +39,12 @@ function check(name, ok, extra) {
       features: document.querySelectorAll('#features .card').length,
       tools: document.querySelectorAll('#tools .card').length,
       shots: document.querySelectorAll('.shot').length,
-      hero: (document.querySelector('.shot-hero img') || {}).naturalWidth,
+      carSlides: document.querySelectorAll('.carousel .slide').length,
+      carDots: document.querySelectorAll('.carousel .car-dot').length,
+      carActive: [...document.querySelectorAll('.carousel .slide')].findIndex((s) => s.classList.contains('active')),
+      carLoaded: [...document.querySelectorAll('.carousel .slide img')].filter((i) => i.complete && i.naturalWidth > 0).length,
+      carArrows: ['.car-prev', '.car-next'].map((q) => !!document.querySelector('.carousel ' + q)),
+      carCaption: (document.querySelector('.carousel .slide.active .slide-cap') || {}).textContent,
       broken: [...document.images].filter((i) => i.complete && i.naturalWidth === 0).map((i) => i.getAttribute('src')),
       anchors: [...document.querySelectorAll('.nav a')].map((a) => (document.querySelector(a.getAttribute('href')) ? 'ok' : a.getAttribute('href'))),
       navText: document.querySelector('.nav a') && document.querySelector('.nav a').textContent,
@@ -52,7 +57,11 @@ function check(name, ok, extra) {
     check(f + ' 功能卡片 14 个', info.features === 14, info.features);
     check(f + ' 工具卡片 14 个', info.tools === 14, info.tools);
     check(f + ' 截图 6 张', info.shots === 6, info.shots);
-    check(f + ' hero 图已加载', info.hero === 2880, info.hero);
+    check(f + ' 首屏轮播 6 张 slide', info.carSlides === 6, info.carSlides);
+    check(f + ' 轮播圆点 6 个', info.carDots === 6, info.carDots);
+    check(f + ' 默认停在第一张', info.carActive === 0, info.carActive);
+    check(f + ' 第一张带说明文字', /\S/.test(info.carCaption || ''), JSON.stringify(info.carCaption));
+    check(f + ' 左右箭头都在', info.carArrows.every(Boolean), JSON.stringify(info.carArrows));
     check(f + ' 没有加载失败的图片', info.broken.length === 0, JSON.stringify(info.broken));
     check(f + ' 导航锚点都有对应区块', info.anchors.every((x) => x === 'ok'), JSON.stringify(info.anchors));
     check(f + ' 页脚 4 个链接（GitHub + README + Issues + License）', info.ftr.length === 4, JSON.stringify(info.ftr));
@@ -60,7 +69,43 @@ function check(name, ok, extra) {
     // 语言下拉里当前语言是选中的那一个
     const cur = info.opts.filter((o) => o[2]);
     check(f + ' 下拉里恰好选中一项', cur.length === 1 && cur[0][0] === f, JSON.stringify(cur));
+
+    // 轮播：点「下一张」→ 第二张；点「上一张」两次 → 回绕到最后一张；逐张滑过时图片都能加载
+    const activeIdx = () =>
+      page.evaluate(() => [...document.querySelectorAll('.carousel .slide')].findIndex((s) => s.classList.contains('active')));
+    await page.click('.carousel .car-next');
+    await page.waitForTimeout(700);
+    check(f + ' 下一张 → 第 2 张', (await activeIdx()) === 1, await activeIdx());
+    await page.click('.carousel .car-prev');
+    await page.click('.carousel .car-prev');
+    await page.waitForTimeout(700);
+    check(f + ' 上一张可回绕到第 6 张', (await activeIdx()) === 5, await activeIdx());
+    await page.click('.carousel .car-dot[data-goto="3"]');
+    await page.waitForTimeout(700);
+    check(f + ' 点圆点跳到第 4 张', (await activeIdx()) === 3, await activeIdx());
+    for (let i = 0; i < 6; i++) {
+      await page.click('.carousel .car-next');
+      await page.waitForTimeout(320);
+    }
+    const carImgs = await page.evaluate(() => {
+      const imgs = [...document.querySelectorAll('.carousel .slide img')];
+      return {total: imgs.length, ok: imgs.filter((i) => i.naturalWidth > 0).length, src: imgs.map((i) => i.getAttribute('src'))};
+    });
+    check(f + ' 轮播 ' + carImgs.total + ' 张图全部加载', carImgs.ok === carImgs.total, JSON.stringify(carImgs));
+    check(
+      f + ' 轮播图与 docs/images 一致',
+      new Set(carImgs.src).size === 6 && carImgs.src.every((x) => /^images\/.+\.png$/.test(x)),
+      JSON.stringify(carImgs.src)
+    );
   }
+
+  // 自动播放：停留 6 秒后应自动翻到下一张（headless 下 reduced-motion 为 no-preference）
+  await page.goto(file('index.html'));
+  await page.mouse.move(5, 5); // 移开鼠标，避免悬停暂停自动播放
+  const autoStart = await page.evaluate(() => [...document.querySelectorAll('.carousel .slide')].findIndex((s) => s.classList.contains('active')));
+  await page.waitForTimeout(6200);
+  const autoEnd = await page.evaluate(() => [...document.querySelectorAll('.carousel .slide')].findIndex((s) => s.classList.contains('active')));
+  check('轮播会自动播放', autoEnd === (autoStart + 1) % 6, autoStart + ' → ' + autoEnd);
 
   // 语言切换：从英文页选「简体中文」应跳到 zh-CN.html
   await page.goto(file('index.html'));

@@ -1,4 +1,4 @@
-/* 书架 · 官网样式（暗色，与应用截图一致） */
+/* Book Manager · 官网样式（暗色，与应用截图一致） */
 
 :root {
   --bg: #16171d;
@@ -246,19 +246,130 @@ main {
   padding: 3px 11px;
 }
 
-.shot-hero {
-  display: block;
+/* --------------------------------------------------- 首屏截图轮播 */
+
+.carousel {
   margin: 34px auto 0;
+}
+
+.car-viewport {
+  position: relative;
+  overflow: hidden;
   border: 1px solid var(--line);
   border-radius: var(--radius);
-  overflow: hidden;
   background: var(--panel);
   box-shadow: 0 30px 70px rgba(0, 0, 0, 0.45);
 }
 
-.shot-hero img {
+.car-track {
+  display: flex;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  transition: transform 0.55s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.slide {
+  position: relative;
+  flex: 0 0 100%;
+}
+
+.slide img {
   display: block;
   width: 100%;
+  height: auto;
+}
+
+.slide-cap {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 30px 16px 12px;
+  background: linear-gradient(rgba(0, 0, 0, 0), rgba(0, 0, 0, 0.78));
+  color: #fff;
+  font-size: 13px;
+  text-align: left;
+  pointer-events: none;
+}
+
+.slide-cap strong {
+  font-size: 14px;
+}
+
+.slide-cap span {
+  opacity: 0.82;
+}
+
+.car-btn {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 42px;
+  height: 42px;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  background: rgba(15, 17, 22, 0.62);
+  color: var(--text);
+  font: 22px/1 'Segoe UI', system-ui, sans-serif;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  backdrop-filter: blur(6px);
+  transition: background 0.2s, color 0.2s;
+}
+
+.car-btn:hover,
+.car-btn:focus-visible {
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent);
+}
+
+.car-prev {
+  left: 14px;
+}
+
+.car-next {
+  right: 14px;
+}
+
+.car-dots {
+  display: flex;
+  justify-content: center;
+  gap: 9px;
+  margin-top: 14px;
+}
+
+.car-dot {
+  width: 9px;
+  height: 9px;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  background: var(--panel);
+  cursor: pointer;
+  transition: background 0.2s, transform 0.2s;
+}
+
+.car-dot:hover {
+  background: var(--panel-2);
+}
+
+.car-dot.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  transform: scale(1.25);
+}
+
+@media (max-width: 640px) {
+  .car-btn {
+    display: none;
+  }
 }
 
 /* ------------------------------------------------------------- 通用段 */
@@ -389,6 +500,27 @@ main {
 @media (max-width: 760px) {
   .shots {
     grid-template-columns: 1fr;
+  }
+}
+
+/* 窄屏：品牌 + 导航 + 语言选择挤在一行会撑出横向滚动，这里让导航横向滚动 */
+@media (max-width: 760px) {
+  .hdr-in {
+    flex-wrap: wrap;
+    gap: 8px 12px;
+  }
+
+  .nav {
+    order: 3;
+    width: 100%;
+    margin-left: 0;
+    overflow-x: auto;
+    padding-bottom: 2px;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .lang {
+    margin-left: auto;
   }
 }
 

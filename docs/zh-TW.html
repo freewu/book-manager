@@ -3,10 +3,10 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>書架 · 本機電子書管理（Windows / macOS / Linux）</title>
+    <title>Book Manager · 本機電子書管理（Windows / macOS / Linux）</title>
     <meta name="description" content="用 Wails v2 + Go + React 寫的本機電子書管理應用程式。掃描本機目錄建立書架，用標籤把書整理清楚，epub / pdf / mobi 直接在應用程式內閱讀，還有十四個內建小工具整理 PDF —— 資料只存在你自己的磁碟上，全部裝在一個 SQLite 檔案裡。" />
     <meta property="og:type" content="website" />
-    <meta property="og:title" content="書架 · 本機電子書管理（Windows / macOS / Linux）" />
+    <meta property="og:title" content="Book Manager · 本機電子書管理（Windows / macOS / Linux）" />
     <meta property="og:description" content="用 Wails v2 + Go + React 寫的本機電子書管理應用程式。掃描本機目錄建立書架，用標籤把書整理清楚，epub / pdf / mobi 直接在應用程式內閱讀，還有十四個內建小工具整理 PDF —— 資料只存在你自己的磁碟上，全部裝在一個 SQLite 檔案裡。" />
     <meta property="og:image" content="images/book-shelf.png" />
 <link rel="alternate" hreflang="en" href="index.html" />
@@ -20,7 +20,7 @@
       <div class="hdr-in">
         <a class="brand" href="zh-TW.html">
           <span class="brand-ico">📚</span>
-          <span class="brand-txt">書架</span>
+          <span class="brand-txt">Book Manager</span>
           <span class="brand-ver">v0.1.0</span>
         </a>
         <nav class="nav">
@@ -44,7 +44,7 @@
     <main>
       <section class="hero">
         <p class="eyebrow">Windows / macOS / Linux 上的本機電子書庫</p>
-        <h1>書架</h1>
+        <h1>Book Manager</h1>
         <p class="lede">用 Wails v2 + Go + React 寫的本機電子書管理應用程式。掃描本機目錄建立書架，用標籤把書整理清楚，epub / pdf / mobi 直接在應用程式內閱讀，還有十四個內建小工具整理 PDF —— 資料只存在你自己的磁碟上，全部裝在一個 SQLite 檔案裡。</p>
         <div class="cta">
           <a class="btn primary" href="https://github.com/freewu/book-manager/releases/latest">⬇ 下載最新版</a>
@@ -59,9 +59,58 @@
       <li>Windows · macOS · Linux</li>
       <li>MIT</li>
         </ul>
-        <a class="shot-hero" href="images/book-shelf.png" target="_blank" rel="noopener">
-          <img src="images/book-shelf.png" alt="書架" />
-        </a>
+        <div class="carousel" data-interval="5200" role="group" aria-roledescription="carousel" aria-label="截圖">
+          <div class="car-viewport">
+            <ul class="car-track">
+          <li class="slide active" data-slide="0">
+            <a href="images/book-shelf.png" target="_blank" rel="noopener">
+              <img src="images/book-shelf.png" alt="書架" width="2880" height="1728" />
+            </a>
+            <span class="slide-cap"><strong>書架</strong><span>封面網格、搜尋、格式與標籤篩選、批次操作。</span></span>
+          </li>
+          <li class="slide" data-slide="1">
+            <a href="images/reading-log.png" target="_blank" rel="noopener">
+              <img src="images/reading-log.png" alt="閱讀" width="2880" height="1728" loading="lazy" />
+            </a>
+            <span class="slide-cap"><strong>閱讀</strong><span>在讀與已讀完分開列出，一鍵繼續閱讀。</span></span>
+          </li>
+          <li class="slide" data-slide="2">
+            <a href="images/tag-manage.png" target="_blank" rel="noopener">
+              <img src="images/tag-manage.png" alt="標籤" width="2880" height="1728" loading="lazy" />
+            </a>
+            <span class="slide-cap"><strong>標籤</strong><span>拖曳調整順序，或者切到標籤雲。</span></span>
+          </li>
+          <li class="slide" data-slide="3">
+            <a href="images/stats.png" target="_blank" rel="noopener">
+              <img src="images/stats.png" alt="統計" width="2880" height="1728" loading="lazy" />
+            </a>
+            <span class="slide-cap"><strong>統計</strong><span>閱讀時長、格式分布與閱讀紀錄。</span></span>
+          </li>
+          <li class="slide" data-slide="4">
+            <a href="images/tools.png" target="_blank" rel="noopener">
+              <img src="images/tools.png" alt="工具" width="2880" height="1728" loading="lazy" />
+            </a>
+            <span class="slide-cap"><strong>工具</strong><span>十四個小工具都在這一頁。</span></span>
+          </li>
+          <li class="slide" data-slide="5">
+            <a href="images/settings.png" target="_blank" rel="noopener">
+              <img src="images/settings.png" alt="設定" width="2880" height="1728" loading="lazy" />
+            </a>
+            <span class="slide-cap"><strong>設定</strong><span>書架預設值、閒置上限、語言與資料位置。</span></span>
+          </li>
+            </ul>
+            <button class="car-btn car-prev" type="button" aria-label="上一張截圖" title="上一張截圖">‹</button>
+            <button class="car-btn car-next" type="button" aria-label="下一張截圖" title="下一張截圖">›</button>
+          </div>
+          <div class="car-dots">
+          <button class="car-dot active" type="button" data-goto="0" aria-label="書架"></button>
+          <button class="car-dot" type="button" data-goto="1" aria-label="閱讀"></button>
+          <button class="car-dot" type="button" data-goto="2" aria-label="標籤"></button>
+          <button class="car-dot" type="button" data-goto="3" aria-label="統計"></button>
+          <button class="car-dot" type="button" data-goto="4" aria-label="工具"></button>
+          <button class="car-dot" type="button" data-goto="5" aria-label="設定"></button>
+          </div>
+        </div>
       </section>
 
       <section class="sec" id="features">
@@ -313,7 +362,7 @@
         <li>資料目錄的尋找順序：exe 旁邊的 data/（release/data）→ 目前工作目錄 → 使用者設定目錄。</li>
         <li>Git 中不保留任何使用者資料：src/data/、src/build/bin 與 release/ 都已忽略。</li>
         </ul>
-        <h3>已知問題：白畫面（WebView2 不重繪）</h3>
+        <h3>已知問題（僅 Windows）：白畫面（WebView2 不重繪）</h3>
         <p class="muted">在正式建置（內嵌資源）模式下，新版 WebView2 與本機 GPU 組合可能因 Wails 的 Hide / Show 可見性 workaround 觸發不重繪問題：視窗只顯示背景色。規避方案內建在 src/platform_windows.go：</p>
         <pre class="code"><code>app.Windows = &amp;windows.Options{
     WebviewGpuIsDisabled: true, // --disable-gpu，文字類應用程式無影響

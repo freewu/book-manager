@@ -50,6 +50,19 @@ just push "feat: xxx"   # 提交并推送
   所以开发版（exe 名带 `-dev`）的 WebView2 数据放到 `%LocalAppData%\book-manager\webview2-dev`，
   正式版仍留在 exe 旁的 `data/webview2`（绿色版可整体拷走）。dev 的 `book.db` / `covers` 不受影响。
 - 版本号唯一来源是 `src/version.go` 的 `const Version`；发版时改它并重新 `just release`。
+  exe / app 的**文件属性**版本来自 `src/wails.json` 的 `info.productVersion`（Windows 要求 4 段如 `0.1.0.0`），
+  改版本号时顺手同步它——只影响文件元数据，界面/Release 版本仍以 `src/version.go` 为准。
+- `src/build/windows/info.json`（exe 属性模板）有三处别改坏，否则 Windows「属性 → 详细信息」全空：
+  语言键必须是 `0409`（不能用默认模板的 `0000`，资源管理器读不到）、`fixed` 里
+  `file_version` 与 `product_version` 都要给、字符串表里 `FileVersion` / `ProductVersion` 两条也要显式列。
+  验证：`[System.Diagnostics.FileVersionInfo]::GetVersionInfo($exe)` 应能读到 ProductName/FileVersion。
+- **应用名三语统一为 `Book Manager`，不翻译**：窗口标题（`main.go` 的 `Title`）、`index.html` 的 `<title>`、
+  侧栏品牌名（`Sidebar.tsx`）、设置页「关于」一行、官网/README 的 `content.py` `name`，以及
+  `src/wails.json` 的 `info.productName`（决定 Windows exe 属性与 macOS `CFBundleName`）。
+  「书架 / 書架 / Bookshelf」只是**书架页**的名字（`nav.bookshelf`、`bookshelf.title`），别拿它当应用名。
+- **平台相关代码必须分文件**（不能只有 Windows 能编译）：`*_windows.go` / `*_other.go`
+  （`platform_*`、`tray_*`、`darkmode_*`、`gsreg_*`）；前端主题也先问 `App.SystemThemeNeedsBackend()`
+  ——只有 Windows 需要读注册表，macOS / Linux 用 `prefers-color-scheme`。
 
 ## 发布与三平台安装包（GitHub Actions）
 
@@ -63,8 +76,10 @@ just push "feat: xxx"   # 提交并推送
   `book-manager-<版本>-windows-x64.zip`（单 exe）、
   `book-manager-<版本>-macos-universal.zip`（Intel + Apple Silicon 通用 .app）、
   `book-manager-<版本>-linux-x64.tar.gz`（二进制 + .desktop + 图标）。
-- **release message = 提交信息汇总**：取上一个 tag 到 HEAD 之间的 `git log --no-merges`（首次发布则列全部），
-  再附下载表、各平台运行要求与 compare 链接。所以**提交信息要写清楚**，它直接进 release。
+- **release message = 提交信息汇总**：取上一个 tag 到本次发布提交（tag 已存在就用该 tag，否则用 `HEAD`）
+  之间的 `git log --no-merges`（首次发布则列全部），再附「构建提交」、下载表、各平台运行要求与
+  compare 链接。所以**提交信息要写清楚**，它直接进 release。
+- `-o` 是**原样输出名**（wails 不会再补 `.exe` / 平台后缀），所以 Windows 构建显式给 `-o book-manager.exe`。
 - 同一个 tag 已存在且有附件时默认跳过，不会重复发。
 - **Wails 不支持交叉编译**：三平台在各自 runner 上 `wails build`（Windows/macOS/Ubuntu）。
   Linux 用 `ubuntu-latest` + `libwebkit2gtk-4.1-dev` + `-tags webkit2_41`（Wails 默认 4.0），
@@ -111,6 +126,11 @@ docs/                               # 官网（GitHub Pages 直接发布这个�
 - 默认语言是**英文**：GitHub 首页看 `README.md`，Pages 首页看 `docs/index.html`；
   官网页头右上角的 `select#lang` 在三种语言间切换（`docs/site.js`，不做自动重定向）。
 - 截图统一放 `docs/images/`（文件名见 `content.py` 的 `SHOT_FILES`），官网与 README 共用同一批图。
+- **官网首屏是这批截图的轮播**（`generate.py` 里按 `SHOT_FILES` × `c["shots"]` 生成，样式在 `docs/site.css`
+  的 `.carousel` 段，逻辑在 `docs/site.js`）：默认每 5.2s 自动翻页，悬停 / 聚焦 / 切到后台标签页自动暂停，
+  支持左右箭头、圆点跳转、键盘 ← →；系统开启「减弱动态效果」时不自动播放。**新增截图只要往
+  `SHOT_FILES` 与三语的 `shots` 里各加一条**，首屏轮播、截图区、README 会一起长出来。
+  写入图片时带上 `width="2880" height="1728"`（5:3），避免切换时抖动；首图立即加载、其余 `loading="lazy"`。
 - `just test` 会跑 `just test-docs`（`generate.py --check`）：只要生成物和 `content.py` 不一致就会失败；
   `.github/workflows/pages.yml` 里也跑同一条检查，然后把 `docs/` 上传发布。
 - 官网/README 的浏览器校验：`just site-test`（`scripts/gen-docs/verify-site.cjs`，headless Edge）会检查三语言页面

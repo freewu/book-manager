@@ -126,7 +126,7 @@ just push "msg"        # commit everything and push to main
 - The data directory is resolved next to the executable first (release/data), then the working directory, then the user config directory.
 - No user data is committed: src/data/, src/build/bin and release/ are git-ignored.
 
-## Known issue: blank window (WebView2 stops repainting)
+## Known issue (Windows only): blank window (WebView2 stops repainting)
 
 In production builds (with the assets embedded) some WebView2 + GPU combinations stop repainting because of the Wails hide / show visibility workaround — the window shows nothing but its background colour. The workaround lives in src/platform_windows.go:
 

@@ -1,4 +1,4 @@
-# 書架 · 本機電子書管理（Windows / macOS / Linux）
+# Book Manager · 本機電子書管理（Windows / macOS / Linux）
 
 [English](README.md) · [简体中文](README.zh-CN.md) · **[繁體中文](README.zh-TW.md)**
 
@@ -126,7 +126,7 @@ just push "msg"        # 提交並推送（中文 message）
 - 資料目錄的尋找順序：exe 旁邊的 data/（release/data）→ 目前工作目錄 → 使用者設定目錄。
 - Git 中不保留任何使用者資料：src/data/、src/build/bin 與 release/ 都已忽略。
 
-## 已知問題：白畫面（WebView2 不重繪）
+## 已知問題（僅 Windows）：白畫面（WebView2 不重繪）
 
 在正式建置（內嵌資源）模式下，新版 WebView2 與本機 GPU 組合可能因 Wails 的 Hide / Show 可見性 workaround 觸發不重繪問題：視窗只顯示背景色。規避方案內建在 src/platform_windows.go：
 

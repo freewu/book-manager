@@ -241,17 +241,24 @@ jobs:
           REPO: ${{ github.repository }}
         run: |
           set -euo pipefail
-          # 上一个 tag（HEAD^ 避免匹配到自己的 tag）
-          PREV=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || true)
+          # 本次发布对应的提交：tag 已存在就用 tag（可能是先打 tag 再补 CI 修复），否则用 HEAD
+          END=HEAD
+          if git rev-parse -q --verify "refs/tags/$TAG" >/dev/null; then END="$TAG"; fi
+          # 上一个 tag（"$END^" 避免匹配到自己的 tag）
+          PREV=$(git describe --tags --abbrev=0 "$END^" 2>/dev/null || true)
           if [ -n "$PREV" ]; then
-            git log --no-merges --pretty=format:'- %s (%h)' "$PREV..HEAD" > commits.txt
+            git log --no-merges --pretty=format:'- %s (%h)' "$PREV..$END" > commits.txt
           else
-            git log --no-merges --pretty=format:'- %s (%h)' > commits.txt
+            git log --no-merges --pretty=format:'- %s (%h)' "$END" > commits.txt
           fi
 
           {
-            echo "本机电子书管理 · 三平台**免安装**包（解压即用，不需要安装器）"
+            echo "Book Manager · 三平台**免安装**包（解压即用，不需要安装器）"
             echo
+            if [ -n "$PREV" ]; then
+              echo "> 对应提交 \`$END\`（构建自 \`$(git rev-parse --short HEAD)\`）"
+              echo
+            fi
             echo "## 本次变更"
             echo
             if [ -n "$PREV" ]; then
@@ -296,7 +303,7 @@ jobs:
           case "$TAG" in *-*) EXTRA+=(--prerelease);; esac   # v1.2.3-beta.1 这类当预发布
           if gh release view "$TAG" >/dev/null 2>&1; then
             gh release upload "$TAG" dist/* --clobber
-            gh release edit "$TAG" --title "book-manager $TAG" --notes-file notes.md "${EXTRA[@]}"
+            gh release edit "$TAG" --title "Book Manager $TAG" --notes-file notes.md "${EXTRA[@]}"
           else
             TARGET=()
             git rev-parse -q --verify "refs/tags/$TAG" >/dev/null || TARGET+=(--target="$GITHUB_SHA")

@@ -188,7 +188,33 @@ def page(lang: str) -> str:
         for icon, title, desc in c["features"]
     )
 
-    hero_title = c["shots"][0][0]
+    # 首屏轮播：6 张截图各一张 slide（第一张立即加载，其余懒加载）
+    slides = "\n".join(
+        f"""          <li class="slide{' active' if i == 0 else ''}" data-slide="{i}">
+            <a href="images/{file}" target="_blank" rel="noopener">
+              <img src="images/{file}" alt="{esc(title)}" width="2880" height="1728"{'' if i == 0 else ' loading="lazy"'} />
+            </a>
+            <span class="slide-cap"><strong>{esc(title)}</strong><span>{esc(caption)}</span></span>
+          </li>"""
+        for i, (file, (title, caption)) in enumerate(zip(SHOT_FILES, c["shots"]))
+    )
+    dots = "\n".join(
+        f"""          <button class="car-dot{' active' if i == 0 else ''}" type="button" data-goto="{i}" aria-label="{esc(title)}"></button>"""
+        for i, (_file, (title, _cap)) in enumerate(zip(SHOT_FILES, c["shots"]))
+    )
+    hero_shot = f"""        <div class="carousel" data-interval="5200" role="group" aria-roledescription="carousel" aria-label="{esc(c['shots_title'])}">
+          <div class="car-viewport">
+            <ul class="car-track">
+{slides}
+            </ul>
+            <button class="car-btn car-prev" type="button" aria-label="{esc(c['shot_prev'])}" title="{esc(c['shot_prev'])}">‹</button>
+            <button class="car-btn car-next" type="button" aria-label="{esc(c['shot_next'])}" title="{esc(c['shot_next'])}">›</button>
+          </div>
+          <div class="car-dots">
+{dots}
+          </div>
+        </div>"""
+
     shots = "\n".join(
         f"""      <figure class="shot">
         <a href="images/{file}" target="_blank" rel="noopener">
@@ -277,9 +303,7 @@ def page(lang: str) -> str:
         <ul class="badges">
 {badges}
         </ul>
-        <a class="shot-hero" href="images/{HERO_SHOT}" target="_blank" rel="noopener">
-          <img src="images/{HERO_SHOT}" alt="{esc(hero_title)}" />
-        </a>
+{hero_shot}
       </section>
 
       <section class="sec" id="features">
