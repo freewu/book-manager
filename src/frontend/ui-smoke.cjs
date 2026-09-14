@@ -557,6 +557,20 @@ async function main() {
     Math.abs(maxCntIdx - (cloud.items.length - 1) / 2) <= 1,
     maxCntIdx + '/' + (cloud.items.length - 1),
   );
+  check(
+    '云团里的标签互不重叠',
+    await page.evaluate(() => {
+      const rs = [...document.querySelectorAll('.cloud-tag')].map((el) => el.getBoundingClientRect());
+      for (let i = 0; i < rs.length; i++) {
+        for (let j = i + 1; j < rs.length; j++) {
+          const a = rs[i];
+          const b = rs[j];
+          if (a.right > b.left && b.right > a.left && a.bottom > b.top && b.bottom > a.top) return false;
+        }
+      }
+      return true;
+    }),
+  );
   const rowLeft = Math.min(...cloud.items.map((x) => x.left));
   const rowRight = Math.max(...cloud.items.map((x) => x.right));
   check(
