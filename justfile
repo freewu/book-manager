@@ -39,8 +39,8 @@ release:
     cp {{app}}/build/bin/book-manager.exe release/book-manager.exe
     @echo "✔ 发布产物: release/book-manager.exe"
 
-# 运行全部测试（Go 后端 + JS 解析器 + i18n 静态检查）
-test: test-go test-js test-i18n
+# 运行全部测试（Go 后端 + JS 解析器 + i18n 静态检查 + 文档同步）
+test: test-go test-js test-i18n test-docs
 
 # Go 后端测试
 test-go:
@@ -57,6 +57,14 @@ test-i18n:
 # 前端 UI 冒烟测试（需 Edge + playwright-core；发版前必跑）
 ui-test:
     cd {{app}}/frontend && {{node}} ui-smoke.cjs
+
+# 重新生成 README（英/简/繁）与 docs 官网（改 scripts/gen-docs/content.py 后执行）
+docs:
+    python3 scripts/gen-docs/generate.py
+
+# 检查 README / docs 是否与生成脚本一致（CI 也会跑）
+test-docs:
+    python3 scripts/gen-docs/generate.py --check
 
 # 重新生成 logo 与各平台图标（logo.png → appicon.png / icon.ico）
 icon:

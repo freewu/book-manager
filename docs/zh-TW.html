@@ -1,0 +1,355 @@
+<!doctype html>
+<html lang="zh-TW">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>書架 · 本機電子書管理</title>
+    <meta name="description" content="用 Wails v2 + Go + React 寫的本機電子書管理應用程式。掃描本機目錄建立書架，用標籤把書整理清楚，epub / pdf / mobi 直接在應用程式內閱讀，還有十四個內建小工具整理 PDF —— 資料只存在你自己的磁碟上，全部裝在一個 SQLite 檔案裡。" />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="書架 · 本機電子書管理" />
+    <meta property="og:description" content="用 Wails v2 + Go + React 寫的本機電子書管理應用程式。掃描本機目錄建立書架，用標籤把書整理清楚，epub / pdf / mobi 直接在應用程式內閱讀，還有十四個內建小工具整理 PDF —— 資料只存在你自己的磁碟上，全部裝在一個 SQLite 檔案裡。" />
+    <meta property="og:image" content="images/book-shelf.png" />
+<link rel="alternate" hreflang="en" href="index.html" />
+<link rel="alternate" hreflang="zh-CN" href="zh-CN.html" />
+<link rel="alternate" hreflang="zh-TW" href="zh-TW.html" />
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ctext y='50' font-size='52'%3E%F0%9F%93%9A%3C/text%3E%3C/svg%3E" />
+    <link rel="stylesheet" href="site.css" />
+  </head>
+  <body>
+    <header class="hdr">
+      <div class="hdr-in">
+        <a class="brand" href="zh-TW.html">
+          <span class="brand-ico">📚</span>
+          <span class="brand-txt">書架</span>
+          <span class="brand-ver">v0.1.0</span>
+        </a>
+        <nav class="nav">
+      <a href="#features">功能</a>
+      <a href="#screenshots">截圖</a>
+      <a href="#tools">工具</a>
+      <a href="#start">快速開始</a>
+      <a href="#download">下載</a>
+        </nav>
+        <label class="lang">
+          <span class="lang-ico" aria-hidden="true">🌏</span>
+          <select id="lang" aria-label="語言">
+        <option value="index.html">English</option>
+        <option value="zh-CN.html">简体中文</option>
+        <option value="zh-TW.html" selected>繁體中文</option>
+          </select>
+        </label>
+      </div>
+    </header>
+
+    <main>
+      <section class="hero">
+        <p class="eyebrow">Windows 上的本機電子書庫</p>
+        <h1>書架</h1>
+        <p class="lede">用 Wails v2 + Go + React 寫的本機電子書管理應用程式。掃描本機目錄建立書架，用標籤把書整理清楚，epub / pdf / mobi 直接在應用程式內閱讀，還有十四個內建小工具整理 PDF —— 資料只存在你自己的磁碟上，全部裝在一個 SQLite 檔案裡。</p>
+        <div class="cta">
+          <a class="btn primary" href="https://github.com/freewu/book-manager/releases/latest">⬇ 下載 Windows 版</a>
+          <a class="btn ghost" href="https://github.com/freewu/book-manager">★ 在 GitHub 上檢視</a>
+        </div>
+        <p class="cta-note">Windows 10 / 11 · 免安裝綠色版 · MIT 授權</p>
+        <ul class="badges">
+      <li>Wails v2</li>
+      <li>Go 1.21+</li>
+      <li>React + Vite</li>
+      <li>SQLite</li>
+      <li>Windows 10/11</li>
+      <li>MIT</li>
+        </ul>
+        <a class="shot-hero" href="images/book-shelf.png" target="_blank" rel="noopener">
+          <img src="images/book-shelf.png" alt="書架" />
+        </a>
+      </section>
+
+      <section class="sec" id="features">
+        <h2>功能</h2>
+        <div class="cards">
+      <article class="card">
+        <div class="card-ico">📂</div>
+        <h3>目錄掃描</h3>
+        <p>掃描本機目錄，自動擷取書名、作者、出版社、語言、簡介、大小與 MD5，並從書中抽出封面；支援 EPUB、PDF、MOBI、AZW3、KEPUB。</p>
+      </article>
+      <article class="card">
+        <div class="card-ico">📚</div>
+        <h3>書架</h3>
+        <p>封面網格 + 關鍵字搜尋、格式篩選、多標籤「或 / 且」篩選與多種排序；卡片上直接顯示閱讀進度和豆瓣評分，瀏覽位置也會記住。</p>
+      </article>
+      <article class="card">
+        <div class="card-ico">🏷️</div>
+        <h3>標籤</h3>
+        <p>新增、改名換色、凍結、刪除標籤，拖曳排出自己的順序，還能隨機配色；或者切到標籤雲，字號隨收錄的書本數變大。</p>
+      </article>
+      <article class="card">
+        <div class="card-ico">🌐</div>
+        <h3>豆瓣資料</h3>
+        <p>依書名從豆瓣取得封面、連結、評分與評價人數，可以批次補齊，也可以在書籍詳細資料裡單本搜尋關聯。</p>
+      </article>
+      <article class="card">
+        <div class="card-ico">📖</div>
+        <h3>應用程式內閱讀</h3>
+        <p>EPUB / KEPUB 用 epub.js，PDF 用 pdf.js，MOBI / AZW3 用內建的 PalmDoc 解壓與解析（內嵌圖片也能顯示）；閱讀位置、頁數與進度依書記錄，加密 PDF 只需輸入一次密碼。</p>
+      </article>
+      <article class="card">
+        <div class="card-ico">🔤</div>
+        <h3>閱讀體驗</h3>
+        <p>閱讀器工具列裡可以隨時調整字級，也能開啟護眼模式（epub 變暖色紙、PDF 換暖底襯）；兩項都只在本次工作階段生效，不動全域設定。</p>
+      </article>
+      <article class="card">
+        <div class="card-ico">⏱️</div>
+        <h3>閱讀計時</h3>
+        <p>每次閱讀都累計到總時長；長時間停在同一頁只算 1 分鐘，這個閒置上限可以在設定裡改。</p>
+      </article>
+      <article class="card">
+        <div class="card-ico">📝</div>
+        <h3>閱讀筆記</h3>
+        <p>閱讀時選取文字即可加筆記（含原文引用與位置），之後可以檢視和刪除。</p>
+      </article>
+      <article class="card">
+        <div class="card-ico">🧰</div>
+        <h3>十四個工具</h3>
+        <p>密碼、合併、擷取頁面、修改文件、壓縮文件、PDF → EPUB、EPUB → PDF、轉存圖片……全部離線，只動你自己的檔案。</p>
+      </article>
+      <article class="card">
+        <div class="card-ico">🚫</div>
+        <h3>誤錄管理</h3>
+        <p>把誤判的書標記為誤錄，下次掃描依路徑與 MD5 雙重比對自動跳過，隨時可以還原。</p>
+      </article>
+      <article class="card">
+        <div class="card-ico">📊</div>
+        <h3>統計</h3>
+        <p>書籍數、總體積、累計閱讀時長、筆記數，格式分布、最近入庫，以及完整的閱讀紀錄列表。</p>
+      </article>
+      <article class="card">
+        <div class="card-ico">🌏</div>
+        <h3>三種語言</h3>
+        <p>介面內建繁體中文、简体中文與 English，設定裡隨時切換。</p>
+      </article>
+      <article class="card">
+        <div class="card-ico">💾</div>
+        <h3>本機優先</h3>
+        <p>不用註冊、不上雲、無遙測 —— 所有資料就是 exe 旁邊的一個 SQLite 檔案。</p>
+      </article>
+      <article class="card">
+        <div class="card-ico">🖥️</div>
+        <h3>系統匣與單一實例</h3>
+        <p>關掉視窗只是收進系統匣；再啟動一次只會把已經在執行的視窗喚到前景。</p>
+      </article>
+        </div>
+      </section>
+
+      <section class="sec" id="screenshots">
+        <h2>截圖</h2>
+        <div class="shots">
+      <figure class="shot">
+        <a href="images/book-shelf.png" target="_blank" rel="noopener">
+          <img src="images/book-shelf.png" alt="書架" loading="lazy" />
+        </a>
+        <figcaption><strong>書架</strong><span>封面網格、搜尋、格式與標籤篩選、批次操作。</span></figcaption>
+      </figure>
+      <figure class="shot">
+        <a href="images/reading-log.png" target="_blank" rel="noopener">
+          <img src="images/reading-log.png" alt="閱讀" loading="lazy" />
+        </a>
+        <figcaption><strong>閱讀</strong><span>在讀與已讀完分開列出，一鍵繼續閱讀。</span></figcaption>
+      </figure>
+      <figure class="shot">
+        <a href="images/tag-manage.png" target="_blank" rel="noopener">
+          <img src="images/tag-manage.png" alt="標籤" loading="lazy" />
+        </a>
+        <figcaption><strong>標籤</strong><span>拖曳調整順序，或者切到標籤雲。</span></figcaption>
+      </figure>
+      <figure class="shot">
+        <a href="images/stats.png" target="_blank" rel="noopener">
+          <img src="images/stats.png" alt="統計" loading="lazy" />
+        </a>
+        <figcaption><strong>統計</strong><span>閱讀時長、格式分布與閱讀紀錄。</span></figcaption>
+      </figure>
+      <figure class="shot">
+        <a href="images/tools.png" target="_blank" rel="noopener">
+          <img src="images/tools.png" alt="工具" loading="lazy" />
+        </a>
+        <figcaption><strong>工具</strong><span>十四個小工具都在這一頁。</span></figcaption>
+      </figure>
+      <figure class="shot">
+        <a href="images/settings.png" target="_blank" rel="noopener">
+          <img src="images/settings.png" alt="設定" loading="lazy" />
+        </a>
+        <figcaption><strong>設定</strong><span>書架預設值、閒置上限、語言與資料位置。</span></figcaption>
+      </figure>
+        </div>
+      </section>
+
+      <section class="sec" id="tools">
+        <h2>十四個內建工具</h2>
+        <p class="muted">全部離線執行，只處理你自己挑選的檔案（包含書架上既有的 PDF）。</p>
+      <div class="tgroup">
+        <h3>PDF</h3>
+        <div class="cards">
+        <article class="card tool">
+          <div class="card-ico">🔒</div>
+          <h4>設定密碼</h4>
+          <p>為 PDF 加上開啟密碼。</p>
+        </article>
+        <article class="card tool">
+          <div class="card-ico">🔓</div>
+          <h4>清除密碼</h4>
+          <p>移除 PDF 的開啟密碼。</p>
+        </article>
+        <article class="card tool">
+          <div class="card-ico">🧷</div>
+          <h4>合併 PDF</h4>
+          <p>把多個 PDF 依序合併成一個新檔案。</p>
+        </article>
+        <article class="card tool">
+          <div class="card-ico">✂️</div>
+          <h4>擷取頁面</h4>
+          <p>挑出 PDF 裡的頁面，另存成一個新的 PDF。</p>
+        </article>
+        <article class="card tool">
+          <div class="card-ico">🖼️</div>
+          <h4>轉存圖片</h4>
+          <p>把頁面匯出成 PNG / JPEG 圖片，可以只匯出指定頁面。</p>
+        </article>
+        <article class="card tool">
+          <div class="card-ico">📝</div>
+          <h4>修改文件</h4>
+          <p>檢視並修改 PDF 的標題、作者、主題與關鍵字。</p>
+        </article>
+        <article class="card tool">
+          <div class="card-ico">🗜️</div>
+          <h4>壓縮文件</h4>
+          <p>用 Ghostscript 重寫 PDF，依檔位降採樣影像來縮小體積。</p>
+        </article>
+        <article class="card tool">
+          <div class="card-ico">📗</div>
+          <h4>轉存 EPUB</h4>
+          <p>把 PDF 的文字排版成 epub，可選擇儲存目錄。</p>
+        </article>
+        </div>
+      </div>
+      <div class="tgroup">
+        <h3>EPUB</h3>
+        <div class="cards">
+        <article class="card tool">
+          <div class="card-ico">📕</div>
+          <h4>轉存 PDF</h4>
+          <p>把 epub 排版成帶書籤目錄的 PDF，內嵌字型、文字可選取。</p>
+        </article>
+        </div>
+      </div>
+      <div class="tgroup">
+        <h3>其他</h3>
+        <div class="cards">
+        <article class="card tool">
+          <div class="card-ico">🔍</div>
+          <h4>掃描書庫</h4>
+          <p>掃描本機目錄，把新增的電子書加入書架。</p>
+        </article>
+        <article class="card tool">
+          <div class="card-ico">🏷️</div>
+          <h4>標籤管理</h4>
+          <p>新增 / 改名換色 / 凍結 / 刪除標籤，並可依標籤檢視書籍。</p>
+        </article>
+        <article class="card tool">
+          <div class="card-ico">🚫</div>
+          <h4>誤錄管理</h4>
+          <p>檢視並還原被標記為誤錄的檔案。</p>
+        </article>
+        <article class="card tool">
+          <div class="card-ico">🌐</div>
+          <h4>豆瓣補齊</h4>
+          <p>為缺少評分 / 封面的書批次取得豆瓣資訊。</p>
+        </article>
+        <article class="card tool">
+          <div class="card-ico">📂</div>
+          <h4>資料目錄</h4>
+          <p>book.db 與封面快取所在位置，可一鍵開啟。</p>
+        </article>
+        </div>
+      </div>
+      </section>
+
+      <section class="sec" id="start">
+        <h2>快速開始</h2>
+        <div class="cols">
+          <div>
+            <h3>環境需求</h3>
+            <ul class="list">
+        <li>Go 1.21+</li>
+        <li>Node.js 18+</li>
+        <li>Wails CLI：<code>go install github.com/wailsapp/wails/v2/cmd/wails@latest</code></li>
+        <li>Windows：WebView2 執行階段（Win10 / 11 內建）</li>
+            </ul>
+          </div>
+          <div>
+            <h3>常用指令（just）</h3>
+            <table class="cmds">
+              <tbody>
+          <tr><td><code>just setup</code></td><td>安裝前端相依套件</td></tr>
+          <tr><td><code>just dev</code></td><td>開發模式（熱重載）</td></tr>
+          <tr><td><code>just build</code></td><td>正式建置 → src/build/bin/book-manager.exe</td></tr>
+          <tr><td><code>just release</code></td><td>發行建置 → release/book-manager.exe</td></tr>
+          <tr><td><code>just test</code></td><td>Go 後端測試 + JS 解析器 + i18n 檢查</td></tr>
+          <tr><td><code>just ui-test</code></td><td>前端 UI 冒煙測試（需 Edge + playwright-core）</td></tr>
+          <tr><td><code>just icon</code></td><td>從 asserts/logo.png 重新產生應用程式圖示</td></tr>
+          <tr><td><code>just fmt</code></td><td>Go 格式化 + 靜態檢查</td></tr>
+          <tr><td><code>just docs</code></td><td>重新產生 README 與官網</td></tr>
+          <tr><td><code>just push &quot;msg&quot;</code></td><td>提交並推送（中文 message）</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+        <p class="note">詳細開發約定見 agents.md —— 每次開發工作結束時必須提交並推送。</p>
+        <h3>資料儲存</h3>
+        <ul class="list">
+        <li>資料庫：<code>&lt;資料目錄&gt;/book.db</code> —— SQLite，純 Go 實作，可用環境變數 <code>BOOKMANAGER_DATA_DIR</code> 覆寫目錄。</li>
+        <li>封面快取：<code>&lt;資料目錄&gt;/covers/</code> 與 <code>&lt;資料目錄&gt;/.image/</code>。</li>
+        <li>資料目錄的尋找順序：exe 旁邊的 data/（release/data）→ 目前工作目錄 → 使用者設定目錄。</li>
+        <li>Git 中不保留任何使用者資料：src/data/、src/build/bin 與 release/ 都已忽略。</li>
+        </ul>
+        <h3>已知問題：白畫面（WebView2 不重繪）</h3>
+        <p class="muted">在正式建置（內嵌資源）模式下，新版 WebView2 與本機 GPU 組合可能因 Wails 的 Hide / Show 可見性 workaround 觸發不重繪問題：視窗只顯示背景色。規避方案已內建在 main.go：</p>
+        <pre class="code"><code>Windows: &amp;windows.Options{
+    WebviewGpuIsDisabled: true, // --disable-gpu，文字類應用程式無影響
+},</code></pre>
+        <p class="muted">若要診斷這類問題，可用 <code>wails build -debug</code> 開啟 DevTools，或用 <code>WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS=--remote-debugging-port=9333</code> 連接 CDP。</p>
+        <h3>版本號</h3>
+        <ul class="list">
+        <li>唯一來源：<code>src/version.go</code> 裡的 <code>Version</code> 常數。</li>
+        <li>介面顯示：左側欄底部 + 設定視窗底部（透過 App.GetVersion() 綁定取得）。</li>
+        <li>發版：改 <code>src/version.go</code> → <code>just release</code> → 提交推送。</li>
+        </ul>
+      </section>
+
+      <section class="sec" id="download">
+        <h2>下載</h2>
+        <p class="muted">每個版本都是一個綠色版 exe。解壓後直接執行，資料目錄會建在 exe 旁邊。</p>
+        <div class="cta">
+          <a class="btn primary" href="https://github.com/freewu/book-manager/releases/latest">⬇ 下載最新版</a>
+          <a class="btn ghost" href="https://github.com/freewu/book-manager/releases">或是到 GitHub 上瀏覽全部版本</a>
+        </div>
+      </section>
+    </main>
+
+    <footer class="ftr">
+      <div class="ftr-in">
+        <span>MIT © 2026 bluefrog</span>
+        <span class="dot">·</span>
+        <a href="https://github.com/freewu/book-manager">GitHub</a>
+        <span class="dot">·</span>
+        <a href="https://github.com/freewu/book-manager/blob/main/README.zh-TW.md">說明文件</a>
+        <span class="dot">·</span>
+        <a href="https://github.com/freewu/book-manager/issues">問題回報</a>
+        <span class="dot">·</span>
+        <a href="https://github.com/freewu/book-manager/blob/main/LICENSE">授權條款</a>
+        <span class="dot">·</span>
+        <span>v0.1.0</span>
+      </div>
+    </footer>
+
+    <script src="site.js"></script>
+  </body>
+</html>

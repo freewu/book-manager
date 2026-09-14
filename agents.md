@@ -22,7 +22,8 @@
 ## 快捷命令
 
 ```bash
-just test          # 全部测试（Go + JS 解析器 + i18n 静态检查）
+just test          # 全部测试（Go + JS 解析器 + i18n 静态检查 + 文档同步）
+just docs          # 重新生成 README（英/简/繁）与 docs 官网
 just ui-test       # 浏览器 UI 冒烟（playwright-core + Edge，发版前必跑）
 just build         # 生产构建（wails build）
 just release       # 发布构建 → release/book-manager.exe
@@ -59,8 +60,24 @@ src/
   cmd/genlogo                         # logo 与图标生成
   cmd/verify                          # 扫描管线端到端验证
   wails.json                          # Wails 构建配置
+scripts/gen-docs/content.py         # README 与官网的全部文案（单一数据源）
+scripts/gen-docs/generate.py        # 由 content.py 生成 README ×3 + docs 官网 ×3（--check 供 CI）
 justfile                            # 常用命令（内部均 cd src 执行）
+docs/                               # 官网（GitHub Pages 直接发布这个目录）
+.github/workflows/pages.yml          # push 到 main 时把 docs/ 发到 GitHub Pages
 ```
+
+## 文档与官网（README + docs）
+
+- **文案只有一个来源**：`scripts/gen-docs/content.py`（三种语言的文字、14 个功能、14 个工具、6 张截图说明）。
+  改文案 → 跑 `just docs` → 会重写 `README.md`、`README.zh-CN.md`、`README.zh-TW.md` 与
+  `docs/index.html`、`docs/zh-CN.html`、`docs/zh-TW.html`；**生成物要一起提交**，不要手改生成出来的文件。
+- 默认语言是**英文**：GitHub 首页看 `README.md`，Pages 首页看 `docs/index.html`；
+  官网页头右上角的 `select#lang` 在三种语言间切换（`docs/site.js`，不做自动重定向）。
+- 截图统一放 `docs/images/`（文件名见 `content.py` 的 `SHOT_FILES`），官网与 README 共用同一批图。
+- `just test` 会跑 `just test-docs`（`generate.py --check`）：只要生成物和 `content.py` 不一致就会失败；
+  `.github/workflows/pages.yml` 里也跑同一条检查，然后把 `docs/` 上传发布。
+- 首次启用 Pages：仓库 Settings → Pages → Build and deployment → Source 选 **GitHub Actions**。
 
 ## 工具（Tools）插件结构
 

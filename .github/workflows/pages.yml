@@ -1,0 +1,50 @@
+# 把 docs/ 发布到 GitHub Pages（默认英文）。
+# 首次使用：仓库 Settings → Pages → Build and deployment → Source 选 "GitHub Actions"。
+name: Docs
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'docs/**'
+      - 'README*.md'
+      - 'scripts/gen-docs/**'
+      - '.github/workflows/pages.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+
+      # README 与官网都由 scripts/gen-docs 生成，这里确认生成结果已提交
+      - name: Check that docs are in sync with the generator
+        run: python3 scripts/gen-docs/generate.py --check
+
+      - name: Upload docs
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: docs
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - id: deploy
+        uses: actions/deploy-pages@v4

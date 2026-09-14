@@ -1,81 +1,154 @@
-# 书架 · 本地电子书管理
+# Book Manager · Local e-book library for Windows
 
-基于 **Wails v2 + React + Vite** 的本地电子书管理应用，数据全部保存在本地 SQLite 数据库中（`src/build/bin/data/book.db`）。
+**[English](README.md)** · [简体中文](README.zh-CN.md) · [繁體中文](README.zh-TW.md)
 
-当前版本：**v0.1.0**
+![version](https://img.shields.io/badge/version-v0.1.0-5b7cfa.svg) ![platform](https://img.shields.io/badge/platform-Windows%2010%2F11-0078d4.svg) ![license](https://img.shields.io/badge/license-MIT-22c55e.svg) ![Wails](https://img.shields.io/badge/Wails-v2-DF0000.svg) ![Go](https://img.shields.io/badge/Go-1.21%2B-00ADD8.svg)
 
-## 功能
+A local-first e-book manager built with Wails v2, Go and React. Point it at your folders, keep the shelf tidy with tags, read epub / pdf / mobi right inside the app, and clean up your PDFs with fourteen built-in tools — nothing ever leaves your disk, everything lives in a single SQLite file.
 
-- 📂 **目录扫描**：扫描指定目录下的电子书（EPUB、PDF、MOBI、AZW3、KEPUB 等），自动提取书名、作者、出版社、语言、简介、大小、MD5 等信息，并从书中提取封面
-- 📚 **书架视图**：左侧为搜索 / 格式筛选 / 排序 / 标签栏，右侧为封面网格书架（封面 + 书名 + 作者 + 阅读进度 + 豆瓣评分），底部显示版本号
-- 🌐 **豆瓣数据**：按书名从豆瓣获取封面、豆瓣链接、评分与评价人数；支持自动匹配与手动搜索关联
-- 🚫 **误录管理**：可将误识别的书标记为「误录」，下次扫描按路径与 MD5 双重匹配自动跳过；可随时恢复
-- 📖 **应用内阅读**：
-  - EPUB / KEPUB：基于 epub.js 分页阅读，支持跳转进度
-  - PDF：基于 pdf.js 分页阅读
-  - MOBI / AZW3：内置 PalmDoc 解压与解析，支持文本与内嵌图片
-  - 记录阅读位置、页数与进度；自动记忆上次阅读位置
-- ⏱️ **阅读计时**：记录累计阅读时长；长时间不翻页只累计 1 分钟（可在设置中修改闲置上限）
-- 🏷️ **自定义标签**：标签可自定义名称与颜色，一本书可打多个标签，按标签筛选
-- 📝 **阅读笔记**：阅读中选中文字即可添加笔记（含原文引用与位置），支持查看与删除
+![Bookshelf](docs/images/book-shelf.png)
 
-## 开发
+## Features
 
-### 环境要求
+- **📂 Folder scanning** — Scan local folders and pull out title, author, publisher, language, description, size and MD5, plus the cover art. EPUB, PDF, MOBI, AZW3 and KEPUB are supported.
+- **📚 Bookshelf** — A cover grid with keyword search, format filter, multi-tag «or / and» filtering and several sort orders; cards show reading progress and the Douban rating, and the scroll position is remembered.
+- **🏷️ Tags** — Create, rename, recolor, freeze or delete tags, drag them into your own order, roll a random color, or browse them as a tag cloud whose size follows the book count.
+- **🌐 Douban metadata** — Fetch covers, links, ratings and rating counts from Douban by title — in batches, or one book at a time from the detail dialog.
+- **📖 Built-in reader** — EPUB / KEPUB through epub.js, PDF through pdf.js, and MOBI / AZW3 with a built-in PalmDoc decoder that renders the embedded images too. Position, page count and progress are recorded per book, and encrypted PDFs ask for the password once.
+- **🔤 Comfortable reading** — Change the font size from the reader toolbar and flip on eye-care mode for a warm page; both are session-local, so your global settings stay untouched.
+- **⏱️ Reading timer** — Every session adds to the total reading time. Staying on one page only counts one minute, and that idle cap is configurable in Settings.
+- **📝 Notes** — Select any text while reading to attach a note with its quote and position; notes can be reviewed and deleted later.
+- **🧰 Fourteen tools** — Passwords, merge, page extraction, metadata, compression, PDF → EPUB, EPUB → PDF and image export — all offline, all on your own files.
+- **🚫 Misrecords** — Mark a mis-detected file as a misrecord and the next scan skips it by path and MD5; restore it whenever you like.
+- **📊 Stats** — Totals for books, size, reading time and notes, the format breakdown, the latest additions and the full list of reading sessions.
+- **🌏 Three languages** — The interface ships in English, Simplified Chinese and Traditional Chinese.
+- **💾 Local-first** — No account, no cloud, no telemetry — one SQLite file next to the executable.
+- **🖥️ Tray and single instance** — Closing the window keeps the app in the system tray, and starting it again simply reopens the window that is already there.
+
+## Screenshots
+
+### Bookshelf
+
+![Bookshelf](docs/images/book-shelf.png)
+
+Cover grid, search, format and tag filters, batch actions.
+
+### Reading
+
+![Reading](docs/images/reading-log.png)
+
+Unfinished and finished books, one click to continue.
+
+### Tags
+
+![Tags](docs/images/tag-manage.png)
+
+Drag to reorder the list, or switch to the tag cloud.
+
+### Stats
+
+![Stats](docs/images/stats.png)
+
+Reading time, format breakdown and the session log.
+
+### Tools
+
+![Tools](docs/images/tools.png)
+
+Fourteen utilities on one page.
+
+### Settings
+
+![Settings](docs/images/settings.png)
+
+Shelf defaults, idle cap, language and data location.
+
+## Fourteen built-in tools
+
+Everything runs offline, on files you pick — including the PDFs already on your shelf.
+
+### PDF
+
+- **🔒 Set password** — Set an open password on a PDF.
+- **🔓 Remove password** — Remove the open password from a PDF.
+- **🧷 Merge PDFs** — Merge several PDFs into one new file, in order.
+- **✂️ Extract pages** — Pick pages out of a PDF and save them as a new PDF.
+- **🖼️ Export images** — Save PDF pages as PNG / JPEG images, optionally only the pages you name.
+- **📝 Edit metadata** — View and edit the title, author, subject and keywords of a PDF.
+- **🗜️ Compress** — Rewrite a PDF with Ghostscript, downsampling images per preset to shrink it.
+- **📗 PDF → EPUB** — Lay out the text layer of a PDF as an epub, with an optional output folder.
+
+### EPUB
+
+- **📕 EPUB → PDF** — Lay out an epub as a PDF with a bookmark outline, embedded fonts and selectable text.
+
+### Other
+
+- **🔍 Scan library** — Scan local folders and add new e-books to the shelf.
+- **🏷️ Manage tags** — Create, recolor, freeze and delete tags; browse books by tag.
+- **🚫 Misrecords** — Review and restore files marked as misrecords.
+- **🌐 Douban sync** — Batch-fetch Douban information for books missing ratings or covers.
+- **📂 Data folder** — Where book.db and the cover cache live, with a button to open it.
+
+## Quick start
+
+### Requirements
 
 - Go 1.21+
 - Node.js 18+
-- Wails CLI（`go install github.com/wailsapp/wails/v2/cmd/wails@latest`）
-- Windows：WebView2 Runtime（Win10/11 自带）
+- Wails CLI: `go install github.com/wailsapp/wails/v2/cmd/wails@latest`
+- Windows: the WebView2 runtime (already part of Windows 10 / 11)
 
-### 常用命令（just）
-
-```bash
-just setup    # 安装前端依赖
-just dev      # 开发模式（热重载）
-just build    # 构建生产版本（src/build/bin/book-manager.exe）
-just release  # 发布构建 → release/book-manager.exe
-just test     # 全部测试（Go 后端 + JS 解析器 + UI 冒烟）
-just ui-test  # 前端 UI 冒烟测试（需 Edge + playwright-core）
-just icon     # 从 asserts/logo.png 重新生成应用图标（→ build/appicon.png / icon.ico）
-just fmt      # Go 格式化 + 静态检查
-just push "message"  # 提交并推送（中文 message）
-```
-
-> 详细开发约定见 `agents.md`（每次开发会话结束后必须提交并推送）。
-
-### 测试
+### Handy commands (just)
 
 ```bash
-just test-go   # Go 后端单元测试（src/internal/...）
-just test-js   # JS 端 MOBI 解析器验证（src/scripts/test-mobi-parser.js）
-just ui-test   # UI 冒烟测试：真实浏览器（headless Edge）加载前端，验证各弹窗与 EPUB 渲染
+just setup             # install the frontend dependencies
+just dev               # dev mode with hot reload
+just build             # production build → src/build/bin/book-manager.exe
+just release           # release build → release/book-manager.exe
+just test              # Go backend tests, JS parsers and the i18n check
+just ui-test           # headless browser smoke test of the UI (needs Edge + playwright-core)
+just icon              # regenerate the app icons from asserts/logo.png
+just fmt               # gofmt and go vet the backend
+just docs              # regenerate the READMEs and the docs site
+just push "msg"        # commit everything and push to main
 ```
 
-## 数据存储
+> Development conventions live in agents.md — every session ends with a commit and a push.
 
-- 数据库：`src/build/bin/data/book.db`（SQLite，可通过环境变量 `BOOKMANAGER_DATA_DIR` 覆盖目录）
-- 封面缓存：`src/build/bin/data/covers/`
-- Git 中不保留任何用户数据（`src/data/` 已在 `.gitignore`）
+## Data storage
 
-## 已知问题与规避
+- Database: `<data dir>/book.db` — SQLite, pure Go, override the directory with the `BOOKMANAGER_DATA_DIR` environment variable.
+- Cover cache: `<data dir>/covers/` and `<data dir>/.image/`.
+- The data directory is resolved next to the executable first (release/data), then the working directory, then the user config directory.
+- No user data is committed: src/data/, src/build/bin and release/ are git-ignored.
 
-### 白屏（WebView2 不渲染）
+## Known issue: blank window (WebView2 stops repainting)
 
-在生产构建（内嵌资源）模式下，新版 WebView2 与本机 GPU 组合可能因 Wails 的
-Hide/Show 可见性 workaround 触发不重绘问题：窗口只显示背景色。规避方案已内置：
+In production builds (with the assets embedded) some WebView2 + GPU combinations stop repainting because of the Wails hide / show visibility workaround — the window shows nothing but its background colour. The workaround is already in main.go:
 
 ```go
 Windows: &windows.Options{
-    WebviewGpuIsDisabled: true, // --disable-gpu，文本类应用无影响
+    WebviewGpuIsDisabled: true, // --disable-gpu; harmless for a text app
 },
 ```
 
-若需诊断此类问题，可用 `wails build -debug` 打开 DevTools，或使用
-`WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS=--remote-debugging-port=9333` 连接 CDP。
+To diagnose this, build with `wails build -debug` to get DevTools, or attach a debugger with `WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS=--remote-debugging-port=9333`.
 
-## 版本号
+## Version
 
-- 唯一来源：根目录 `version.go` 的 `const Version = "v0.1.0"`
-- 界面展示：左侧栏底部 + 设置弹窗底部（通过 `App.GetVersion()` 绑定获取）
-- 发版时：修改 `version.go` → `just release` → 提交推送
+- Current version: **v0.1.0**
+- Single source of truth: the `Version` constant in `src/version.go`.
+- Shown in the sidebar footer and the settings dialog through the App.GetVersion() binding.
+- To release: bump `src/version.go`, run `just release`, then commit and push.
+
+## Download
+
+Every release ships a single portable executable. Unzip it, run it, and it creates its data folder next to itself.
+
+- [Get the latest release](https://github.com/freewu/book-manager/releases/latest)
+- [Or browse all releases on GitHub](https://github.com/freewu/book-manager/releases)
+
+## License
+
+MIT © 2026 bluefrog · [https://github.com/freewu/book-manager](https://github.com/freewu/book-manager)

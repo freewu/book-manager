@@ -1,0 +1,355 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Book Manager · Local e-book library for Windows</title>
+    <meta name="description" content="A local-first e-book manager built with Wails v2, Go and React. Point it at your folders, keep the shelf tidy with tags, read epub / pdf / mobi right inside the app, and clean up y" />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Book Manager · Local e-book library for Windows" />
+    <meta property="og:description" content="A local-first e-book manager built with Wails v2, Go and React. Point it at your folders, keep the shelf tidy with tags, read epub / pdf / mobi right inside the app, and clean up y" />
+    <meta property="og:image" content="images/book-shelf.png" />
+<link rel="alternate" hreflang="en" href="index.html" />
+<link rel="alternate" hreflang="zh-CN" href="zh-CN.html" />
+<link rel="alternate" hreflang="zh-TW" href="zh-TW.html" />
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ctext y='50' font-size='52'%3E%F0%9F%93%9A%3C/text%3E%3C/svg%3E" />
+    <link rel="stylesheet" href="site.css" />
+  </head>
+  <body>
+    <header class="hdr">
+      <div class="hdr-in">
+        <a class="brand" href="index.html">
+          <span class="brand-ico">📚</span>
+          <span class="brand-txt">Book Manager</span>
+          <span class="brand-ver">v0.1.0</span>
+        </a>
+        <nav class="nav">
+      <a href="#features">Features</a>
+      <a href="#screenshots">Screenshots</a>
+      <a href="#tools">Tools</a>
+      <a href="#start">Quick start</a>
+      <a href="#download">Download</a>
+        </nav>
+        <label class="lang">
+          <span class="lang-ico" aria-hidden="true">🌏</span>
+          <select id="lang" aria-label="Language">
+        <option value="index.html" selected>English</option>
+        <option value="zh-CN.html">简体中文</option>
+        <option value="zh-TW.html">繁體中文</option>
+          </select>
+        </label>
+      </div>
+    </header>
+
+    <main>
+      <section class="hero">
+        <p class="eyebrow">Your local e-book library for Windows</p>
+        <h1>Book Manager</h1>
+        <p class="lede">A local-first e-book manager built with Wails v2, Go and React. Point it at your folders, keep the shelf tidy with tags, read epub / pdf / mobi right inside the app, and clean up your PDFs with fourteen built-in tools — nothing ever leaves your disk, everything lives in a single SQLite file.</p>
+        <div class="cta">
+          <a class="btn primary" href="https://github.com/freewu/book-manager/releases/latest">⬇ Download for Windows</a>
+          <a class="btn ghost" href="https://github.com/freewu/book-manager">★ View on GitHub</a>
+        </div>
+        <p class="cta-note">Windows 10 / 11 · portable, no installer · MIT licensed</p>
+        <ul class="badges">
+      <li>Wails v2</li>
+      <li>Go 1.21+</li>
+      <li>React + Vite</li>
+      <li>SQLite</li>
+      <li>Windows 10/11</li>
+      <li>MIT</li>
+        </ul>
+        <a class="shot-hero" href="images/book-shelf.png" target="_blank" rel="noopener">
+          <img src="images/book-shelf.png" alt="Bookshelf" />
+        </a>
+      </section>
+
+      <section class="sec" id="features">
+        <h2>Features</h2>
+        <div class="cards">
+      <article class="card">
+        <div class="card-ico">📂</div>
+        <h3>Folder scanning</h3>
+        <p>Scan local folders and pull out title, author, publisher, language, description, size and MD5, plus the cover art. EPUB, PDF, MOBI, AZW3 and KEPUB are supported.</p>
+      </article>
+      <article class="card">
+        <div class="card-ico">📚</div>
+        <h3>Bookshelf</h3>
+        <p>A cover grid with keyword search, format filter, multi-tag «or / and» filtering and several sort orders; cards show reading progress and the Douban rating, and the scroll position is remembered.</p>
+      </article>
+      <article class="card">
+        <div class="card-ico">🏷️</div>
+        <h3>Tags</h3>
+        <p>Create, rename, recolor, freeze or delete tags, drag them into your own order, roll a random color, or browse them as a tag cloud whose size follows the book count.</p>
+      </article>
+      <article class="card">
+        <div class="card-ico">🌐</div>
+        <h3>Douban metadata</h3>
+        <p>Fetch covers, links, ratings and rating counts from Douban by title — in batches, or one book at a time from the detail dialog.</p>
+      </article>
+      <article class="card">
+        <div class="card-ico">📖</div>
+        <h3>Built-in reader</h3>
+        <p>EPUB / KEPUB through epub.js, PDF through pdf.js, and MOBI / AZW3 with a built-in PalmDoc decoder that renders the embedded images too. Position, page count and progress are recorded per book, and encrypted PDFs ask for the password once.</p>
+      </article>
+      <article class="card">
+        <div class="card-ico">🔤</div>
+        <h3>Comfortable reading</h3>
+        <p>Change the font size from the reader toolbar and flip on eye-care mode for a warm page; both are session-local, so your global settings stay untouched.</p>
+      </article>
+      <article class="card">
+        <div class="card-ico">⏱️</div>
+        <h3>Reading timer</h3>
+        <p>Every session adds to the total reading time. Staying on one page only counts one minute, and that idle cap is configurable in Settings.</p>
+      </article>
+      <article class="card">
+        <div class="card-ico">📝</div>
+        <h3>Notes</h3>
+        <p>Select any text while reading to attach a note with its quote and position; notes can be reviewed and deleted later.</p>
+      </article>
+      <article class="card">
+        <div class="card-ico">🧰</div>
+        <h3>Fourteen tools</h3>
+        <p>Passwords, merge, page extraction, metadata, compression, PDF → EPUB, EPUB → PDF and image export — all offline, all on your own files.</p>
+      </article>
+      <article class="card">
+        <div class="card-ico">🚫</div>
+        <h3>Misrecords</h3>
+        <p>Mark a mis-detected file as a misrecord and the next scan skips it by path and MD5; restore it whenever you like.</p>
+      </article>
+      <article class="card">
+        <div class="card-ico">📊</div>
+        <h3>Stats</h3>
+        <p>Totals for books, size, reading time and notes, the format breakdown, the latest additions and the full list of reading sessions.</p>
+      </article>
+      <article class="card">
+        <div class="card-ico">🌏</div>
+        <h3>Three languages</h3>
+        <p>The interface ships in English, Simplified Chinese and Traditional Chinese.</p>
+      </article>
+      <article class="card">
+        <div class="card-ico">💾</div>
+        <h3>Local-first</h3>
+        <p>No account, no cloud, no telemetry — one SQLite file next to the executable.</p>
+      </article>
+      <article class="card">
+        <div class="card-ico">🖥️</div>
+        <h3>Tray and single instance</h3>
+        <p>Closing the window keeps the app in the system tray, and starting it again simply reopens the window that is already there.</p>
+      </article>
+        </div>
+      </section>
+
+      <section class="sec" id="screenshots">
+        <h2>Screenshots</h2>
+        <div class="shots">
+      <figure class="shot">
+        <a href="images/book-shelf.png" target="_blank" rel="noopener">
+          <img src="images/book-shelf.png" alt="Bookshelf" loading="lazy" />
+        </a>
+        <figcaption><strong>Bookshelf</strong><span>Cover grid, search, format and tag filters, batch actions.</span></figcaption>
+      </figure>
+      <figure class="shot">
+        <a href="images/reading-log.png" target="_blank" rel="noopener">
+          <img src="images/reading-log.png" alt="Reading" loading="lazy" />
+        </a>
+        <figcaption><strong>Reading</strong><span>Unfinished and finished books, one click to continue.</span></figcaption>
+      </figure>
+      <figure class="shot">
+        <a href="images/tag-manage.png" target="_blank" rel="noopener">
+          <img src="images/tag-manage.png" alt="Tags" loading="lazy" />
+        </a>
+        <figcaption><strong>Tags</strong><span>Drag to reorder the list, or switch to the tag cloud.</span></figcaption>
+      </figure>
+      <figure class="shot">
+        <a href="images/stats.png" target="_blank" rel="noopener">
+          <img src="images/stats.png" alt="Stats" loading="lazy" />
+        </a>
+        <figcaption><strong>Stats</strong><span>Reading time, format breakdown and the session log.</span></figcaption>
+      </figure>
+      <figure class="shot">
+        <a href="images/tools.png" target="_blank" rel="noopener">
+          <img src="images/tools.png" alt="Tools" loading="lazy" />
+        </a>
+        <figcaption><strong>Tools</strong><span>Fourteen utilities on one page.</span></figcaption>
+      </figure>
+      <figure class="shot">
+        <a href="images/settings.png" target="_blank" rel="noopener">
+          <img src="images/settings.png" alt="Settings" loading="lazy" />
+        </a>
+        <figcaption><strong>Settings</strong><span>Shelf defaults, idle cap, language and data location.</span></figcaption>
+      </figure>
+        </div>
+      </section>
+
+      <section class="sec" id="tools">
+        <h2>Fourteen built-in tools</h2>
+        <p class="muted">Everything runs offline, on files you pick — including the PDFs already on your shelf.</p>
+      <div class="tgroup">
+        <h3>PDF</h3>
+        <div class="cards">
+        <article class="card tool">
+          <div class="card-ico">🔒</div>
+          <h4>Set password</h4>
+          <p>Set an open password on a PDF.</p>
+        </article>
+        <article class="card tool">
+          <div class="card-ico">🔓</div>
+          <h4>Remove password</h4>
+          <p>Remove the open password from a PDF.</p>
+        </article>
+        <article class="card tool">
+          <div class="card-ico">🧷</div>
+          <h4>Merge PDFs</h4>
+          <p>Merge several PDFs into one new file, in order.</p>
+        </article>
+        <article class="card tool">
+          <div class="card-ico">✂️</div>
+          <h4>Extract pages</h4>
+          <p>Pick pages out of a PDF and save them as a new PDF.</p>
+        </article>
+        <article class="card tool">
+          <div class="card-ico">🖼️</div>
+          <h4>Export images</h4>
+          <p>Save PDF pages as PNG / JPEG images, optionally only the pages you name.</p>
+        </article>
+        <article class="card tool">
+          <div class="card-ico">📝</div>
+          <h4>Edit metadata</h4>
+          <p>View and edit the title, author, subject and keywords of a PDF.</p>
+        </article>
+        <article class="card tool">
+          <div class="card-ico">🗜️</div>
+          <h4>Compress</h4>
+          <p>Rewrite a PDF with Ghostscript, downsampling images per preset to shrink it.</p>
+        </article>
+        <article class="card tool">
+          <div class="card-ico">📗</div>
+          <h4>PDF → EPUB</h4>
+          <p>Lay out the text layer of a PDF as an epub, with an optional output folder.</p>
+        </article>
+        </div>
+      </div>
+      <div class="tgroup">
+        <h3>EPUB</h3>
+        <div class="cards">
+        <article class="card tool">
+          <div class="card-ico">📕</div>
+          <h4>EPUB → PDF</h4>
+          <p>Lay out an epub as a PDF with a bookmark outline, embedded fonts and selectable text.</p>
+        </article>
+        </div>
+      </div>
+      <div class="tgroup">
+        <h3>Other</h3>
+        <div class="cards">
+        <article class="card tool">
+          <div class="card-ico">🔍</div>
+          <h4>Scan library</h4>
+          <p>Scan local folders and add new e-books to the shelf.</p>
+        </article>
+        <article class="card tool">
+          <div class="card-ico">🏷️</div>
+          <h4>Manage tags</h4>
+          <p>Create, recolor, freeze and delete tags; browse books by tag.</p>
+        </article>
+        <article class="card tool">
+          <div class="card-ico">🚫</div>
+          <h4>Misrecords</h4>
+          <p>Review and restore files marked as misrecords.</p>
+        </article>
+        <article class="card tool">
+          <div class="card-ico">🌐</div>
+          <h4>Douban sync</h4>
+          <p>Batch-fetch Douban information for books missing ratings or covers.</p>
+        </article>
+        <article class="card tool">
+          <div class="card-ico">📂</div>
+          <h4>Data folder</h4>
+          <p>Where book.db and the cover cache live, with a button to open it.</p>
+        </article>
+        </div>
+      </div>
+      </section>
+
+      <section class="sec" id="start">
+        <h2>Quick start</h2>
+        <div class="cols">
+          <div>
+            <h3>Requirements</h3>
+            <ul class="list">
+        <li>Go 1.21+</li>
+        <li>Node.js 18+</li>
+        <li>Wails CLI: <code>go install github.com/wailsapp/wails/v2/cmd/wails@latest</code></li>
+        <li>Windows: the WebView2 runtime (already part of Windows 10 / 11)</li>
+            </ul>
+          </div>
+          <div>
+            <h3>Handy commands (just)</h3>
+            <table class="cmds">
+              <tbody>
+          <tr><td><code>just setup</code></td><td>install the frontend dependencies</td></tr>
+          <tr><td><code>just dev</code></td><td>dev mode with hot reload</td></tr>
+          <tr><td><code>just build</code></td><td>production build → src/build/bin/book-manager.exe</td></tr>
+          <tr><td><code>just release</code></td><td>release build → release/book-manager.exe</td></tr>
+          <tr><td><code>just test</code></td><td>Go backend tests, JS parsers and the i18n check</td></tr>
+          <tr><td><code>just ui-test</code></td><td>headless browser smoke test of the UI (needs Edge + playwright-core)</td></tr>
+          <tr><td><code>just icon</code></td><td>regenerate the app icons from asserts/logo.png</td></tr>
+          <tr><td><code>just fmt</code></td><td>gofmt and go vet the backend</td></tr>
+          <tr><td><code>just docs</code></td><td>regenerate the READMEs and the docs site</td></tr>
+          <tr><td><code>just push &quot;msg&quot;</code></td><td>commit everything and push to main</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+        <p class="note">Development conventions live in agents.md — every session ends with a commit and a push.</p>
+        <h3>Data storage</h3>
+        <ul class="list">
+        <li>Database: <code>&lt;data dir&gt;/book.db</code> — SQLite, pure Go, override the directory with the <code>BOOKMANAGER_DATA_DIR</code> environment variable.</li>
+        <li>Cover cache: <code>&lt;data dir&gt;/covers/</code> and <code>&lt;data dir&gt;/.image/</code>.</li>
+        <li>The data directory is resolved next to the executable first (release/data), then the working directory, then the user config directory.</li>
+        <li>No user data is committed: src/data/, src/build/bin and release/ are git-ignored.</li>
+        </ul>
+        <h3>Known issue: blank window (WebView2 stops repainting)</h3>
+        <p class="muted">In production builds (with the assets embedded) some WebView2 + GPU combinations stop repainting because of the Wails hide / show visibility workaround — the window shows nothing but its background colour. The workaround is already in main.go:</p>
+        <pre class="code"><code>Windows: &amp;windows.Options{
+    WebviewGpuIsDisabled: true, // --disable-gpu; harmless for a text app
+},</code></pre>
+        <p class="muted">To diagnose this, build with <code>wails build -debug</code> to get DevTools, or attach a debugger with <code>WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS=--remote-debugging-port=9333</code>.</p>
+        <h3>Version</h3>
+        <ul class="list">
+        <li>Single source of truth: the <code>Version</code> constant in <code>src/version.go</code>.</li>
+        <li>Shown in the sidebar footer and the settings dialog through the App.GetVersion() binding.</li>
+        <li>To release: bump <code>src/version.go</code>, run <code>just release</code>, then commit and push.</li>
+        </ul>
+      </section>
+
+      <section class="sec" id="download">
+        <h2>Download</h2>
+        <p class="muted">Every release ships a single portable executable. Unzip it, run it, and it creates its data folder next to itself.</p>
+        <div class="cta">
+          <a class="btn primary" href="https://github.com/freewu/book-manager/releases/latest">⬇ Get the latest release</a>
+          <a class="btn ghost" href="https://github.com/freewu/book-manager/releases">Or browse all releases on GitHub</a>
+        </div>
+      </section>
+    </main>
+
+    <footer class="ftr">
+      <div class="ftr-in">
+        <span>MIT © 2026 bluefrog</span>
+        <span class="dot">·</span>
+        <a href="https://github.com/freewu/book-manager">GitHub</a>
+        <span class="dot">·</span>
+        <a href="https://github.com/freewu/book-manager/blob/main/README.md">Readme</a>
+        <span class="dot">·</span>
+        <a href="https://github.com/freewu/book-manager/issues">Issues</a>
+        <span class="dot">·</span>
+        <a href="https://github.com/freewu/book-manager/blob/main/LICENSE">License</a>
+        <span class="dot">·</span>
+        <span>v0.1.0</span>
+      </div>
+    </footer>
+
+    <script src="site.js"></script>
+  </body>
+</html>
