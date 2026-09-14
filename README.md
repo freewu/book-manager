@@ -1,8 +1,8 @@
-# Book Manager · Local e-book library for Windows
+# Book Manager · Local e-book library (Windows, macOS, Linux)
 
 **[English](README.md)** · [简体中文](README.zh-CN.md) · [繁體中文](README.zh-TW.md)
 
-![version](https://img.shields.io/badge/version-v0.1.0-5b7cfa.svg) ![platform](https://img.shields.io/badge/platform-Windows%2010%2F11-0078d4.svg) ![license](https://img.shields.io/badge/license-MIT-22c55e.svg) ![Wails](https://img.shields.io/badge/Wails-v2-DF0000.svg) ![Go](https://img.shields.io/badge/Go-1.21%2B-00ADD8.svg)
+![version](https://img.shields.io/badge/version-v0.1.0-5b7cfa.svg) ![platform](https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-0078d4.svg) ![license](https://img.shields.io/badge/license-MIT-22c55e.svg) ![Wails](https://img.shields.io/badge/Wails-v2-DF0000.svg) ![Go](https://img.shields.io/badge/Go-1.21%2B-00ADD8.svg)
 
 A local-first e-book manager built with Wails v2, Go and React. Point it at your folders, keep the shelf tidy with tags, read epub / pdf / mobi right inside the app, and clean up your PDFs with fourteen built-in tools — nothing ever leaves your disk, everything lives in a single SQLite file.
 
@@ -98,6 +98,8 @@ Everything runs offline, on files you pick — including the PDFs already on you
 - Node.js 18+
 - Wails CLI: `go install github.com/wailsapp/wails/v2/cmd/wails@latest`
 - Windows: the WebView2 runtime (already part of Windows 10 / 11)
+- macOS: unsigned build — run `xattr -dr com.apple.quarantine book-manager.app` on first launch
+- Linux: `libwebkit2gtk-4.1` and `libgtk-3` (built on Ubuntu 24.04, glibc 2.39+)
 
 ### Handy commands (just)
 
@@ -126,11 +128,12 @@ just push "msg"        # commit everything and push to main
 
 ## Known issue: blank window (WebView2 stops repainting)
 
-In production builds (with the assets embedded) some WebView2 + GPU combinations stop repainting because of the Wails hide / show visibility workaround — the window shows nothing but its background colour. The workaround is already in main.go:
+In production builds (with the assets embedded) some WebView2 + GPU combinations stop repainting because of the Wails hide / show visibility workaround — the window shows nothing but its background colour. The workaround lives in src/platform_windows.go:
 
 ```go
-Windows: &windows.Options{
+app.Windows = &windows.Options{
     WebviewGpuIsDisabled: true, // --disable-gpu; harmless for a text app
+    WebviewUserDataPath: resolveWebviewUserDataPath(dataDir),
 },
 ```
 
@@ -141,11 +144,11 @@ To diagnose this, build with `wails build -debug` to get DevTools, or attach a d
 - Current version: **v0.1.0**
 - Single source of truth: the `Version` constant in `src/version.go`.
 - Shown in the sidebar footer and the settings dialog through the App.GetVersion() binding.
-- To release: bump `src/version.go`, run `just release`, then commit and push.
+- To release: bump `src/version.go` and push — GitHub Actions builds the Windows / macOS / Linux packages and creates the release. `just release` only builds the local Windows exe.
 
 ## Download
 
-Every release ships a single portable executable. Unzip it, run it, and it creates its data folder next to itself.
+Every release ships portable packages for three platforms, built by GitHub Actions and published with the commit log as its release notes: a single exe for Windows (`book-manager-<version>-windows-x64.zip`), a universal app for macOS (`...-macos-universal.zip`) and a tarball for Linux x64 (`...-linux-x64.tar.gz`). Unzip, run, and the app creates its data folder next to itself.
 
 - [Get the latest release](https://github.com/freewu/book-manager/releases/latest)
 - [Or browse all releases on GitHub](https://github.com/freewu/book-manager/releases)

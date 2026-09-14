@@ -58,10 +58,14 @@ export default function SettingsPage({settings, onSaved}: Props) {
     const apply = async () => {
       let dark = uiTheme === 'dark';
       if (uiTheme === 'system') {
+        // 同 App.tsx：只有 Windows 需要问后端（WebView2 + 禁用 GPU 的媒体查询不准）
+        dark = window.matchMedia('(prefers-color-scheme: dark)').matches;
         try {
-          dark = await App.GetSystemDarkMode();
+          if (await App.SystemThemeNeedsBackend()) {
+            dark = await App.GetSystemDarkMode();
+          }
         } catch {
-          dark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+          /* 后端不可用 → 保留 matchMedia 的结果 */
         }
       }
       document.documentElement.dataset.theme = dark ? 'dark' : 'light';

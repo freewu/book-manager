@@ -1,8 +1,8 @@
-# 書架 · 本機電子書管理
+# 書架 · 本機電子書管理（Windows / macOS / Linux）
 
 [English](README.md) · [简体中文](README.zh-CN.md) · **[繁體中文](README.zh-TW.md)**
 
-![version](https://img.shields.io/badge/version-v0.1.0-5b7cfa.svg) ![platform](https://img.shields.io/badge/platform-Windows%2010%2F11-0078d4.svg) ![license](https://img.shields.io/badge/license-MIT-22c55e.svg) ![Wails](https://img.shields.io/badge/Wails-v2-DF0000.svg) ![Go](https://img.shields.io/badge/Go-1.21%2B-00ADD8.svg)
+![version](https://img.shields.io/badge/version-v0.1.0-5b7cfa.svg) ![platform](https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-0078d4.svg) ![license](https://img.shields.io/badge/license-MIT-22c55e.svg) ![Wails](https://img.shields.io/badge/Wails-v2-DF0000.svg) ![Go](https://img.shields.io/badge/Go-1.21%2B-00ADD8.svg)
 
 用 Wails v2 + Go + React 寫的本機電子書管理應用程式。掃描本機目錄建立書架，用標籤把書整理清楚，epub / pdf / mobi 直接在應用程式內閱讀，還有十四個內建小工具整理 PDF —— 資料只存在你自己的磁碟上，全部裝在一個 SQLite 檔案裡。
 
@@ -98,6 +98,8 @@
 - Node.js 18+
 - Wails CLI：`go install github.com/wailsapp/wails/v2/cmd/wails@latest`
 - Windows：WebView2 執行階段（Win10 / 11 內建）
+- macOS：未簽章，首次開啟需執行 `xattr -dr com.apple.quarantine book-manager.app`
+- Linux：需要 `libwebkit2gtk-4.1` 與 `libgtk-3`（於 Ubuntu 24.04 建置，glibc 2.39+）
 
 ### 常用指令（just）
 
@@ -126,11 +128,12 @@ just push "msg"        # 提交並推送（中文 message）
 
 ## 已知問題：白畫面（WebView2 不重繪）
 
-在正式建置（內嵌資源）模式下，新版 WebView2 與本機 GPU 組合可能因 Wails 的 Hide / Show 可見性 workaround 觸發不重繪問題：視窗只顯示背景色。規避方案已內建在 main.go：
+在正式建置（內嵌資源）模式下，新版 WebView2 與本機 GPU 組合可能因 Wails 的 Hide / Show 可見性 workaround 觸發不重繪問題：視窗只顯示背景色。規避方案內建在 src/platform_windows.go：
 
 ```go
-Windows: &windows.Options{
+app.Windows = &windows.Options{
     WebviewGpuIsDisabled: true, // --disable-gpu，文字類應用程式無影響
+    WebviewUserDataPath: resolveWebviewUserDataPath(dataDir),
 },
 ```
 
@@ -141,11 +144,11 @@ Windows: &windows.Options{
 - 目前版本: **v0.1.0**
 - 唯一來源：`src/version.go` 裡的 `Version` 常數。
 - 介面顯示：左側欄底部 + 設定視窗底部（透過 App.GetVersion() 綁定取得）。
-- 發版：改 `src/version.go` → `just release` → 提交推送。
+- 發版：改 `src/version.go` 並推送 —— GitHub Actions 會自動建置三平台套件並建立 Release；本機 `just release` 只產出 Windows exe。
 
 ## 下載
 
-每個版本都是一個綠色版 exe。解壓後直接執行，資料目錄會建在 exe 旁邊。
+每個版本都由 GitHub Actions 打包成三平台免安裝包，並把提交訊息彙整成 release 說明：Windows 單檔 exe（`book-manager-<版本>-windows-x64.zip`）、macOS 通用 app（`-macos-universal.zip`）、Linux x64 壓縮檔（`-linux-x64.tar.gz`）。解壓即用，資料目錄會建在程式旁邊。
 
 - [下載最新版](https://github.com/freewu/book-manager/releases/latest)
 - [或是到 GitHub 上瀏覽全部版本](https://github.com/freewu/book-manager/releases)

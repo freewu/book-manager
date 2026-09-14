@@ -143,7 +143,7 @@ window.go = { main: { App: {
     window.__lastMisAction = {op: 'clear'};
   },
   SaveProgress: async () => {}, ReportReading: async () => 3600, ListReadingSessions: async () => [],
-  GetVersion: async () => 'v0.1.0-test', GetSystemDarkMode: async () => false, SetUiTheme: async () => {}, AutoEnrichBook: async () => {}, GetBookDataRange: async () => '',
+  GetVersion: async () => 'v0.1.0-test', GetSystemDarkMode: async () => false, SystemThemeNeedsBackend: async () => false, SetUiTheme: async () => {}, AutoEnrichBook: async () => {}, GetBookDataRange: async () => '',
   KKFileAddr: async () => '', SetKKFileAddr: async () => {}, OpenWithKKFileView: async () => {},
   DoubanSearch: async () => [], FetchDouban: async (id) => ${JSON.stringify(BOOKS)}[0], EnrichBookByTitle: async () => {}, EnrichAllMissing: async () => 0, ClearDoubanInfo: async () => {}, OpenBookFolder: async () => {}, DataDir: async () => 'E:\\\\AppData',
   PickPdfFile: async () => (window.__pickTarget || 'E:\\\\Books\\\\huozhe.pdf'),

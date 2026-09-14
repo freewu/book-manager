@@ -161,12 +161,17 @@ export default function App() {
     const apply = async () => {
       let dark = mode === 'dark';
       if (mode === 'system') {
-        // WebView2's prefers-color-scheme does not track the OS reliably when
-        // the GPU is disabled; ask the backend for the real system value.
+        // macOS / Linux (WKWebView / WebKitGTK) report the real system theme, so
+        // matchMedia is the best source there. Windows is the exception: with the
+        // GPU disabled prefers-color-scheme does not follow the OS, so the backend
+        // (registry) is asked instead — SystemThemeNeedsBackend() says which.
+        dark = window.matchMedia('(prefers-color-scheme: dark)').matches;
         try {
-          dark = await Backend.GetSystemDarkMode();
+          if (await Backend.SystemThemeNeedsBackend()) {
+            dark = await Backend.GetSystemDarkMode();
+          }
         } catch {
-          dark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+          /* 后端不可用（或 mock 没有这个方法）→ 用 matchMedia 的结果 */
         }
       }
       document.documentElement.dataset.theme = dark ? 'dark' : 'light';

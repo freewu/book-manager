@@ -294,6 +294,10 @@ export function StartEnrichAll() {
   return window['go']['main']['App']['StartEnrichAll']();
 }
 
+export function SystemThemeNeedsBackend() {
+  return window['go']['main']['App']['SystemThemeNeedsBackend']();
+}
+
 export function UnmarkMisrecord(arg1) {
   return window['go']['main']['App']['UnmarkMisrecord'](arg1);
 }

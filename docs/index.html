@@ -3,10 +3,10 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Book Manager · Local e-book library for Windows</title>
+    <title>Book Manager · Local e-book library (Windows, macOS, Linux)</title>
     <meta name="description" content="A local-first e-book manager built with Wails v2, Go and React. Point it at your folders, keep the shelf tidy with tags, read epub / pdf / mobi right inside the app, and clean up y" />
     <meta property="og:type" content="website" />
-    <meta property="og:title" content="Book Manager · Local e-book library for Windows" />
+    <meta property="og:title" content="Book Manager · Local e-book library (Windows, macOS, Linux)" />
     <meta property="og:description" content="A local-first e-book manager built with Wails v2, Go and React. Point it at your folders, keep the shelf tidy with tags, read epub / pdf / mobi right inside the app, and clean up y" />
     <meta property="og:image" content="images/book-shelf.png" />
 <link rel="alternate" hreflang="en" href="index.html" />
@@ -43,20 +43,20 @@
 
     <main>
       <section class="hero">
-        <p class="eyebrow">Your local e-book library for Windows</p>
+        <p class="eyebrow">Your local e-book library — Windows, macOS and Linux</p>
         <h1>Book Manager</h1>
         <p class="lede">A local-first e-book manager built with Wails v2, Go and React. Point it at your folders, keep the shelf tidy with tags, read epub / pdf / mobi right inside the app, and clean up your PDFs with fourteen built-in tools — nothing ever leaves your disk, everything lives in a single SQLite file.</p>
         <div class="cta">
-          <a class="btn primary" href="https://github.com/freewu/book-manager/releases/latest">⬇ Download for Windows</a>
+          <a class="btn primary" href="https://github.com/freewu/book-manager/releases/latest">⬇ Download the latest release</a>
           <a class="btn ghost" href="https://github.com/freewu/book-manager">★ View on GitHub</a>
         </div>
-        <p class="cta-note">Windows 10 / 11 · portable, no installer · MIT licensed</p>
+        <p class="cta-note">Windows 10/11 · macOS · Linux · portable, no installer · MIT licensed</p>
         <ul class="badges">
       <li>Wails v2</li>
       <li>Go 1.21+</li>
       <li>React + Vite</li>
       <li>SQLite</li>
-      <li>Windows 10/11</li>
+      <li>Windows · macOS · Linux</li>
       <li>MIT</li>
         </ul>
         <a class="shot-hero" href="images/book-shelf.png" target="_blank" rel="noopener">
@@ -282,6 +282,8 @@
         <li>Node.js 18+</li>
         <li>Wails CLI: <code>go install github.com/wailsapp/wails/v2/cmd/wails@latest</code></li>
         <li>Windows: the WebView2 runtime (already part of Windows 10 / 11)</li>
+        <li>macOS: unsigned build — run <code>xattr -dr com.apple.quarantine book-manager.app</code> on first launch</li>
+        <li>Linux: <code>libwebkit2gtk-4.1</code> and <code>libgtk-3</code> (built on Ubuntu 24.04, glibc 2.39+)</li>
             </ul>
           </div>
           <div>
@@ -312,22 +314,23 @@
         <li>No user data is committed: src/data/, src/build/bin and release/ are git-ignored.</li>
         </ul>
         <h3>Known issue: blank window (WebView2 stops repainting)</h3>
-        <p class="muted">In production builds (with the assets embedded) some WebView2 + GPU combinations stop repainting because of the Wails hide / show visibility workaround — the window shows nothing but its background colour. The workaround is already in main.go:</p>
-        <pre class="code"><code>Windows: &amp;windows.Options{
+        <p class="muted">In production builds (with the assets embedded) some WebView2 + GPU combinations stop repainting because of the Wails hide / show visibility workaround — the window shows nothing but its background colour. The workaround lives in src/platform_windows.go:</p>
+        <pre class="code"><code>app.Windows = &amp;windows.Options{
     WebviewGpuIsDisabled: true, // --disable-gpu; harmless for a text app
+    WebviewUserDataPath: resolveWebviewUserDataPath(dataDir),
 },</code></pre>
         <p class="muted">To diagnose this, build with <code>wails build -debug</code> to get DevTools, or attach a debugger with <code>WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS=--remote-debugging-port=9333</code>.</p>
         <h3>Version</h3>
         <ul class="list">
         <li>Single source of truth: the <code>Version</code> constant in <code>src/version.go</code>.</li>
         <li>Shown in the sidebar footer and the settings dialog through the App.GetVersion() binding.</li>
-        <li>To release: bump <code>src/version.go</code>, run <code>just release</code>, then commit and push.</li>
+        <li>To release: bump <code>src/version.go</code> and push — GitHub Actions builds the Windows / macOS / Linux packages and creates the release. <code>just release</code> only builds the local Windows exe.</li>
         </ul>
       </section>
 
       <section class="sec" id="download">
         <h2>Download</h2>
-        <p class="muted">Every release ships a single portable executable. Unzip it, run it, and it creates its data folder next to itself.</p>
+        <p class="muted">Every release ships portable packages for three platforms, built by GitHub Actions and published with the commit log as its release notes: a single exe for Windows (<code>book-manager-&lt;version&gt;-windows-x64.zip</code>), a universal app for macOS (<code>...-macos-universal.zip</code>) and a tarball for Linux x64 (<code>...-linux-x64.tar.gz</code>). Unzip, run, and the app creates its data folder next to itself.</p>
         <div class="cta">
           <a class="btn primary" href="https://github.com/freewu/book-manager/releases/latest">⬇ Get the latest release</a>
           <a class="btn ghost" href="https://github.com/freewu/book-manager/releases">Or browse all releases on GitHub</a>

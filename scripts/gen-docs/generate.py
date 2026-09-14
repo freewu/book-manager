@@ -52,7 +52,7 @@ def readme(lang: str) -> str:
 
     badges = [
         f"![version](https://img.shields.io/badge/version-{VERSION}-5b7cfa.svg)",
-        "![platform](https://img.shields.io/badge/platform-Windows%2010%2F11-0078d4.svg)",
+        "![platform](https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-0078d4.svg)",
         "![license](https://img.shields.io/badge/license-MIT-22c55e.svg)",
         "![Wails](https://img.shields.io/badge/Wails-v2-DF0000.svg)",
         "![Go](https://img.shields.io/badge/Go-1.21%2B-00ADD8.svg)",

@@ -11,7 +11,6 @@ import (
 	"github.com/wailsapp/wails/v2"
 	"github.com/wailsapp/wails/v2/pkg/options"
 	"github.com/wailsapp/wails/v2/pkg/options/assetserver"
-	"github.com/wailsapp/wails/v2/pkg/options/windows"
 )
 
 //go:embed all:frontend/dist
@@ -25,7 +24,7 @@ func main() {
 	app := NewApp()
 	dataDir := resolveDataDir()
 
-	err := wails.Run(&options.App{
+	opts := &options.App{
 		Title:     "book-manager",
 		Width:     1280,
 		Height:    820,
@@ -64,16 +63,15 @@ func main() {
 		Bind: []interface{}{
 			app,
 		},
-		Windows: &windows.Options{
-			WebviewGpuIsDisabled: true, // workaround for WebView2 repaint issue (Hide/Show hack)
-			// Dedicated WebView2 profile avoids stale/corrupt caches from the shared Edge profile,
-			// a common cause of blank windows in packaged apps.
-			WebviewUserDataPath: resolveWebviewUserDataPath(dataDir),
-		},
 		// Allow right-click contextmenu events to reach the DOM (default menus are
 		// suppressed by Wails in production; our own shelf context menu needs them).
 		EnableDefaultContextMenu: true,
-	})
+	}
+	// 平台专属开关（Windows 的 WebView2 GPU / 缓存目录）在 platform_*.go 里，
+	// 这样 macOS / Linux 也能编译同一份 main.go。
+	applyPlatformOptions(opts, dataDir)
+
+	err := wails.Run(opts)
 
 	if err != nil {
 		println("Error:", err.Error())

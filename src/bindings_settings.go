@@ -7,8 +7,6 @@ import (
 
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 
-	"golang.org/x/sys/windows/registry"
-
 	"bookmanager/internal/db"
 	"bookmanager/internal/models"
 )
@@ -170,16 +168,12 @@ func (a *App) SetUiTheme(theme string) {
 // WebView2's prefers-color-scheme does not track the OS reliably when the
 // GPU is disabled, so the frontend asks the backend for the real value.
 func (a *App) GetSystemDarkMode() bool {
-	k, err := registry.OpenKey(registry.CURRENT_USER, `Software\Microsoft\Windows\CurrentVersion\Themes\Personalize`, registry.QUERY_VALUE)
-	if err != nil {
-		return false
-	}
-	defer k.Close()
-	v, _, err := k.GetIntegerValue("AppsUseLightTheme")
-	if err != nil {
-		return false
-	}
-	return v == 0
+	return systemDarkMode() // 平台实现见 darkmode_windows.go / darkmode_other.go
 }
 
-
+// SystemThemeNeedsBackend 告诉前端「系统主题要不要问后端」：只有 Windows
+// （WebView2 禁用 GPU 后 prefers-color-scheme 不跟随系统）需要，macOS / Linux
+// 的 WebKit 自己能报准，前端直接用 matchMedia 更靠谱。
+func (a *App) SystemThemeNeedsBackend() bool {
+	return systemThemeNeedsBackend()
+}

@@ -32,6 +32,8 @@ just icon          # 重新生成 logo.png → build/appicon.png + icon.ico
 just push "feat: xxx"   # 提交并推送
 ```
 
+> 发布三平台免安装包不在本地做：推 `v*` 标签或改 `src/version.go` 后由 GitHub Actions 完成（见下文）。
+
 ## 环境说明
 
 - 项目在 WSL 中开发，Go / Node / Wails 使用 Windows 侧工具链：
@@ -48,6 +50,40 @@ just push "feat: xxx"   # 提交并推送
   所以开发版（exe 名带 `-dev`）的 WebView2 数据放到 `%LocalAppData%\book-manager\webview2-dev`，
   正式版仍留在 exe 旁的 `data/webview2`（绿色版可整体拷走）。dev 的 `book.db` / `covers` 不受影响。
 - 版本号唯一来源是 `src/version.go` 的 `const Version`；发版时改它并重新 `just release`。
+
+## 发布与三平台安装包（GitHub Actions）
+
+发版走 `.github/workflows/release.yml`（本地 `just release` 只出 Windows 的 exe）：
+
+- **触发方式**（三种都行）：
+  1. 推 `v*` 标签（`git tag v0.2.0 && git push origin v0.2.0`）——直接用标签名当 release tag；
+  2. 改 `src/version.go` 的 `const Version` 推到 `main`——用这个版本号当 tag（不存在就自动建）；
+  3. 手动 `workflow_dispatch`（可指定版本号；`force=true` 时即使已发过也重建）。
+- **产物**（三平台免安装包，解压即用，都不带安装器）：
+  `book-manager-<版本>-windows-x64.zip`（单 exe）、
+  `book-manager-<版本>-macos-universal.zip`（Intel + Apple Silicon 通用 .app）、
+  `book-manager-<版本>-linux-x64.tar.gz`（二进制 + .desktop + 图标）。
+- **release message = 提交信息汇总**：取上一个 tag 到 HEAD 之间的 `git log --no-merges`（首次发布则列全部），
+  再附下载表、各平台运行要求与 compare 链接。所以**提交信息要写清楚**，它直接进 release。
+- 同一个 tag 已存在且有附件时默认跳过，不会重复发。
+- **Wails 不支持交叉编译**：三平台在各自 runner 上 `wails build`（Windows/macOS/Ubuntu）。
+  Linux 用 `ubuntu-latest` + `libwebkit2gtk-4.1-dev` + `-tags webkit2_41`（Wails 默认 4.0），
+  产物要求 glibc 2.39+，老发行版自行编译；macOS 未签名，首次打开要 `xattr -dr com.apple.quarantine`。
+
+**保持三平台可编译的约定**（本地只有 Windows，别把其它平台弄坏）：
+
+- 新增 Windows 专用代码必须放 `*_windows.go`（`//go:build windows`），并在 `*_other.go`（`//go:build !windows`）
+  给出兜底实现。现有拆分：`tray_windows.go`/`tray_other.go`（托盘只有 Windows 有，其它平台
+  `trayIconRegistered()` 返回 false，关闭按钮直接退出）、`darkmode_*.go`（注册表查系统主题，
+  非 Windows 交给前端 matchMedia）、`gsreg_*.go`（注册表找 Ghostscript）、`platform_*.go`
+  （WebView2 的 GPU/缓存开关，其它平台空实现）。
+- 前端问系统主题前先问 `App.SystemThemeNeedsBackend()`：只有 Windows 走后端注册表，
+  macOS/Linux 用 `prefers-color-scheme`（WKWebView/WebKitGTK 本来就准）。
+- 改完（尤其动了 `main.go` / 新增平台文件）至少跑一次
+  `GOOS=linux GOARCH=amd64 go.exe build ./internal/...` 和 `GOOS=darwin GOARCH=arm64 ...`；
+  `go build ./...`（Windows）必须仍然通过。
+- CI 里 Linux 会跑 `go test ./internal/... && go test .` 与 `check-i18n.mjs`，且必须在 `wails build` **之后**
+  （根包 `//go:embed all:frontend/dist` 需要 dist 先存在）。
 
 ## 项目结构速览
 

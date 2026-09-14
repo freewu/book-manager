@@ -149,6 +149,8 @@ export function SetUiTheme(arg1:string):Promise<void>;
 
 export function StartEnrichAll():Promise<number>;
 
+export function SystemThemeNeedsBackend():Promise<boolean>;
+
 export function UnmarkMisrecord(arg1:number):Promise<void>;
 
 export function UpdateBookMeta(arg1:number,arg2:string,arg3:string,arg4:string,arg5:string):Promise<void>;
